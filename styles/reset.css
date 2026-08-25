@@ -1,0 +1,74 @@
+/* Small, opinionated reset. */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* A clicker gets tapped fast and repeatedly — never let that select text or
+     trigger the mobile double-tap zoom. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+h1, h2, h3, h4, p, dl, dd, dt, figure, blockquote {
+  margin: 0;
+}
+
+ul, ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+img, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* `display: block` above outranks the UA's `[hidden] { display: none }`, so a
+   hidden <img> would still take up space and draw its broken-image box. This
+   puts `hidden` back in charge for every element. */
+[hidden] {
+  display: none !important;
+}
+
+/* Pixel art must never be smoothed. */
+.pixel-icon,
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus, #7fd0e6);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.noscript {
+  padding: 2rem;
+  text-align: center;
+  font-family: system-ui, sans-serif;
+}

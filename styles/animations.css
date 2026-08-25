@@ -1,0 +1,79 @@
+/* Motion. Everything here is decorative and everything here can be switched
+   off — see the reduced-motion block at the bottom. */
+
+@keyframes hint-fade {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes zen-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+.hud__zen-value.is-pop {
+  animation: zen-pop 320ms cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+@keyframes buff-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(247, 201, 72, 0.4); }
+  50%      { box-shadow: 0 0 0 5px rgba(247, 201, 72, 0); }
+}
+
+.buff.is-expiring { animation: buff-pulse 900ms ease-in-out infinite; }
+
+@keyframes shimmer {
+  0%   { background-position: -180% 0; }
+  100% { background-position: 180% 0; }
+}
+
+/* Affordable upgrades catch the light — a cheap, effective "buy me". */
+.upgrade.is-affordable::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.16) 50%,
+    transparent 65%
+  );
+  background-size: 180% 100%;
+  animation: shimmer 2.6s ease-in-out infinite;
+}
+
+.upgrade { position: relative; overflow: hidden; }
+
+@keyframes trophy-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.trophy.is-unlocked { animation: trophy-in 300ms ease both; }
+
+/* -------------------------------------------------------- reduced motion */
+
+/* Honour both the OS preference and the in-game toggle. Animations stop; the
+   game does not — a clicker still has to be readable without motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+[data-motion='reduced'] .upgrade.is-affordable::after,
+[data-motion='reduced'] .buff.is-expiring,
+[data-motion='reduced'] .trophy.is-unlocked,
+[data-motion='reduced'] .hud__zen-value.is-pop {
+  animation: none;
+}
+
+[data-motion='reduced'] .stage__hint { animation: none; opacity: 0.6; }

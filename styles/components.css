@@ -1,0 +1,558 @@
+/* Buttons, shop rows, upgrade cards, trophies, modals, toasts. */
+
+/* ---------------------------------------------------------------- buttons */
+
+.btn {
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border-bright);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: background 140ms ease, transform 90ms ease, border-color 140ms ease;
+}
+
+.btn:hover:not(:disabled) { background: var(--surface-3); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+
+/* A disabled button must read as disabled even when it carries a loud variant
+   like btn--gold, or "Not yet" looks like the thing you are supposed to press. */
+.btn:disabled {
+  opacity: 0.4;
+  filter: saturate(0.5);
+}
+
+.btn--primary {
+  background: linear-gradient(180deg, #4a8fb5, #33708f);
+  border-color: #6fb3d4;
+  color: #fff;
+}
+.btn--primary:hover:not(:disabled) { background: linear-gradient(180deg, #59a3cb, #3d7fa1); }
+
+.btn--gold {
+  background: linear-gradient(180deg, #f0b74d, #cf8f2a);
+  border-color: #ffd884;
+  color: #2a1c10;
+}
+.btn--gold:hover:not(:disabled) { background: linear-gradient(180deg, #ffc95e, #dc9c33); }
+
+.btn--danger {
+  background: linear-gradient(180deg, #c94a5f, #a03448);
+  border-color: #e8798c;
+  color: #fff;
+}
+
+.btn--small { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.icon-btn:hover { color: var(--text); background: var(--surface-3); }
+
+/* ------------------------------------------------------------------ combo */
+
+.combo__track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.combo__fill {
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--water), var(--zen));
+  transition: transform 90ms linear;
+}
+
+.combo__fill.is-critical {
+  background: linear-gradient(90deg, var(--gold), var(--danger));
+}
+
+.combo__label {
+  font-size: 0.5rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combo.is-maxed .combo__label { color: var(--zen); }
+
+/* ------------------------------------------------------------------ buffs */
+
+.buff {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, rgba(247, 201, 72, 0.22), rgba(247, 201, 72, 0.08));
+  border: 1px solid rgba(247, 201, 72, 0.5);
+  line-height: 1.25;
+}
+
+.buff__name { font-size: 0.68rem; font-weight: 800; color: var(--zen); }
+.buff__time { font-size: 0.62rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------- tabs */
+
+.tab {
+  position: relative;
+  padding: 0.6rem 0.9rem 0.6rem 0.3rem;
+  font-size: 0.52rem;
+  color: var(--text-faint);
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  transition: color 140ms ease, background 140ms ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab:hover { color: var(--text-dim); background: rgba(255, 255, 255, 0.03); }
+
+.tab.is-active {
+  color: var(--zen);
+  border-bottom-color: var(--zen);
+  background: rgba(247, 201, 72, 0.07);
+}
+
+/* Pinned to the tab's own corner. Anchoring it near the label's centre made it
+   land on top of the text as soon as the label was long enough to wrap. */
+.tab__badge {
+  position: absolute;
+  top: 5px;
+  right: 4px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  border-radius: 99px;
+  background: var(--danger);
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+/* ------------------------------------------------------------- buy amount */
+
+.buy-amount {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.6rem;
+}
+
+.buy-amount__label {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-right: 0.2rem;
+}
+
+.buy-amount__btn {
+  flex: 1;
+  padding: 0.4rem 0;
+  font-size: 0.5rem;
+  color: var(--text-faint);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: all 140ms ease;
+}
+
+.buy-amount__btn:hover { color: var(--text-dim); border-color: var(--border-bright); }
+
+.buy-amount__btn.is-active {
+  color: var(--bg-deep);
+  background: var(--zen);
+  border-color: var(--zen);
+}
+
+/* -------------------------------------------------------------- shop rows */
+
+.shop__hint {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.building-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.building {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: background 120ms ease, border-color 120ms ease, transform 90ms ease;
+}
+
+.building:disabled { opacity: 0.45; }
+
+.building.is-affordable {
+  border-color: var(--border-bright);
+  background: var(--surface-2);
+}
+
+.building.is-affordable:hover {
+  background: var(--surface-3);
+  border-color: var(--zen);
+}
+
+.building.is-affordable:active { transform: translateY(1px); }
+
+.building__icon { width: 34px; height: 34px; }
+
+.building.is-affordable .building__icon {
+  filter: drop-shadow(0 0 6px var(--zen-glow));
+}
+
+.building__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.building__name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.building__cost { font-size: 0.55rem; color: var(--zen); }
+.building:disabled .building__cost { color: var(--text-faint); }
+
+.building__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.12rem;
+}
+
+.building__owned {
+  font-family: var(--font-pixel);
+  font-size: 0.72rem;
+  color: var(--text);
+}
+
+.building__rate { font-size: 0.65rem; color: var(--water); }
+
+/* ---------------------------------------------------------- upgrade cards */
+
+.upgrade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 0.4rem;
+}
+
+.upgrade {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.3rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: background 120ms ease, border-color 120ms ease, transform 90ms ease;
+}
+
+.upgrade__icon { width: 30px; height: 30px; }
+
+.upgrade__name {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  color: var(--text-dim);
+}
+
+.upgrade__cost { font-size: 0.46rem; color: var(--zen); }
+
+.upgrade.is-affordable {
+  background: var(--surface-2);
+  border-color: var(--gold);
+  box-shadow: 0 0 12px rgba(240, 166, 61, 0.15);
+}
+
+.upgrade.is-affordable .upgrade__name { color: var(--text); }
+.upgrade.is-affordable:hover { background: var(--surface-3); transform: translateY(-1px); }
+.upgrade.is-affordable:active { transform: translateY(1px); }
+
+.upgrade.is-locked { opacity: 0.32; }
+.upgrade.is-locked .upgrade__icon { filter: grayscale(1) brightness(0.6); }
+.upgrade.is-locked .upgrade__cost { color: var(--text-faint); }
+
+.upgrade:disabled:not(.is-locked) { opacity: 0.55; }
+
+/* --------------------------------------------------------------- trophies */
+
+.trophy-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.trophy-header__count { font-size: 0.6rem; color: var(--zen); flex-shrink: 0; }
+
+.progress {
+  flex: 1;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.progress__fill {
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--leaf), var(--zen));
+  transition: transform 300ms ease;
+}
+
+.trophy-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.trophy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  opacity: 0.5;
+}
+
+.trophy.is-unlocked {
+  opacity: 1;
+  border-color: rgba(247, 201, 72, 0.45);
+  background: linear-gradient(180deg, rgba(247, 201, 72, 0.09), var(--surface));
+}
+
+.trophy__name { font-size: 0.85rem; font-weight: 800; }
+.trophy.is-unlocked .trophy__name { color: var(--zen); }
+
+.trophy__blurb { font-size: 0.76rem; color: var(--text-dim); line-height: 1.35; }
+.trophy.is-secret .trophy__blurb { font-style: italic; }
+
+.trophy__reward { font-size: 0.7rem; color: var(--leaf); font-weight: 700; }
+.trophy:not(.is-unlocked) .trophy__reward { color: var(--text-faint); }
+
+/* ------------------------------------------------------------------ stats */
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.05rem 1rem;
+}
+
+.stats dt {
+  padding: 0.4rem 0;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.stats dd {
+  padding: 0.4rem 0;
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: right;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------------------- toasts */
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  background: rgba(43, 32, 53, 0.97);
+  border: 1px solid var(--border-bright);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateX(18px);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.toast.is-in { opacity: 1; transform: translateX(0); }
+.toast.is-out { opacity: 0; transform: translateX(18px); }
+
+.toast--achievement { border-color: var(--zen); background: linear-gradient(180deg, rgba(247, 201, 72, 0.18), rgba(43, 32, 53, 0.97)); }
+.toast--buff { border-color: var(--gold); background: linear-gradient(180deg, rgba(240, 166, 61, 0.2), rgba(43, 32, 53, 0.97)); }
+.toast--warn { border-color: var(--danger); }
+
+.toast__icon { font-size: 1.2rem; flex-shrink: 0; }
+.toast__text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.toast__title { font-size: 0.85rem; font-weight: 800; }
+.toast__body { font-size: 0.76rem; color: var(--text-dim); line-height: 1.3; }
+
+/* ----------------------------------------------------------------- modals */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(10, 7, 14, 0.72);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.modal-backdrop.is-in { opacity: 1; }
+.modal-backdrop.is-out { opacity: 0; }
+
+.modal {
+  width: min(440px, 100%);
+  max-height: min(80dvh, 640px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(10px) scale(0.98);
+  transition: transform 200ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.modal--wide { width: min(680px, 100%); }
+.is-in .modal { transform: translateY(0) scale(1); }
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal__title { font-size: 1.1rem; font-weight: 800; }
+
+.modal__close {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.modal__close:hover { color: var(--text); background: var(--surface-3); }
+
+.modal__body { padding: 1.1rem; overflow-y: auto; flex: 1; min-height: 0; }
+
+.modal__footer {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding: 0.8rem 1.1rem 1.1rem;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------ nap report */
+
+.nap { text-align: center; }
+
+.nap__art { display: grid; place-items: center; margin-bottom: 0.8rem; }
+.nap__yuzu { width: 56px; height: 56px; }
+
+.nap__lead { font-size: 0.95rem; color: var(--text-dim); }
+
+.nap__amount {
+  margin: 0.5rem 0;
+  font-family: var(--font-pixel);
+  font-size: 1.5rem;
+  color: var(--zen);
+  text-shadow: 0 0 20px var(--zen-glow);
+}
+
+.nap__amount-unit { font-size: 0.7rem; color: var(--text-faint); }
+
+.nap__detail { font-size: 0.82rem; color: var(--text-faint); line-height: 1.5; }
+.nap__detail--warn { color: var(--gold); margin-top: 0.5rem; }
+
+/* --------------------------------------------------------------- settings */
+
+.settings { display: flex; flex-direction: column; gap: 0.2rem; }
+
+.settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings__row--toggle { cursor: pointer; }
+.settings__label { font-size: 0.9rem; font-weight: 600; }
+.settings__note { font-size: 0.85rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 0.7rem; }
+.settings__rule { border: none; border-top: 1px solid var(--border); margin: 0.6rem 0; }
+.settings__actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+.settings__toggle { width: 20px; height: 20px; accent-color: var(--zen); cursor: pointer; }
+.settings__slider { width: 140px; accent-color: var(--zen); cursor: pointer; }
+
+.settings__code {
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  resize: vertical;
+  user-select: text;
+  -webkit-user-select: text;
+}

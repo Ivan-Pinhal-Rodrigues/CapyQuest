@@ -1,0 +1,395 @@
+/* The Quest and Kit panels: fight view, equipment, bag, forge, skills. */
+
+.locked-note {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--text-faint);
+}
+
+.locked-note p { font-size: 0.95rem; font-style: italic; }
+.locked-note__hint { margin-top: 0.5rem; font-size: 0.82rem; color: var(--text-faint); opacity: 0.75; }
+
+/* ------------------------------------------------------------------ battle */
+
+.battle { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.battle__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.battle__zone-name { font-size: 1rem; font-weight: 800; }
+
+.battle__stage {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.battle__zone-blurb {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-style: italic;
+  line-height: 1.35;
+  margin-top: -0.35rem;
+}
+
+.battle__pips { display: flex; gap: 4px; }
+
+.pip {
+  flex: 1;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  transition: background 200ms ease;
+}
+
+.pip--boss { flex: 1.6; background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--border-bright); }
+.pip.is-done { background: var(--leaf); }
+.pip.is-current { background: var(--zen); box-shadow: 0 0 8px var(--zen-glow); }
+.pip--boss.is-current { background: var(--danger); box-shadow: 0 0 8px rgba(232, 85, 109, 0.5); }
+
+.battle__arena {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.9rem 0.6rem 0.7rem;
+  border-radius: var(--radius);
+  background: radial-gradient(ellipse 70% 60% at 50% 40%, rgba(255, 255, 255, 0.05), transparent 70%), var(--bg-deep);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.battle__enemy {
+  width: 120px;
+  height: 120px;
+  animation: enemy-bob 2.4s ease-in-out infinite;
+}
+
+.battle__enemy.is-boss {
+  width: 152px;
+  height: 152px;
+  filter: drop-shadow(0 0 14px rgba(232, 85, 109, 0.45));
+}
+
+.battle__enemy-name { font-size: 0.9rem; font-weight: 800; }
+.battle__enemy-element { font-size: 0.72rem; font-weight: 700; }
+
+.battle__hp-text {
+  font-family: var(--font-pixel);
+  font-size: 0.46rem;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.hp-bar {
+  width: 100%;
+  height: 9px;
+  margin-top: 0.25rem;
+  border-radius: 99px;
+  background: var(--surface-3);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.hp-bar__fill {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  transition: transform 120ms linear;
+}
+
+.hp-bar--enemy .hp-bar__fill { background: linear-gradient(90deg, #e8556d, #f0a63d); }
+.hp-bar--player .hp-bar__fill { background: linear-gradient(90deg, var(--leaf), var(--water)); }
+.hp-bar--player .hp-bar__fill.is-low { background: linear-gradient(90deg, var(--danger), var(--gold)); }
+
+.battle__player { display: flex; align-items: center; gap: 0.6rem; }
+
+.battle__player-label {
+  font-family: var(--font-pixel);
+  font-size: 0.46rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.battle__player .hp-bar { margin-top: 0; }
+
+/* Floating damage numbers over the enemy. */
+.dmg {
+  position: absolute;
+  top: 42%;
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  color: #fdf6e8;
+  text-shadow: 0 2px 0 rgba(20, 12, 24, 0.9);
+  pointer-events: none;
+  animation: dmg-rise 900ms ease-out forwards;
+}
+
+.dmg--crit { font-size: 0.85rem; color: var(--zen); }
+.dmg--super { color: var(--leaf); }
+
+/* ------------------------------------------------------------------ stance */
+
+.stance { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.stance__label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+
+.stance__row { display: flex; gap: 0.3rem; }
+
+.stance__btn {
+  flex: 1;
+  padding: 0.4rem 0;
+  font-size: 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  filter: grayscale(0.7) opacity(0.6);
+  transition: all 140ms ease;
+}
+
+.stance__btn:hover { filter: none; border-color: var(--border-bright); }
+
+.stance__btn.is-active {
+  filter: none;
+  background: var(--surface-3);
+  border-color: var(--zen);
+  box-shadow: 0 0 10px var(--zen-glow);
+}
+
+.stance__matchup { font-size: 0.74rem; color: var(--text-faint); }
+.stance__matchup.is-good { color: var(--leaf); }
+.stance__matchup.is-bad { color: var(--danger); }
+
+.battle__controls { display: flex; gap: 0.4rem; align-items: stretch; }
+.battle__controls .btn { flex: 1; }
+.battle__controls .btn--small { flex: 0 0 auto; }
+
+.battle__log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-height: 3.4rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+}
+
+.battle__log-line { font-size: 0.74rem; color: var(--text-faint); line-height: 1.4; }
+.battle__log-line.is-win { color: var(--leaf); }
+.battle__log-line.is-boss { color: var(--zen); font-weight: 700; }
+.battle__log-line.is-lose { color: var(--danger); }
+.battle__log-line.is-skill { color: var(--water); }
+
+/* --------------------------------------------------------------------- kit */
+
+.kit { display: flex; flex-direction: column; gap: 0.7rem; }
+
+.kit__heading {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  margin: 0.3rem 0 0;
+}
+
+.kit__summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.3rem;
+}
+
+.kit__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.kit__stat-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.kit__stat-value { font-size: 0.85rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+
+.slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.5rem 0.3rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-height: 74px;
+  justify-content: center;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.slot:hover { background: var(--surface-2); border-color: var(--border-bright); }
+.slot.is-filled { border-color: var(--rarity, var(--border-bright)); }
+.slot__icon { width: 32px; height: 32px; }
+
+.slot__name {
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.15;
+  color: var(--text-dim);
+}
+
+.slot.is-filled .slot__name { color: var(--text); }
+
+.slot__forge {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  font-family: var(--font-pixel);
+  font-size: 0.4rem;
+  color: var(--zen);
+}
+
+/* ------------------------------------------------------------------ skills */
+
+.skill-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+
+.skill-slot {
+  padding: 0.55rem 0.3rem;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border-bright);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.2;
+  transition: all 140ms ease;
+}
+
+.skill-slot:hover { background: var(--surface-3); }
+.skill-slot.is-empty { background: transparent; border-style: dashed; color: var(--text-faint); }
+.skill-slot.is-passive { border-color: var(--leaf); color: var(--leaf); }
+
+/* --------------------------------------------------------------------- bag */
+
+.kit__bag-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
+.kit__shards { font-family: var(--font-pixel); font-size: 0.46rem; color: var(--water); }
+
+.bag {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 0.35rem;
+}
+
+.bag__item {
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--rarity, var(--border));
+  transition: transform 90ms ease, background 140ms ease;
+}
+
+.bag__item:hover { background: var(--surface-2); transform: translateY(-1px); }
+.bag__item.is-equipped { box-shadow: inset 0 0 0 2px var(--rarity, var(--zen)); }
+.bag__icon { width: 30px; height: 30px; }
+
+.bag__forge {
+  position: absolute;
+  bottom: 1px;
+  right: 3px;
+  font-family: var(--font-pixel);
+  font-size: 0.38rem;
+  color: var(--zen);
+}
+
+/* ------------------------------------------------------------ item details */
+
+.item-detail { display: flex; flex-direction: column; gap: 0.5rem; }
+.item-detail__head { display: flex; align-items: center; gap: 0.7rem; }
+.item-detail__icon { width: 44px; height: 44px; }
+.item-detail__titles { display: flex; flex-direction: column; gap: 0.1rem; }
+.item-detail__name { font-size: 1rem; }
+.item-detail__rarity { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.item-detail__stats { font-size: 0.84rem; font-weight: 700; color: var(--water); line-height: 1.5; }
+.item-detail__bonus { font-size: 0.82rem; font-weight: 700; color: var(--leaf); }
+.item-detail__blurb { font-size: 0.84rem; color: var(--text-dim); font-style: italic; line-height: 1.45; }
+.item-detail__forge { font-size: 0.8rem; color: var(--zen); }
+.item-detail__forge.is-short { color: var(--text-faint); }
+.item-detail__note { font-size: 0.8rem; color: var(--text-faint); }
+
+/* ------------------------------------------------------------------ picker */
+
+.picker { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.picker__row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--rarity, var(--border));
+  transition: background 140ms ease;
+}
+
+.picker__row:hover:not(:disabled) { background: var(--surface-3); }
+.picker__row.is-current { box-shadow: inset 0 0 0 2px var(--rarity, var(--zen)); }
+.picker__row.is-locked { opacity: 0.4; }
+.picker__row--clear { justify-content: center; color: var(--text-faint); border-style: dashed; }
+
+.picker__icon { width: 30px; height: 30px; flex-shrink: 0; }
+.picker__text { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.picker__head { display: flex; align-items: baseline; gap: 0.5rem; }
+.picker__name { font-size: 0.86rem; }
+.picker__kind { font-size: 0.66rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+.picker__stats { font-size: 0.74rem; color: var(--text-dim); line-height: 1.35; }
+
+/* ------------------------------------------------------------------ motion */
+
+@keyframes enemy-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+@keyframes dmg-rise {
+  0%   { opacity: 0; transform: translateY(0) scale(0.7); }
+  18%  { opacity: 1; transform: translateY(-10px) scale(1.15); }
+  100% { opacity: 0; transform: translateY(-46px) scale(1); }
+}
+
+[data-motion='reduced'] .battle__enemy { animation: none; }
+[data-motion='reduced'] .dmg { animation-duration: 400ms; }
+
+@media (max-width: 900px) {
+  .kit__summary { grid-template-columns: repeat(3, 1fr); }
+  .battle__enemy { width: 80px; height: 80px; }
+  .battle__enemy.is-boss { width: 96px; height: 96px; }
+}

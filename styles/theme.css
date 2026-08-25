@@ -1,0 +1,64 @@
+/* Design tokens. The whole game reads colour from here. */
+
+:root {
+  /* Dusk — warm plum night around a lit hot spring. */
+  --bg: #150f1c;
+  --bg-deep: #0e0a13;
+  --surface: #211829;
+  --surface-2: #2b2035;
+  --surface-3: #362a42;
+  --border: #3d2f4a;
+  --border-bright: #56426a;
+
+  --text: #f2e9f7;
+  --text-dim: #b3a3c0;
+  --text-faint: #7e7089;
+
+  --zen: #f7c948;
+  --zen-glow: rgba(247, 201, 72, 0.35);
+  --water: #7fd0e6;
+  --water-deep: #3f8fb0;
+  --fur: #c99560;
+  --leaf: #7cc255;
+  --danger: #e8556d;
+  --gold: #f0a63d;
+  --focus: #7fd0e6;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 16px;
+
+  --font-ui: 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-pixel: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
+
+  --hud-h: 62px;
+  --panel-w: 380px;
+}
+
+body {
+  font-family: var(--font-ui);
+  color: var(--text);
+  /* A soft pool of warm light behind the capybara, cooling to night at the edges. */
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 42%, #33203d 0%, transparent 62%),
+    radial-gradient(ellipse 60% 40% at 50% 78%, #1d3446 0%, transparent 70%),
+    linear-gradient(180deg, var(--bg-deep) 0%, var(--bg) 45%, #191325 100%);
+  background-attachment: fixed;
+}
+
+/* Numbers use the pixel face; body copy stays readable. */
+.hud__zen-value,
+.hud__rate,
+.combo__label,
+.building__cost,
+.upgrade__cost,
+.tab,
+.buy-amount__btn,
+.trophy-header__count {
+  font-family: var(--font-pixel);
+  letter-spacing: 0.02em;
+}

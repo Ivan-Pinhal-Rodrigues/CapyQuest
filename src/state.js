@@ -1,0 +1,275 @@
+// The save schema and its defaults. Anything not in here is not persisted.
+//
+// Rule: `state.derived` is recomputed every frame and never written to disk.
+// Everything else survives a reload, so adding a field means adding it here
+// *and* bumping SAVE_VERSION with a migration in save.js.
+
+import { BUILDINGS } from './data/buildings.js';
+
+export const SAVE_VERSION = 1;
+
+export function createState(now = Date.now()) {
+  return {
+    version: SAVE_VERSION,
+    createdAt: now,
+    lastSeen: now,
+
+    // --- currencies
+    zen: 0,
+    lifetimeZen: 0, // reset by prestige — drives the yuzu payout
+    totalZen: 0, // never reset — drives achievements
+    lifetimeClicks: 0,
+    yuzu: 0,
+    lifetimeYuzu: 0,
+    prestigeCount: 0,
+    lotus: 0,
+    lifetimeLotus: 0,
+    ascendCount: 0,
+
+    // --- owned things
+    buildings: Object.fromEntries(BUILDINGS.map((b) => [b.id, 0])),
+    clickUpgrades: {}, // id -> true
+    tierUpgrades: {}, // id -> true
+    achievements: {}, // id -> unlock timestamp
+    relics: {}, // id -> ranks (survives prestige)
+    constellations: {}, // id -> ranks (survives ascension)
+    talents: {}, // id -> ranks
+
+    gacha: {
+      tickets: 0,
+      bought: 0,
+      pulls: 0,
+      fiveStars: 0,
+      pity: { five: 0, four: 0 },
+      companions: {}, // id -> { level, shards }
+      party: [], // up to PARTY_SIZE ids
+    },
+
+    // --- retention
+    quests: {
+      dayKey: null,
+      weekKey: null,
+      daily: [],
+      weekly: [],
+      dailyClaimed: {},
+      weeklyClaimed: {},
+      // Counter snapshots taken at rollover; quests measure the delta since.
+      dailyBase: {},
+      weeklyBase: {},
+    },
+
+    login: { lastDay: null, streak: 0, best: 0, total: 0, pendingDay: 0 },
+    chest: { lastAt: now, opened: 0 },
+    pass: { xp: 0, claimed: {} },
+    codes: {}, // redeemed code key -> timestamp
+
+    // --- transient-ish but worth persisting
+    buffs: [], // { id, name, until, effects: [...] }
+
+    stats: {
+      crits: 0,
+      goldens: 0,
+      naps: 0,
+      bestCombo: 0,
+      bestZps: 0,
+      handmadeZen: 0, // zen earned by tapping specifically
+      playMs: 0,
+      sessionMs: 0,
+      bestIdleMs: 0,
+
+      // combat / gear counters, tracked here because achievements read them
+      bestLevel: 1,
+      drops: 0,
+      forges: 0,
+      maxForges: 0,
+      raritiesFound: [],
+      stancesUsed: [],
+
+      // lifetime purchase counters, read by quests
+      buildingsBought: 0,
+      upgradesBought: 0,
+      questsDone: 0,
+      chestsOpened: 0,
+      prestiges: 0,
+      ascensions: 0,
+    },
+
+    settings: {
+      sound: true,
+      volume: 0.5,
+      reducedMotion: false,
+      theme: 'dusk',
+      buyAmount: 1, // 1 | 10 | 100 | 'max'
+      notation: 'short',
+    },
+
+    combat: {
+      stage: 0,
+      bestStage: 0,
+      autoBattle: false, // unlocked by tapping into the first fight
+      unlocked: false,
+      // Leaf starts neutral against the first zone. Opening the game at a
+      // disadvantage would teach the wrong lesson about a mechanic nobody has
+      // met yet; discovering that Ember beats it is the reward.
+      element: 'leaf',
+      xp: 0,
+      shards: 0,
+      clears: 0,
+      bossKills: 0,
+      inventory: [], // [{ uid, id, forge }]
+      equipped: {}, // slot -> uid
+      skills: [], // up to SKILL_SLOTS ids
+    },
+  };
+}
+
+/**
+ * Fill in anything a save is missing. Runs after migrations so a save written
+ * by an older build — or hand-edited by a curious player — still boots.
+ */
+export function reconcileState(state, now = Date.now()) {
+  const base = createState(now);
+  const out = { ...base, ...state };
+
+  out.settings = { ...base.settings, ...(state.settings || {}) };
+  out.stats = { ...base.stats, ...(state.stats || {}) };
+  out.combat = { ...base.combat, ...(state.combat || {}) };
+
+  // Combat collections must be the right shape even if a save was truncated or
+  // hand-edited — the panels index into them every frame.
+  out.combat.inventory = Array.isArray(out.combat.inventory)
+    ? out.combat.inventory.filter((i) => i && typeof i.uid === 'string' && typeof i.id === 'string')
+    : [];
+  out.combat.equipped = isPlainObject(out.combat.equipped) ? { ...out.combat.equipped } : {};
+  out.combat.skills = Array.isArray(out.combat.skills) ? out.combat.skills.filter((s) => typeof s === 'string') : [];
+
+  // Drop equip references to items that are no longer in the bag.
+  const owned = new Set(out.combat.inventory.map((i) => i.uid));
+  for (const [slot, uid] of Object.entries(out.combat.equipped)) {
+    if (!owned.has(uid)) delete out.combat.equipped[slot];
+  }
+
+  // Generators added in a later version start at zero rather than undefined.
+  out.buildings = { ...base.buildings };
+  for (const [id, count] of Object.entries(state.buildings || {})) {
+    if (id in out.buildings) out.buildings[id] = safeNumber(count);
+  }
+
+  out.clickUpgrades = { ...(state.clickUpgrades || {}) };
+  out.tierUpgrades = { ...(state.tierUpgrades || {}) };
+  out.achievements = { ...(state.achievements || {}) };
+  out.relics = countMap(state.relics);
+  out.constellations = countMap(state.constellations);
+  out.talents = countMap(state.talents);
+
+  out.gacha = { ...base.gacha, ...(state.gacha || {}) };
+  out.gacha.pity = {
+    five: safeNumber(state.gacha?.pity?.five),
+    four: safeNumber(state.gacha?.pity?.four),
+  };
+  out.gacha.companions = isPlainObject(state.gacha?.companions)
+    ? Object.fromEntries(
+        Object.entries(state.gacha.companions).map(([id, c]) => [
+          id,
+          { level: Math.max(1, safeNumber(c?.level) || 1), shards: safeNumber(c?.shards) },
+        ]),
+      )
+    : {};
+  out.gacha.party = Array.isArray(state.gacha?.party)
+    ? state.gacha.party.filter((id) => typeof id === 'string' && id in out.gacha.companions)
+    : [];
+  for (const key of ['tickets', 'bought', 'pulls', 'fiveStars']) {
+    out.gacha[key] = safeNumber(out.gacha[key]);
+  }
+
+  // --- retention blocks
+  out.quests = { ...base.quests, ...(state.quests || {}) };
+  out.quests.daily = stringList(out.quests.daily);
+  out.quests.weekly = stringList(out.quests.weekly);
+  out.quests.dailyClaimed = isPlainObject(out.quests.dailyClaimed) ? { ...out.quests.dailyClaimed } : {};
+  out.quests.weeklyClaimed = isPlainObject(out.quests.weeklyClaimed) ? { ...out.quests.weeklyClaimed } : {};
+  out.quests.dailyBase = numberMap(out.quests.dailyBase);
+  out.quests.weeklyBase = numberMap(out.quests.weeklyBase);
+
+  out.login = { ...base.login, ...(state.login || {}) };
+  for (const key of ['streak', 'best', 'total', 'pendingDay']) {
+    out.login[key] = safeNumber(out.login[key]);
+  }
+
+  out.chest = { ...base.chest, ...(state.chest || {}) };
+  // Deliberately normalises a zero or absent timer to now: epoch 0 in a save
+  // would hand out a full stack of chests on load. A timer in the *future*
+  // (a clock that jumped back) would stall collection forever, so clamp that
+  // too. The runtime helpers in systems/quests.js treat 0 as a real timestamp;
+  // this is the one place it is a corruption signal instead.
+  out.chest.lastAt = safeNumber(out.chest.lastAt) || now;
+  if (out.chest.lastAt > now) out.chest.lastAt = now;
+  out.chest.opened = safeNumber(out.chest.opened);
+
+  out.pass = { ...base.pass, ...(state.pass || {}) };
+  out.pass.xp = safeNumber(out.pass.xp);
+  out.pass.claimed = isPlainObject(out.pass.claimed) ? { ...out.pass.claimed } : {};
+
+  out.codes = isPlainObject(state.codes) ? { ...state.codes } : {};
+  out.buffs = Array.isArray(state.buffs) ? state.buffs.filter((b) => b && b.until > now) : [];
+
+  // Numeric fields get scrubbed — a single NaN in a save poisons every formula
+  // downstream and the symptom shows up somewhere unrelated.
+  for (const key of [
+    'zen', 'lifetimeZen', 'totalZen', 'lifetimeClicks',
+    'yuzu', 'lifetimeYuzu', 'prestigeCount',
+    'lotus', 'lifetimeLotus', 'ascendCount',
+  ]) {
+    out[key] = safeNumber(out[key]);
+  }
+  // Not every stat is a number — the "have I ever seen one of these" sets are
+  // arrays, and coercing them would wipe the achievements that read them.
+  const STAT_SETS = ['raritiesFound', 'stancesUsed'];
+  for (const key of Object.keys(out.stats)) {
+    if (STAT_SETS.includes(key)) {
+      out.stats[key] = Array.isArray(out.stats[key])
+        ? [...new Set(out.stats[key].filter((v) => typeof v === 'string'))]
+        : [];
+      continue;
+    }
+    out.stats[key] = safeNumber(out.stats[key]);
+  }
+  for (const key of ['stage', 'bestStage', 'xp', 'shards', 'clears', 'bossKills']) {
+    out.combat[key] = safeNumber(out.combat[key]);
+  }
+  // You can only be standing somewhere you have actually reached.
+  out.combat.stage = Math.min(out.combat.stage, out.combat.bestStage);
+
+  out.version = SAVE_VERSION;
+  return out;
+}
+
+function safeNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+function isPlainObject(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function stringList(value) {
+  return Array.isArray(value) ? value.filter((v) => typeof v === 'string') : [];
+}
+
+/** key -> number, used for the quest counter snapshots. */
+function numberMap(source) {
+  if (!isPlainObject(source)) return {};
+  return Object.fromEntries(Object.entries(source).map(([k, v]) => [k, safeNumber(v)]));
+}
+
+/** id -> positive integer rank count, with anything malformed dropped. */
+function countMap(source) {
+  if (!isPlainObject(source)) return {};
+  const out = {};
+  for (const [id, value] of Object.entries(source)) {
+    const n = Math.floor(safeNumber(value));
+    if (n > 0) out[id] = n;
+  }
+  return out;
+}

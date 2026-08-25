@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en" data-theme="dusk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>CapyQuest — Capybara Clicker RPG</title>
+<meta name="description" content="A pixel-art idle clicker RPG about a very relaxed capybara, an endless hot spring, and far too many upgrades.">
+<meta name="theme-color" content="#1a1220">
+<meta name="color-scheme" content="dark light">
+
+<meta property="og:title" content="CapyQuest — Capybara Clicker RPG">
+<meta property="og:description" content="Tap the capybara. Build the onsen. Never stop.">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;800&display=swap">
+
+<link rel="stylesheet" href="styles/reset.css">
+<link rel="stylesheet" href="styles/theme.css">
+<link rel="stylesheet" href="styles/layout.css">
+<link rel="stylesheet" href="styles/components.css">
+<link rel="stylesheet" href="styles/rpg.css">
+<link rel="stylesheet" href="styles/meta.css">
+<link rel="stylesheet" href="styles/daily.css">
+<link rel="stylesheet" href="styles/animations.css">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🦫</text></svg>">
+</head>
+<body>
+
+<div id="app" class="app">
+
+  <header class="hud" id="hud">
+    <div class="hud__brand">
+      <span class="hud__logo" aria-hidden="true">🦫</span>
+      <span class="hud__title">CapyQuest</span>
+    </div>
+
+    <div class="hud__zen">
+      <output class="hud__zen-value" id="zenValue" aria-live="off">0</output>
+      <span class="hud__zen-label">zen</span>
+    </div>
+
+    <div class="hud__rates">
+      <span class="hud__rate" id="zpsValue">0/sec</span>
+      <span class="hud__rate hud__rate--dim" id="clickValue">1/tap</span>
+    </div>
+
+    <div class="hud__meta" id="hudMeta">
+      <span class="hud__meta-item hud__meta-item--yuzu" id="yuzuValue" hidden title="Yuzu — prestige currency"></span>
+      <span class="hud__meta-item hud__meta-item--lotus" id="lotusValue" hidden title="Lotus — ascension currency"></span>
+      <span class="hud__meta-item hud__meta-item--ticket" id="ticketValue" hidden title="Summon tickets"></span>
+    </div>
+
+    <div class="combo" id="comboWrap">
+      <div class="combo__track"><div class="combo__fill" id="comboFill"></div></div>
+      <span class="combo__label" id="comboLabel"></span>
+    </div>
+
+    <div class="buffs" id="buffList" aria-live="polite"></div>
+
+    <button class="icon-btn" id="settingsBtn" type="button" aria-label="Settings">⚙</button>
+  </header>
+
+  <main class="stage">
+    <canvas id="scene" class="stage__canvas" aria-label="The capybara in its hot spring. Click it to earn zen." role="img"></canvas>
+    <p class="stage__hint" id="stageHint">Tap the capybara</p>
+  </main>
+
+  <aside class="panel">
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Game panels">
+      <button class="tab" data-tab="generators" role="tab" type="button" aria-controls="panel-generators">Onsen</button>
+      <button class="tab" data-tab="upgrades" role="tab" type="button" aria-controls="panel-upgrades">Upgrades</button>
+      <button class="tab" data-tab="quest" role="tab" type="button" aria-controls="panel-quest">Quest</button>
+      <button class="tab" data-tab="kit" role="tab" type="button" aria-controls="panel-kit">Kit</button>
+      <button class="tab" data-tab="daily" role="tab" type="button" aria-controls="panel-daily">Daily</button>
+      <button class="tab" data-tab="summon" role="tab" type="button" aria-controls="panel-summon">Summon</button>
+      <button class="tab" data-tab="bath" role="tab" type="button" aria-controls="panel-bath">Bath</button>
+      <button class="tab" data-tab="achievements" role="tab" type="button" aria-controls="panel-achievements">Trophies</button>
+      <button class="tab" data-tab="stats" role="tab" type="button" aria-controls="panel-stats">Stats</button>
+    </nav>
+
+    <div class="panel__body">
+      <section class="panel__section" id="panel-generators" role="tabpanel" aria-label="Generators">
+        <div class="buy-amount" id="buyAmount" role="group" aria-label="Buy amount">
+          <span class="buy-amount__label">Buy</span>
+          <button class="buy-amount__btn" type="button" data-amount="1">×1</button>
+          <button class="buy-amount__btn" type="button" data-amount="10">×10</button>
+          <button class="buy-amount__btn" type="button" data-amount="100">×100</button>
+          <button class="buy-amount__btn" type="button" data-amount="max">Max</button>
+        </div>
+        <div class="building-list" id="buildingList"></div>
+      </section>
+
+      <section class="panel__section" id="panel-upgrades" role="tabpanel" aria-label="Upgrades" hidden>
+        <div class="upgrade-grid" id="upgradeGrid"></div>
+      </section>
+
+      <section class="panel__section" id="panel-quest" role="tabpanel" aria-label="Quest" hidden>
+        <div class="locked-note" id="questLocked">
+          <p>The pond is not the whole world.</p>
+          <p class="locked-note__hint">Earn 5,000 zen to open the way downstream.</p>
+        </div>
+        <div id="battlePanel" class="battle" hidden></div>
+      </section>
+
+      <section class="panel__section" id="panel-kit" role="tabpanel" aria-label="Kit" hidden>
+        <div class="locked-note" id="kitLocked">
+          <p>Nothing to equip yet.</p>
+          <p class="locked-note__hint">Head downstream and win something.</p>
+        </div>
+        <div id="gearPanel" class="kit" hidden></div>
+      </section>
+
+      <section class="panel__section" id="panel-daily" role="tabpanel" aria-label="Daily" hidden>
+        <div id="dailyPanel" class="daily"></div>
+      </section>
+
+      <section class="panel__section" id="panel-summon" role="tabpanel" aria-label="Summon" hidden>
+        <div class="locked-note" id="summonLocked">
+          <p>Nobody to call on yet.</p>
+          <p class="locked-note__hint">Beat a boss downstream — they carry summon tickets.</p>
+        </div>
+        <div id="gachaPanel" class="summon" hidden></div>
+      </section>
+
+      <section class="panel__section" id="panel-bath" role="tabpanel" aria-label="The Bath" hidden>
+        <div class="locked-note" id="bathLocked">
+          <p>The water is not deep enough yet.</p>
+          <p class="locked-note__hint">Earn a trillion zen in one run and the Yuzu Bath opens.</p>
+        </div>
+        <div id="metaPanel" class="meta" hidden></div>
+      </section>
+
+      <section class="panel__section" id="panel-achievements" role="tabpanel" aria-label="Trophies" hidden>
+        <div id="achievementPanel"></div>
+      </section>
+
+      <section class="panel__section" id="panel-stats" role="tabpanel" aria-label="Statistics" hidden>
+        <div id="statsPanel"></div>
+      </section>
+    </div>
+  </aside>
+
+  <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+</div>
+
+<noscript>
+  <p class="noscript">CapyQuest needs JavaScript to run. The capybara is very sorry.</p>
+</noscript>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
