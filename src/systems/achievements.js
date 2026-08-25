@@ -28,7 +28,14 @@ export function achievementProgress(state) {
 /** Short human description of what an achievement's reward does. */
 export function describeReward(reward) {
   if (!reward) return '';
-  const pct = (v) => `${Math.round((v - 1) * 100)}%`;
+  // A reward on the SMALL band is +0.5%, and rounding that to a whole number
+  // prints "+0% all income" — which reads as "this one pays nothing" under a
+  // list whose entire premise is that every one of them pays. So anything under
+  // one percent keeps a decimal place.
+  const pct = (v) => {
+    const n = (v - 1) * 100;
+    return `${n < 1 ? n.toFixed(1) : Math.round(n)}%`;
+  };
   switch (reward.type) {
     case 'globalMult': return `+${pct(reward.value)} all income`;
     case 'clickMult': return `+${pct(reward.value)} tap power`;
@@ -40,8 +47,11 @@ export function describeReward(reward) {
     case 'comboStep': return `+${(reward.value * 100).toFixed(1)}% per combo`;
     case 'goldenChance': return `+${Math.round(reward.value * 100)}% golden rate`;
     case 'goldenDuration': return `+${Math.round(reward.value * 100)}% golden duration`;
-    case 'offlineRate': return `+${Math.round(reward.value * 100)}% offline rate`;
-    case 'offlineCapHours': return `+${reward.value}h offline cap`;
+    case 'offlineRate': return `+${Math.round(reward.value * 100)}% cache fill rate`;
+    case 'offlineCapHours': return `+${reward.value}h cache capacity`;
+    case 'allBuildingMult': return `+${pct(reward.value)} from every generator`;
+    case 'costDiscount': return `${Math.round(reward.value * 100)}% off generators`;
+    case 'zpsShare': return `taps also pay ${Math.round(reward.value * 100)}% of idle income`;
     default: return '';
   }
 }

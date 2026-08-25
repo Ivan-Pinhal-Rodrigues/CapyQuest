@@ -68,6 +68,8 @@ import { AchievementPanel, StatsPanel, openSettings as openSettingsModal } from 
 import { Toaster } from './ui/toast.js';
 import { Tabs } from './ui/tabs.js';
 import { openNapReport, shouldShowNapReport } from './ui/napReport.js';
+import { CachePanel } from './ui/cachePanel.js';
+import { cacheInfo, collectCache, fillCache, MIN_CACHE_MS } from './systems/cache.js';
 import { fmt, fmtInt } from './ui/numbers.js';
 import { isModalOpen, closeModal } from './ui/modal.js';
 
@@ -151,6 +153,9 @@ class Game {
     });
     this.achievementPanel = new AchievementPanel($('achievementPanel'));
     this.statsPanel = new StatsPanel($('statsPanel'));
+    this.cachePanel = new CachePanel($('cachePanel'), {
+      onCollect: () => this.collectNap(),
+    });
     this.profileCard = new ProfileCard($('profilePanel'), {
       onRename: () => this.renameProfile(),
       onPickAvatar: () => this.pickLook('skin'),
@@ -263,7 +268,12 @@ class Game {
     // Persist on the way out — visibilitychange fires reliably on mobile where
     // beforeunload does not.
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') this.save();
+      if (document.visibilityState === 'hidden') {
+        this.hiddenAt = Date.now();
+        this.save();
+      } else {
+        this.handleWake();
+      }
     });
     window.addEventListener('pagehide', () => this.save());
   }
@@ -612,36 +622,77 @@ class Game {
   handleReturn() {
     const now = Date.now();
     const elapsed = now - (this.state.lastSeen || now);
+    this.state.lastSeen = now;
     if (elapsed <= 0) return;
 
-    const { zen, creditedMs, cappedMs } = offlineEarnings(this.derived.zps, elapsed, {
-      capMs: this.derived.offlineCapMs,
+    const capMs = this.derived.offlineCapMs;
+    const { zen, creditedMs, lostMs } = fillCache(this.state, {
+      zps: this.derived.zps,
+      elapsedMs: elapsed,
+      capMs,
       rate: this.derived.offlineRate,
     });
 
-    if (!shouldShowNapReport(elapsed, zen)) {
-      this.state.lastSeen = now;
-      return;
-    }
+    // Below the threshold the cache still keeps what it took; it just is not
+    // worth opening a modal over. Nothing is discarded either way.
+    if (!shouldShowNapReport(elapsed, zen)) return;
 
-    // The bonus is a free choice, not a paywall or an ad — it just rewards
-    // reading the report instead of dismissing it.
-    const bonusZen = zen * 0.5;
+    const bonusZen = this.state.cache.zen * 0.5;
 
     openNapReport({
-      zen,
+      zen: this.state.cache.zen,
       elapsedMs: elapsed,
       creditedMs,
-      cappedMs,
+      cappedMs: lostMs,
+      capMs,
       bonusZen,
-      onCollect: (amount) => this.collectNap(amount),
-      onCollectBonus: (amount) => this.collectNap(amount, true),
+      onCollect: () => this.collectNap(),
+      onCollectBonus: () => this.collectNap(true),
+      onLeave: () => this.save(),
     });
   }
 
-  collectNap(amount, bonus = false) {
+  /**
+   * Time spent with the tab backgrounded used to vanish outright: the frame
+   * loop clamps a huge dt, and the return path only runs at boot. Now it goes
+   * into the cache like any other time away, and the meter has it waiting.
+   */
+  handleWake() {
+    const now = Date.now();
+    const elapsed = now - (this.hiddenAt || now);
+    this.hiddenAt = 0;
+    if (elapsed < MIN_CACHE_MS) return;
+
+    const { zen } = fillCache(this.state, {
+      zps: this.derived.zps,
+      elapsedMs: elapsed,
+      capMs: this.derived.offlineCapMs,
+      rate: this.derived.offlineRate,
+    });
+    if (zen <= 0) return;
+
+    // A toast rather than the modal: you never left, and interrupting a tab
+    // you just came back to would read as a nag.
+    this.toaster.show({
+      title: 'The cache filled',
+      body: `+${fmt(zen)} zen waiting in the pond.`,
+      kind: 'info',
+      icon: '🪣',
+    });
+    this.save();
+  }
+
+  collectNap(bonus = false) {
+    const info = cacheInfo(this.state, this.derived);
+    if (info.zen <= 0) return;
+
+    const { zen } = collectCache(this.state);
+    const amount = bonus ? zen * 1.5 : zen;
+
     this.earn(amount);
     this.state.stats.naps++;
+    this.state.stats.cacheZen += amount;
+    this.state.stats.bestCache = Math.max(this.state.stats.bestCache, amount);
     this.state.lastSeen = Date.now();
     audio.nap();
     this.toaster.show({
@@ -650,6 +701,7 @@ class Game {
       kind: 'info',
       icon: '🛁',
     });
+    this.save();
   }
 
   // ------------------------------------------------------------------- loop
@@ -744,6 +796,7 @@ class Game {
     if (this.tabs.current === 'achievements') this.achievementPanel.update(this.state);
     if (this.tabs.current === 'stats') {
       this.profileCard.update(this.state);
+      this.cachePanel.update(this.state, this.derived);
       this.statsPanel.update(this.state, this.derived, now);
     }
     if (this.tabs.current === 'quest' && this.state.combat.unlocked) {

@@ -101,6 +101,9 @@ export function addPetals(state, amount, now = Date.now()) {
   if (!live || !(amount > 0)) return 0;
   syncEvent(state, now);
   state.events.petals += amount;
+  // Petals themselves expire with their event, so the lifetime count is kept
+  // separately — otherwise nothing could ever ask "how many have you earned".
+  if (state.stats) state.stats.petals = (state.stats.petals || 0) + amount;
   return amount;
 }
 

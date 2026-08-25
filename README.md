@@ -118,14 +118,15 @@ synthesised with WebAudio oscillators, so there are no audio files either.
 | Gear | 42 pieces across 6 slots, on a 20-rung rarity ladder, 1–5 stars, enhanceable +0 → +15 |
 | Companions | 24, summoned, three in the party |
 | Combat skills | 18, three slotted |
-| Achievements | 71, every one paying a permanent bonus |
+| Achievements | 232 across 13 groups, every one paying a permanent bonus |
 | Terrains / stages | 18 cycling, unlimited stages, with 71 enemies and bosses |
 | Currencies | Zen, Essence, Leafs, Lotus, tickets, shards |
 | Store | 3 cases with their odds on the card, 5 boosts, 24 cosmetics — all simulated |
 | Season | 45 days, a 100-level two-track pass, 60 simulated rivals, 3 live events of 10 designed |
 | Story | 3 acts, 20 beats, 5 NPCs, a 6-frame opening and 6 coach-marked tutorial steps |
+| Offline | A cache with a stated capacity, a fill rate, and a spill marker when it overflows |
 
-**470 collectible or purchasable entries in total**, plus the systems around them: combo chains,
+**631 collectible or purchasable entries in total**, plus the systems around them: combo chains,
 crits, Golden Capybaras, offline income, auto-battle, elemental stances, a forge, gacha pity,
 two reset layers, quests, a login streak, a battle pass, timed chests and secret codes.
 
@@ -165,5 +166,15 @@ Built in stages. Landed so far:
       marks that point at the real UI as it unlocks rather than at a wall of modal text. A profile
       with a name you can change, an avatar and a title from what you own, and a story log that
       lets you read any beat again. None of it can be reset away.
+- [x] **The cache** — offline income became a tank you can see rather than a receipt you
+      read afterwards. It states its capacity while it is empty, shows what spilled when it
+      overflowed, and holds what it caught until you take it — so the offline cap is something
+      to plan around instead of something you discover in a bill. Time spent with the tab
+      merely backgrounded now goes in too, where it used to vanish outright.
+- [x] **Two hundred and thirty-two trophies** — every system in the game has some, grouped by
+      where they come from and filterable down to what you have not done yet. The payouts sit on
+      four fixed bands rather than on hand-picked numbers, because two hundred entries each
+      paying "just a few percent" compounds to a factor of eight million; a full clear is worth
+      x68, which is a number somebody chose.
 - [x] **Retention** — daily and weekly quests, a seven-day login streak, a 40-level free Zen Pass,
       a chest that fills every 15 minutes, eight secret codes, and a stats page that grows as you do

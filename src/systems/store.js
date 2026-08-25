@@ -109,5 +109,7 @@ export function buyBoost(state, id, now = Date.now()) {
     });
   }
 
+  if (state.stats) state.stats.boosts = (state.stats.boosts || 0) + 1;
+
   return { ok: true, price: def.cost, until: activeBoost(state, id, now).until, extended: !!existing };
 }

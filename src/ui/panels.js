@@ -16,6 +16,8 @@ export class AchievementPanel {
   constructor(root) {
     this.root = root;
     this.tiles = new Map();
+    this.groups = new Map();
+    this.filter = 'all';
 
     this.header = document.createElement('div');
     this.header.className = 'trophy-header';
@@ -28,15 +30,35 @@ export class AchievementPanel {
     this.count.className = 'trophy-header__count';
     this.header.append(this.count, this.bar);
 
-    this.grid = document.createElement('div');
-    this.grid.className = 'trophy-grid';
+    // Two hundred and thirty-two tiles in one undifferentiated grid is a wall,
+    // not a list. They are grouped by the system they belong to, and the filter
+    // exists because "what have I not done yet" is the question people actually
+    // bring to this screen.
+    this.filters = document.createElement('div');
+    this.filters.className = 'trophy-filters';
+    this.filterBtns = new Map();
+    for (const [id, label] of [['all', 'All'], ['locked', 'Not yet'], ['done', 'Earned']]) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'trophy-filter';
+      btn.textContent = label;
+      btn.addEventListener('click', () => this.setFilter(id));
+      this.filters.appendChild(btn);
+      this.filterBtns.set(id, btn);
+    }
 
-    this.root.append(this.header, this.grid);
+    this.body = document.createElement('div');
+    this.body.className = 'trophy-body';
+
+    this.root.append(this.header, this.filters, this.body);
     this.build();
+    this.setFilter('all');
   }
 
   build() {
     for (const ach of ACHIEVEMENTS) {
+      const group = this.group(ach.group || 'Everything Else');
+
       const tile = document.createElement('div');
       tile.className = 'trophy';
 
@@ -51,12 +73,44 @@ export class AchievementPanel {
       reward.textContent = describeReward(ach.reward);
 
       tile.append(name, blurb, reward);
-      this.grid.appendChild(tile);
+      group.grid.appendChild(tile);
+      group.ids.push(ach.id);
       this.tiles.set(ach.id, { tile, name, blurb });
     }
   }
 
+  group(label) {
+    let entry = this.groups.get(label);
+    if (entry) return entry;
+
+    const section = document.createElement('section');
+    section.className = 'trophy-group';
+    const head = document.createElement('div');
+    head.className = 'trophy-group__head';
+    const title = document.createElement('h4');
+    title.className = 'trophy-group__title';
+    title.textContent = label;
+    const tally = document.createElement('span');
+    tally.className = 'trophy-group__tally';
+    head.append(title, tally);
+    const grid = document.createElement('div');
+    grid.className = 'trophy-grid';
+    section.append(head, grid);
+    this.body.appendChild(section);
+
+    entry = { section, tally, grid, ids: [] };
+    this.groups.set(label, entry);
+    return entry;
+  }
+
+  setFilter(id) {
+    this.filter = id;
+    for (const [key, btn] of this.filterBtns) btn.classList.toggle('is-on', key === id);
+    if (this.lastState) this.update(this.lastState);
+  }
+
   update(state) {
+    this.lastState = state;
     const { done, total, ratio } = achievementProgress(state);
     this.count.textContent = `${done} / ${total}`;
     this.fill.style.transform = `scaleX(${ratio})`;
@@ -69,8 +123,18 @@ export class AchievementPanel {
 
       entry.tile.classList.toggle('is-unlocked', unlocked);
       entry.tile.classList.toggle('is-secret', hidden);
+      entry.tile.hidden =
+        (this.filter === 'done' && !unlocked) || (this.filter === 'locked' && unlocked);
       setText(entry.name, hidden ? '???' : ach.name);
       setText(entry.blurb, hidden ? 'A secret, for now.' : ach.blurb);
+    }
+
+    for (const entry of this.groups.values()) {
+      const earned = entry.ids.filter((id) => state.achievements[id]).length;
+      setText(entry.tally, `${earned} / ${entry.ids.length}`);
+      // A group with nothing left to show under the current filter gets out of
+      // the way rather than leaving a heading over empty space.
+      entry.section.hidden = entry.ids.every((id) => this.tiles.get(id).tile.hidden);
     }
   }
 }

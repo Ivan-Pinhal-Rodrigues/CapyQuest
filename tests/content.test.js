@@ -35,7 +35,7 @@ test('the promised content counts are actually there', () => {
   assert.equal(BUILDINGS.length, 18, 'generators');
   assert.equal(CLICK_UPGRADES.length, 16, 'tap upgrades');
   assert.equal(TIER_UPGRADES.length, 36, 'generator tier upgrades');
-  assert.equal(ACHIEVEMENTS.length, 71, 'achievements');
+  assert.equal(ACHIEVEMENTS.length, 232, 'achievements');
 
   const upgradeTotal = CLICK_UPGRADES.length + TIER_UPGRADES.length;
   assert.ok(upgradeTotal >= 52, `expected 52+ purchasable upgrades, found ${upgradeTotal}`);

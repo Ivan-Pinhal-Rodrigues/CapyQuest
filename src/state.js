@@ -81,6 +81,11 @@ export function createState(now = Date.now()) {
     // you chose to wear; `name` empty means "still using the generated one".
     profile: { name: '' },
 
+    // The offline tank. Holds zen banked at the rate that was in force when it
+    // accrued, so leaving it uncollected is a choice about *when*, never a way
+    // to earn more — see systems/cache.js.
+    cache: { zen: 0, ms: 0, lostMs: 0, since: 0 },
+
     login: { lastDay: null, streak: 0, best: 0, total: 0, pendingDay: 0 },
     chest: { lastAt: now, opened: 0 },
     // The season pass. `season` is the index the save last saw — when the clock
@@ -120,6 +125,14 @@ export function createState(now = Date.now()) {
       fuses: 0,
       refines: 0,
       metCapybara: 0, // a hostile capybara, which is a story beat as well as a fight
+
+      // lifetime counters for things whose live value is deliberately not a
+      // running total: petals expire with their event, boosts expire on a
+      // timer, and the cache is emptied every time it is collected.
+      petals: 0,
+      boosts: 0,
+      cacheZen: 0,
+      bestCache: 0,
 
       // lifetime purchase counters, read by quests
       buildingsBought: 0,
@@ -275,6 +288,11 @@ export function reconcileState(state, now = Date.now()) {
   out.store = { ...base.store, ...(state.store || {}) };
   out.store.packs = numberMap(out.store.packs);
   if (typeof out.store.leafDay !== 'string') out.store.leafDay = null;
+
+  out.cache = { ...base.cache, ...(state.cache || {}) };
+  for (const key of ['zen', 'ms', 'lostMs', 'since']) {
+    out.cache[key] = safeNumber(out.cache[key]);
+  }
 
   out.login = { ...base.login, ...(state.login || {}) };
   for (const key of ['streak', 'best', 'total', 'pendingDay']) {

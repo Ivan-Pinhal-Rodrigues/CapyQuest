@@ -17,6 +17,7 @@
 
 import * as B from '../balance.js';
 import { createState } from '../state.js';
+import { collectCache } from './cache.js';
 import { treeEffects } from './tree.js';
 import { CONSTELLATIONS_BY_ID } from '../data/constellations.js';
 import { assess, shouldSuggestRebirth } from './wall.js';
@@ -84,6 +85,13 @@ export function rebirthPreview(state, stats = null) {
 export function rebirth(state, now = Date.now()) {
   const preview = rebirthPreview(state);
   if (!preview.canRebirth) return { ok: false, reason: 'notYet' };
+
+  // The tank holds zen, and zen does not survive this. Rather than let a full
+  // cache evaporate unnoticed, it is banked first: the lifetime counters that
+  // never reset get credit for it, so the time spent away still counted for
+  // something even though the coins themselves do not carry over.
+  const banked = collectCache(state);
+  state.totalZen += banked.zen;
 
   const fresh = createState(now);
 
