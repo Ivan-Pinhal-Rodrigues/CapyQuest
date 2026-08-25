@@ -62,3 +62,70 @@ body {
   font-family: var(--font-pixel);
   letter-spacing: 0.02em;
 }
+
+/* --------------------------------------------------------------- pond themes
+
+   A cosmetic pond re-tints the ground and the water and nothing else. These are
+   deliberately background and accent only: no token that carries meaning — the
+   rarity ramp, danger, the zen colour — is ever swapped, because a cosmetic
+   that changes what a colour means is a cosmetic that changes the game.        */
+
+body[data-pond='dawn'] {
+  --bg: #1c1119;
+  --bg-deep: #120b11;
+  --surface: #2a1a24;
+  --surface-2: #372330;
+  --surface-3: #452c3c;
+  --border: #4a2e3f;
+  --border-bright: #6a4257;
+  --water: #f0b48a;
+  --water-deep: #b86f4d;
+}
+
+body[data-pond='moonlit'] {
+  --bg: #0d1220;
+  --bg-deep: #080b14;
+  --surface: #161d2f;
+  --surface-2: #1f293f;
+  --surface-3: #2a3552;
+  --border: #2e3a55;
+  --border-bright: #435378;
+  --water: #a9c6f5;
+  --water-deep: #4f6ea8;
+}
+
+body[data-pond='ember'] {
+  --bg: #1c0f0b;
+  --bg-deep: #120907;
+  --surface: #2a1611;
+  --surface-2: #381d16;
+  --surface-3: #48261c;
+  --border: #4d2a1f;
+  --border-bright: #6f3d2c;
+  --water: #f2a05a;
+  --water-deep: #c2542b;
+}
+
+body[data-pond='deep'] {
+  --bg: #07131a;
+  --bg-deep: #040c11;
+  --surface: #0d1f2a;
+  --surface-2: #132a38;
+  --surface-3: #1a3647;
+  --border: #1c3a4b;
+  --border-bright: #2a5670;
+  --water: #4fd4d0;
+  --water-deep: #1c7b86;
+}
+
+body[data-pond='aurora'] {
+  --bg: #0c1a18;
+  --bg-deep: #071110;
+  --surface: #122824;
+  --surface-2: #183430;
+  --surface-3: #20443e;
+  --border: #204740;
+  --border-bright: #2f6b5f;
+  --water: #7df0c4;
+  --water-deep: #2fa88b;
+}

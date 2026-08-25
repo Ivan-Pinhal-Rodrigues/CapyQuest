@@ -25,11 +25,17 @@ import { SKILL_SLOTS } from './data/skills.js';
 import { rarityFor, MAX_TIER, MAX_STARS } from './data/rarities.js';
 import { openModal, el } from './ui/modal.js';
 import { RebirthPanel } from './ui/rebirthPanel.js';
+import { StorePanel, caseRevealBody } from './ui/storePanel.js';
 import { GachaPanel, pullResultsBody, companionDetailBody, partyPickerBody } from './ui/gachaPanel.js';
 import { summon, buyTicket, ticketPrice, ownedCompanions, TEN_PULL } from './systems/gacha.js';
 import { rebirth, rebirthPreview, noteWall } from './systems/rebirth.js';
 import { ascend, ascendPreview, buyConstellation } from './systems/ascension.js';
 import { buyNode, respec } from './systems/tree.js';
+import { openCase } from './systems/cases.js';
+import { buyBoost, buyLeafPack, claimDailyLeafs, dailyLeafsReady, LEAF_PACKS_BY_ID, SIMULATED_NOTICE } from './systems/store.js';
+import { buyCosmetic, checkUnlocks, equipCosmetic, equipped, owns } from './systems/cosmetics.js';
+import { BOOSTS_BY_ID } from './data/boosts.js';
+import { COSMETICS_BY_ID, cosmeticKey } from './data/cosmetics.js';
 import { ticketsPerBoss } from './systems/meta.js';
 import { COMPANIONS_BY_ID, PARTY_SIZE } from './data/companions.js';
 import { DailyPanel } from './ui/dailyPanel.js';
@@ -160,6 +166,14 @@ class Game {
       onRespec: () => this.doRespec(),
     });
 
+    this.storePanel = new StorePanel($('storePanel'), {
+      onClaimDaily: () => this.claimDailyLeafs(),
+      onOpenCase: (id) => this.openCase(id),
+      onBuyBoost: (id) => this.purchaseBoost(id),
+      onBuyPack: (id) => this.purchaseLeafPack(id),
+      onLook: (kind, id) => this.chooseLook(kind, id),
+    });
+
     this.dailyPanel = new DailyPanel($('dailyPanel'), {
       onClaimQuest: (id) => this.claimQuest(id),
       onCollectChest: () => this.collectChest(),
@@ -174,6 +188,7 @@ class Game {
       daily: $('panel-daily'),
       summon: $('panel-summon'),
       rebirth: $('panel-rebirth'),
+      store: $('panel-store'),
       achievements: $('panel-achievements'),
       stats: $('panel-stats'),
     }, {
@@ -250,6 +265,7 @@ class Game {
   }
 
   applySettings() {
+    this.applyCosmetics();
     const s = this.state.settings;
     audio.setEnabled(s.sound);
     audio.setVolume(s.volume);
@@ -569,6 +585,9 @@ class Game {
     if (this.tabs.current === 'daily') {
       this.dailyPanel.update(this.state, now);
     }
+    if (this.tabs.current === 'store') {
+      this.storePanel.update(this.state, now);
+    }
 
     this.tabs.badge('achievements', this.newAchievements);
     this.tabs.badge('kit', this.newGear);
@@ -579,6 +598,9 @@ class Game {
       'daily',
       questSummary(this.state).ready + chestsReady(this.state, now) + unclaimedPassLevels(this.state),
     );
+    // Same rule for the Store: the badge is the free leafs waiting, not a count
+    // of things the player has not looked at.
+    this.tabs.badge('store', dailyLeafsReady(this.state, now) ? 1 : 0);
   }
 
   summonUnlocked() {
@@ -961,6 +983,7 @@ class Game {
 
   /** Anything meta — a pull, a tree node, a star — moves both stat blocks too. */
   afterMetaChange() {
+    this.checkCosmeticUnlocks();
     this.cstats = combatStats(this.state);
     this.derived = recomputeDerived(this.state, { comboPoints: this.combo.points });
     if (this.summonUnlocked()) this.gachaPanel.update(this.state);
@@ -1201,6 +1224,170 @@ class Game {
       kind: 'achievement',
       icon: '🪷',
     });
+  }
+
+  // ------------------------------------------------------------------ store
+
+  claimDailyLeafs() {
+    const result = claimDailyLeafs(this.state);
+    if (!result.ok) {
+      audio.denied();
+      return;
+    }
+    audio.buy();
+    this.afterStoreChange();
+    this.toaster.show({
+      title: `+${result.leafs} leafs`,
+      body: 'Not quite a Reed Case. Tomorrow it will be.',
+      kind: 'buff',
+      icon: '🍃',
+    });
+  }
+
+  openCase(id) {
+    const result = openCase(this.state, id);
+    if (!result.ok) {
+      audio.denied();
+      this.toaster.show({
+        title: 'Not enough leafs',
+        body: 'Come back tomorrow for the free ones, or beat some bosses.',
+        kind: 'warn',
+        icon: '🍃',
+      });
+      return;
+    }
+
+    const item = resolveItem(result.entry);
+    this.state.stats.drops++;
+    if (!this.state.stats.raritiesFound.includes(result.rarity.name)) {
+      this.state.stats.raritiesFound.push(result.rarity.name);
+    }
+    if (result.stars > (this.state.stats.bestStars || 1)) {
+      this.state.stats.bestStars = result.stars;
+    }
+    this.newGear++;
+    if (!this.state.combat.equipped[item.slot]) equip(this.state, result.entry.uid);
+
+    audio.golden();
+    this.afterStoreChange();
+    openModal({ title: result.def.name, bodyNode: caseRevealBody(item, result), actions: [{ label: 'Nice' }] });
+  }
+
+  purchaseBoost(id) {
+    const result = buyBoost(this.state, id);
+    if (!result.ok) {
+      audio.denied();
+      return;
+    }
+    audio.levelUp();
+    this.afterStoreChange();
+    const def = BOOSTS_BY_ID[id];
+    this.toaster.show({
+      title: result.extended ? `${def.name} extended` : def.name,
+      body: def.blurb,
+      kind: 'buff',
+      icon: def.icon,
+    });
+  }
+
+  /**
+   * Simulated. See systems/store.js — PAYMENTS is false, nothing is charged and
+   * no card is ever asked for. The confirmation says so before the button, not
+   * after it.
+   */
+  purchaseLeafPack(id) {
+    const pack = LEAF_PACKS_BY_ID[id];
+    if (!pack) return;
+
+    const body = el('div', 'confirm');
+    body.appendChild(el('p', 'confirm__gain', `${fmtInt(pack.leafs)} 🍃`));
+    body.appendChild(el('p', 'confirm__warn', SIMULATED_NOTICE));
+    body.appendChild(
+      el(
+        'p',
+        'confirm__lead',
+        `The ${pack.price} is a price tag, not a price. This game has no payment processor and never asks for a card — pressing the button below simply adds the leafs.`,
+      ),
+    );
+
+    openModal({
+      title: pack.name,
+      bodyNode: body,
+      actions: [
+        { label: 'Cancel' },
+        {
+          label: 'Add the leafs',
+          variant: 'gold',
+          onClick: () => {
+            const result = buyLeafPack(this.state, id);
+            if (!result.ok) {
+              audio.denied();
+              return;
+            }
+            audio.buy();
+            this.afterStoreChange();
+            this.toaster.show({
+              title: `+${fmtInt(result.leafs)} leafs`,
+              body: SIMULATED_NOTICE,
+              kind: 'buff',
+              icon: '🍃',
+            });
+          },
+        },
+      ],
+    });
+  }
+
+  /** One tap on a cosmetic: buy it if it is for sale and unowned, else wear it. */
+  chooseLook(kind, id) {
+    const def = COSMETICS_BY_ID[cosmeticKey(kind, id)];
+    if (!def) return;
+
+    if (!owns(this.state, kind, id)) {
+      const result = buyCosmetic(this.state, kind, id);
+      if (!result.ok) {
+        audio.denied();
+        return;
+      }
+      audio.golden();
+    }
+
+    equipCosmetic(this.state, kind, id);
+    this.applyCosmetics();
+    audio.buy();
+    this.afterStoreChange();
+  }
+
+  /** Push what is worn into the renderer and the page. */
+  applyCosmetics() {
+    this.scene.setSkin(equipped(this.state, 'skin'));
+    document.body.dataset.pond = equipped(this.state, 'pond');
+  }
+
+  /**
+   * Earned cosmetics open themselves. Cheap enough to check wherever the game
+   * already recomputes, and it announces what opened so an unlock is never
+   * something you only find by opening the Store.
+   */
+  checkCosmeticUnlocks() {
+    for (const def of checkUnlocks(this.state)) {
+      audio.achievement();
+      this.toaster.show({
+        title: `${def.name} unlocked`,
+        body: 'A new look, in the Store.',
+        kind: 'achievement',
+        icon: '🎨',
+      });
+    }
+  }
+
+  afterStoreChange() {
+    this.cstats = combatStats(this.state);
+    this.derived = recomputeDerived(this.state, { comboPoints: this.combo.points });
+    this.checkCosmeticUnlocks();
+    this.storePanel.update(this.state);
+    this.gearPanel.update(this.state, this.cstats);
+    this.save();
   }
 
   // ------------------------------------------------------- tree and stars

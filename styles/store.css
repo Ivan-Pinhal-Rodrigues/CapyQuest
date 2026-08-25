@@ -1,0 +1,164 @@
+/* The Store: cases with their odds on the card, boosts, cosmetics, leaf packs. */
+
+.store__balance {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: var(--leaf);
+}
+
+/* Not dismissable, and rendered twice on purpose. */
+.store__notice {
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: rgba(240, 166, 61, 0.1);
+  border: 1px solid rgba(240, 166, 61, 0.4);
+  font-size: 0.72rem;
+  color: var(--zen);
+}
+
+.store__notice--loud {
+  font-weight: 800;
+  text-align: center;
+}
+
+.store__hint { font-size: 0.74rem; color: var(--text-faint); line-height: 1.4; }
+
+/* ------------------------------------------------------------- daily leafs */
+
+.store-daily {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.7rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.store-daily.is-ready {
+  border-color: var(--leaf);
+  background: linear-gradient(180deg, rgba(95, 163, 72, 0.12), var(--surface));
+}
+
+.store-daily__lead { font-size: 0.78rem; color: var(--text-dim); line-height: 1.4; }
+
+/* -------------------------------------------------------------------- cases */
+
+.case-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.case {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.7rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--case, var(--border-bright));
+}
+
+.case.is-affordable { background: var(--surface-2); }
+.case.is-pitied { box-shadow: 0 0 12px rgba(240, 166, 61, 0.2); }
+
+.case__head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.case__name { font-size: 0.95rem; color: var(--case, var(--text)); }
+.case__pity { font-family: var(--font-pixel); font-size: 0.38rem; color: var(--text-faint); }
+.case__blurb { font-size: 0.76rem; color: var(--text-dim); line-height: 1.4; }
+
+.case__odds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 0.2rem;
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-deep);
+}
+
+.case__odd { display: flex; flex-direction: column; align-items: center; gap: 0.05rem; }
+.case__odd-name { font-size: 0.6rem; font-weight: 700; }
+.case__odd-pct { font-family: var(--font-pixel); font-size: 0.36rem; color: var(--text-faint); }
+
+.case__floor { font-size: 0.7rem; color: var(--text-faint); }
+
+.relic__cost--leaf { color: var(--leaf); }
+.relic__timer { color: var(--leaf); }
+
+/* -------------------------------------------------------------------- looks */
+
+.looks { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.looks__kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.3rem; }
+.looks__count { font-family: var(--font-pixel); font-size: 0.4rem; color: var(--text-faint); }
+
+.looks__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.4rem;
+}
+
+.look {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all 140ms ease;
+}
+
+.look__name { font-size: 0.85rem; }
+.look__blurb { font-size: 0.7rem; color: var(--text-faint); line-height: 1.35; }
+.look__state { font-family: var(--font-pixel); font-size: 0.36rem; color: var(--leaf); margin-top: 0.15rem; }
+
+.look.is-owned { border-color: var(--border-bright); background: var(--surface-2); }
+.look.is-worn { border-color: var(--leaf); box-shadow: 0 0 0 1px var(--leaf); }
+.look.is-worn .look__state { color: var(--zen); }
+.look:disabled { opacity: 0.55; }
+.look:disabled .look__state { color: var(--text-faint); }
+
+/* -------------------------------------------------------------------- packs */
+
+.pack-list { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.pack {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.pack:hover { background: var(--surface-2); }
+.pack.is-best { border-color: var(--zen); }
+
+.pack__main { display: flex; flex-direction: column; gap: 0.1rem; }
+.pack__name { font-size: 0.88rem; }
+.pack__amount { font-size: 0.74rem; color: var(--leaf); }
+
+.pack__side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.15rem; }
+.pack__price { font-family: var(--font-pixel); font-size: 0.5rem; color: var(--text-dim); }
+
+.pack__badge {
+  padding: 0.05rem 0.3rem;
+  border-radius: var(--radius-sm);
+  background: var(--zen);
+  color: var(--bg-deep);
+  font-family: var(--font-pixel);
+  font-size: 0.32rem;
+}
+
+/* ------------------------------------------------------------- case reveal */
+
+.reveal { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+.reveal__rarity { font-family: var(--font-pixel); font-size: 0.62rem; }
+.reveal__name { font-size: 1.05rem; }
+.reveal__stars { font-size: 1rem; color: var(--zen); letter-spacing: 0.15em; }
+.reveal__stats { font-size: 0.78rem; color: var(--text-dim); text-align: center; }
+.reveal__pity { font-size: 0.72rem; color: var(--zen); }

@@ -1,0 +1,113 @@
+// The store, and the whole of what "simulated" means.
+//
+// ============================================================================
+// NOTHING HERE TAKES REAL MONEY.
+//
+// The leaf packs carry price tags because that is the shape of the genre and
+// the game is a study of it, but PAYMENTS is false, there is no processor, no
+// card is ever asked for, and pressing the button simply adds leafs. Every
+// purchase surface repeats that line where the player can see it, not in a
+// footnote.
+//
+// The flag exists so a real processor could be dropped in without rewriting the
+// economy around it. Turning it on would need a backend, a merchant account,
+// refunds and consumer-law compliance, none of which exists here — so it stays
+// off, and the code below refuses to pretend otherwise.
+// ============================================================================
+
+import { dayKey } from './quests.js';
+import { BOOSTS_BY_ID } from '../data/boosts.js';
+
+export const PAYMENTS = false;
+
+/** Repeated verbatim on every purchase surface. Do not soften this. */
+export const SIMULATED_NOTICE = 'Simulated — no real payment, ever.';
+
+/**
+ * Leaf packs. The prices are the genre's own psychology, quoted rather than
+ * charged: the middle pack is always the one with the best rate per leaf and
+ * the badge that says so.
+ */
+export const LEAF_PACKS = [
+  { id: 'handful', name: 'A Handful', leafs: 100, price: '£0.99' },
+  { id: 'basket', name: 'A Basket', leafs: 550, price: '£4.99', bonus: '+10%' },
+  { id: 'armful', name: 'An Armful', leafs: 1200, price: '£8.99', bonus: '+33%', best: true },
+  { id: 'cartload', name: 'A Cartload', leafs: 2600, price: '£17.99', bonus: '+44%' },
+  { id: 'pondful', name: 'The Whole Pond', leafs: 7000, price: '£44.99', bonus: '+55%' },
+];
+
+export const LEAF_PACKS_BY_ID = Object.fromEntries(LEAF_PACKS.map((p) => [p.id, p]));
+
+/**
+ * The free daily grant. Deliberately just short of a Reed Case: close enough
+ * that two days gets you one and a bit, far enough that a day alone does not.
+ * That gap is the whole design of the daily, and it is stated plainly on the
+ * button rather than discovered.
+ */
+export const DAILY_LEAFS = 80;
+
+export function dailyLeafsReady(state, now = Date.now()) {
+  return state.store?.leafDay !== dayKey(now);
+}
+
+export function claimDailyLeafs(state, now = Date.now()) {
+  if (!dailyLeafsReady(state, now)) return { ok: false, reason: 'claimed' };
+  state.store.leafDay = dayKey(now);
+  state.leafs += DAILY_LEAFS;
+  state.lifetimeLeafs += DAILY_LEAFS;
+  return { ok: true, leafs: DAILY_LEAFS };
+}
+
+/**
+ * "Buy" a leaf pack. With PAYMENTS off this credits the leafs and records that
+ * it was simulated; it never contacts anything and never asks for a card.
+ */
+export function buyLeafPack(state, id) {
+  const pack = LEAF_PACKS_BY_ID[id];
+  if (!pack) return { ok: false, reason: 'unknown' };
+  if (PAYMENTS) return { ok: false, reason: 'unavailable' };
+
+  state.leafs += pack.leafs;
+  state.lifetimeLeafs += pack.leafs;
+  state.store.packs[id] = (state.store.packs[id] || 0) + 1;
+  return { ok: true, leafs: pack.leafs, pack, simulated: true };
+}
+
+// -------------------------------------------------------------------- boosts
+
+export function activeBoost(state, id, now = Date.now()) {
+  return (state.buffs || []).find((b) => b.id === id && b.until > now) || null;
+}
+
+export function boostRemaining(state, id, now = Date.now()) {
+  const buff = activeBoost(state, id, now);
+  return buff ? buff.until - now : 0;
+}
+
+/**
+ * Buy a timed boost. Buying one already running extends it — a boost you have
+ * to spend at exactly the right moment is a chore, not a treat.
+ */
+export function buyBoost(state, id, now = Date.now()) {
+  const def = BOOSTS_BY_ID[id];
+  if (!def) return { ok: false, reason: 'unknown' };
+  if ((state.leafs || 0) < def.cost) return { ok: false, reason: 'leafs', price: def.cost };
+
+  state.leafs -= def.cost;
+  const ms = def.hours * 3600e3;
+  const existing = activeBoost(state, id, now);
+
+  if (existing) {
+    existing.until += ms;
+  } else {
+    state.buffs.push({
+      id: def.id,
+      name: def.name,
+      icon: def.icon,
+      until: now + ms,
+      effects: def.effects,
+    });
+  }
+
+  return { ok: true, price: def.cost, until: activeBoost(state, id, now).until, extended: !!existing };
+}

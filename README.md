@@ -117,10 +117,15 @@ synthesised with WebAudio oscillators, so there are no audio files either.
 | Achievements | 71, every one paying a permanent bonus |
 | Terrains / stages | 18 cycling, unlimited stages, with 71 enemies and bosses |
 | Currencies | Zen, Essence, Leafs, Lotus, tickets, shards |
+| Store | 3 cases with their odds on the card, 5 boosts, 20 cosmetics — all simulated |
 
-**442 collectible or purchasable entries in total**, plus the systems around them: combo chains,
+**470 collectible or purchasable entries in total**, plus the systems around them: combo chains,
 crits, Golden Capybaras, offline income, auto-battle, elemental stances, a forge, gacha pity,
 two reset layers, quests, a login streak, a battle pass, timed chests and secret codes.
+
+Nothing in the store takes real money. The leaf packs carry price tags because that is the shape
+of the genre and this is a study of it; `PAYMENTS` is off, there is no processor, no card is ever
+asked for, and every purchase surface says so where you cannot miss it.
 
 ## Status
 
@@ -142,5 +147,8 @@ Built in stages. Landed so far:
       currency number, paying Essence for depth reached, spent on a 210-node tree across seven
       branches with a free respec. Every rank survives every rebirth. The 49 permanent upgrades
       from the previous version live on inside it, ids and ranks intact.
+- [x] **The store** — three cases with their full drop tables and pity counters printed on the
+      card, five timed boosts, twenty cosmetics that change how things look and not one number,
+      and simulated leaf packs that add leafs and charge nothing
 - [x] **Retention** — daily and weekly quests, a seven-day login streak, a 40-level free Zen Pass,
       a chest that fills every 15 minutes, eight secret codes, and a stats page that grows as you do

@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="styles/rpg.css">
 <link rel="stylesheet" href="styles/meta.css">
 <link rel="stylesheet" href="styles/rebirth.css">
+<link rel="stylesheet" href="styles/store.css">
 <link rel="stylesheet" href="styles/daily.css">
 <link rel="stylesheet" href="styles/animations.css">
 
@@ -79,6 +80,7 @@
       <button class="tab" data-tab="daily" role="tab" type="button" aria-controls="panel-daily">Daily</button>
       <button class="tab" data-tab="summon" role="tab" type="button" aria-controls="panel-summon">Summon</button>
       <button class="tab" data-tab="rebirth" role="tab" type="button" aria-controls="panel-rebirth">Rebirth</button>
+      <button class="tab" data-tab="store" role="tab" type="button" aria-controls="panel-store">Store</button>
       <button class="tab" data-tab="achievements" role="tab" type="button" aria-controls="panel-achievements">Trophies</button>
       <button class="tab" data-tab="stats" role="tab" type="button" aria-controls="panel-stats">Stats</button>
     </nav>
@@ -133,6 +135,10 @@
           <p class="locked-note__hint">Travel downstream. Rebirth opens the first time a boss will not fall inside thirty seconds.</p>
         </div>
         <div id="metaPanel" class="meta" hidden></div>
+      </section>
+
+      <section class="panel__section" id="panel-store" role="tabpanel" aria-label="Store" hidden>
+        <div id="storePanel" class="store"></div>
       </section>
 
       <section class="panel__section" id="panel-achievements" role="tabpanel" aria-label="Trophies" hidden>

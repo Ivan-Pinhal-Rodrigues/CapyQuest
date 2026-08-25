@@ -64,6 +64,13 @@ export function createState(now = Date.now()) {
       weeklyBase: {},
     },
 
+    // Cases keep their own pity counters; cosmetics keep what is owned and what
+    // is worn. Both survive every reset — a collection is never the price of a
+    // button.
+    cases: {}, // caseId -> { opened, since }
+    cosmetics: { owned: [], skin: 'classic', pond: 'dusk', title: 'bather' },
+    store: { leafDay: null, packs: {} },
+
     login: { lastDay: null, streak: 0, best: 0, total: 0, pendingDay: 0 },
     chest: { lastAt: now, opened: 0 },
     pass: { xp: 0, claimed: {} },
@@ -215,6 +222,25 @@ export function reconcileState(state, now = Date.now()) {
   out.quests.weeklyClaimed = isPlainObject(out.quests.weeklyClaimed) ? { ...out.quests.weeklyClaimed } : {};
   out.quests.dailyBase = numberMap(out.quests.dailyBase);
   out.quests.weeklyBase = numberMap(out.quests.weeklyBase);
+
+  out.cases = isPlainObject(state.cases)
+    ? Object.fromEntries(
+        Object.entries(state.cases).map(([id, c]) => [
+          id,
+          { opened: Math.floor(safeNumber(c?.opened)), since: Math.floor(safeNumber(c?.since)) },
+        ]),
+      )
+    : {};
+
+  out.cosmetics = { ...base.cosmetics, ...(state.cosmetics || {}) };
+  out.cosmetics.owned = stringList(out.cosmetics.owned);
+  for (const kind of ['skin', 'pond', 'title']) {
+    if (typeof out.cosmetics[kind] !== 'string') out.cosmetics[kind] = base.cosmetics[kind];
+  }
+
+  out.store = { ...base.store, ...(state.store || {}) };
+  out.store.packs = numberMap(out.store.packs);
+  if (typeof out.store.leafDay !== 'string') out.store.leafDay = null;
 
   out.login = { ...base.login, ...(state.login || {}) };
   for (const key of ['streak', 'best', 'total', 'pendingDay']) {
