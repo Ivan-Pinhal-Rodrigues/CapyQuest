@@ -172,6 +172,8 @@ class Game {
       onToggleAuto: () => this.toggleAutoBattle(),
       onTravel: (dir) => this.travel(dir),
       onStance: (element) => this.setStance(element),
+      onCast: (index) => this.castSkill(index),
+      onToggleAutoCast: () => this.toggleAutoCast(),
     });
 
     this.gearPanel = new GearPanel(this.gearRoot, {
@@ -257,11 +259,24 @@ class Game {
     // Space and Enter tap the capybara for keyboard players, but only when a
     // dialog is not holding focus.
     document.addEventListener('keydown', (e) => {
-      if (e.code !== 'Space' && e.code !== 'Enter') return;
       if (isModalOpen()) return;
       const tag = document.activeElement?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      // 1/2/3 cast the slotted skills. Only on the Quest tab, so the digits
+      // stay free everywhere else.
+      if (this.tabs.current === 'quest' && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) {
+        e.preventDefault();
+        this.castSkill(Number(e.code.slice(-1)) - 1);
+        return;
+      }
+
+      if (e.code !== 'Space' && e.code !== 'Enter') return;
+      if (tag === 'BUTTON') return;
       e.preventDefault();
+      // Space is brace-or-tap: during a wind-up it reads the tell, otherwise it
+      // is the tap it has always been. One key, whichever the moment wants.
+      if (this.braceHit()) return;
       this.tapCapy();
     });
 
@@ -896,13 +911,69 @@ class Game {
     if (!events.length) return;
 
     this.battlePanel.consume(events);
+    const onQuest = this.tabs.current === 'quest';
     for (const ev of events) {
-      if (ev.kind === 'hit' && ev.target === 'enemy' && this.tabs.current === 'quest') {
+      if (ev.kind === 'hit' && ev.target === 'enemy' && onQuest) {
         this.battlePanel.showHit(ev);
       }
       if (ev.kind === 'cleared' && ev.enemy.boss) audio.levelUp();
       if (ev.kind === 'retreat') audio.denied();
+
+      // Combat used to be silent. These play only on the Quest tab: a fight
+      // ticking away in the background while you shop should not make noise.
+      if (!onQuest) continue;
+      switch (ev.kind) {
+        case 'hit':
+          if (ev.target === 'player') (ev.heavy ? audio.heavy() : audio.hurt());
+          else audio.hit();
+          break;
+        case 'skill': audio.skill(ev.charge || 0); break;
+        case 'windup': audio.windup(); break;
+        case 'brace': audio.brace(); break;
+        case 'ward': audio.ward(); break;
+        case 'wardBroke': audio.wardBroke(); break;
+        case 'engage': if (ev.pattern) audio.bossRoar(); break;
+        case 'cleared': if (!ev.enemy.boss) audio.victory(); break;
+        case 'defeat': audio.defeat(); break;
+        default: break;
+      }
     }
+  }
+
+  /**
+   * The player read a wind-up. Routed from the capybara tap and the keyboard,
+   * so bracing uses the verb the game already taught on minute one.
+   *
+   * Returns whether it landed, so a tap stays a tap when there is nothing to
+   * brace — the input is never swallowed.
+   */
+  braceHit() {
+    if (!this.state.combat.unlocked || !this.state.combat.autoBattle) return false;
+    return this.combat.brace();
+  }
+
+  castSkill(index) {
+    const id = this.state.combat.skills[index];
+    if (!id) return;
+    if (!this.combat.castById(id, this.cstats)) {
+      audio.denied();
+      return;
+    }
+    this.save();
+  }
+
+  toggleAutoCast() {
+    const s = this.state.combat;
+    s.autoCast = s.autoCast === false;
+    this.toaster.show({
+      title: s.autoCast ? 'Skills fire themselves' : 'Skills are yours',
+      body: s.autoCast
+        ? 'Back to automatic. Nothing is lost by leaving it here.'
+        : 'Hold a skill until Focus is full for up to +60% on the cast.',
+      kind: 'info',
+      icon: '⚔',
+    });
+    this.save();
   }
 
   /** Pay out a cleared stage: zen, xp, shards and possibly a drop. */
@@ -1830,6 +1901,11 @@ class Game {
   }
 
   tapCapy() {
+    // On the Quest tab a tap during a wind-up is a brace, not a tap. This is
+    // the whole reason the brace uses the capybara rather than a new button:
+    // on a phone, the thing you already touch is the thing that saves you.
+    if (this.tabs.current === 'quest' && this.braceHit()) return;
+
     const now = Date.now();
     this.combo.hit(now, this.derived.comboCap);
     this.lastClickAt = now;

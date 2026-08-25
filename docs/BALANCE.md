@@ -65,6 +65,53 @@ That ratio is the design: the *stage* is the wall, not the level. Ten levels of 
 should feel like the same fight getting slightly harder, and the boundary should feel like
 somewhere new.
 
+## What attention is worth
+
+Combat can be played or watched. Measured as damage dealt over a three-minute window against a
+dummy that cannot die — so respawn timing and kill rounding cannot distort it:
+
+| How you play | Damage |
+|---|---|
+| Pure idle — auto-cast, never brace | baseline |
+| Manual casting only | **+1%** |
+| Bracing only | **+28%** |
+| Full attention | **+29%** |
+
+Two things that table has to say at once. An idler is at a Focus of exactly zero, which is a
+multiplier of exactly 1.0 — **identical to the damage combat did before any of this existed**, so
+nobody was nerfed into paying attention. And manual casting on its own is worth +1%, i.e. nothing,
+which is deliberate: casting by hand is for *choosing* a skill against a warded boss, not for
+out-clicking the autocaster.
+
+### The design this replaced, and why
+
+The first version had skills *spend* the Focus meter for a bonus on that cast. It reads well: hold
+a ready skill, wait for a full meter, hit harder. Measured against idling, that clever play came
+out **26% worse**, because a skill sitting unused on cooldown costs more throughput than any
+per-cast bonus returns.
+
+The lesson generalises: any design where the skilful option is *wait* loses to *act on cooldown*.
+Focus is now a straight multiplier that is never consumed, so casting the instant a skill is ready
+is always correct and attention never competes with throughput.
+
+A second measurement killed a second piece of it. Focus used to also trickle in from ordinary
+landed hits, "so an idler is never at a flat zero" — at 1.2 per hit against a decay of 3.5 per
+second, it never once got the meter off the floor. A mechanic that cannot move the number it feeds
+is dead code with a kind comment on it. Bracing is now the only source.
+
+| | |
+|---|---|
+| Heavy attack, every | 4th enemy swing (a boss's 2nd, then every 4th) |
+| Telegraph window | 0.8s |
+| Heavy damage | ×2.5, or ×1.25 braced |
+| Focus per brace | 34 of 100 |
+| Focus decay | 4/second |
+| Damage at a full meter | ×1.4 |
+
+Bosses start their swing counter part-wound so their second swing telegraphs. Ordinary enemies die
+in a handful of seconds and a first heavy on swing four often never arrives — which would mean the
+player first meets bracing under boss pressure.
+
 ## The rebirth wall
 
 Rebirth unlocks when the current stage's boss cannot be killed inside `WALL_SECONDS = 30`,

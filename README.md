@@ -120,7 +120,7 @@ synthesised with WebAudio oscillators, so there are no audio files either.
 | Purchasable upgrades | **292** — 16 tap, 18 generators, 36 generator tiers, 210 tree nodes, 12 constellations |
 | Gear | 42 pieces across 6 slots, on a 20-rung rarity ladder, 1–5 stars, enhanceable +0 → +15 |
 | Companions | 24, summoned, three in the party |
-| Combat skills | 18, three slotted |
+| Combat skills | 18, three slotted, cast by hand or automatically |
 | Achievements | 232 across 13 groups, every one paying a permanent bonus |
 | Terrains / stages | 18 cycling, unlimited stages, with 71 enemies and bosses |
 | Currencies | Zen, Essence, Leafs, Lotus, tickets, shards |
@@ -179,6 +179,13 @@ Built in stages. Landed so far:
       four fixed bands rather than on hand-picked numbers, because two hundred entries each
       paying "just a few percent" compounds to a factor of eight million; a full clear is worth
       x68, which is a number somebody chose.
+- [x] **A fight you can play** — combat used to run itself entirely: skills fired on cooldown,
+      every decision was made outside the fight, and the whole RPG half was silent. Enemies now
+      wind up their heavy hits and tell you first; reading the tell halves the blow and fills a
+      Focus meter worth up to ×1.4 on everything you do. Bosses carry one pattern each — a ward
+      that asks a question of your stance, an escort that has to die first, an enrage that
+      punishes a slow kill. Idling is untouched: a Focus of zero is a multiplier of exactly 1.0,
+      and a test asserts an auto-battler still clears every pattern.
 - [x] **The balance pass** — every number in `docs/BALANCE.md` was measured rather than asserted,
       and `tests/economy-balance.test.js` holds each one, so a constant cannot move without the
       document failing with it. Some of what it records is unflattering: the first rebirth wall

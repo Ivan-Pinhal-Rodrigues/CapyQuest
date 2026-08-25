@@ -158,6 +158,9 @@ export function createState(now = Date.now()) {
       depth: 0,
       bestDepth: 0,
       autoBattle: false, // unlocked by tapping into the first fight
+      // Skills firing themselves. On by default: turning it off is opting in to
+      // work, and must never be something the game does to you.
+      autoCast: true,
       unlocked: false,
       // Leaf starts neutral against the first zone. Opening the game at a
       // disadvantage would teach the wrong lesson about a mechanic nobody has
@@ -195,6 +198,9 @@ export function reconcileState(state, now = Date.now()) {
     : [];
   out.combat.equipped = isPlainObject(out.combat.equipped) ? { ...out.combat.equipped } : {};
   out.combat.skills = Array.isArray(out.combat.skills) ? out.combat.skills.filter((s) => typeof s === 'string') : [];
+  // A save from before manual casting existed has no flag, and must land on
+  // auto — it was written by someone who never chose otherwise.
+  out.combat.autoCast = state.combat?.autoCast !== false;
 
   // Drop equip references to items that are no longer in the bag.
   const owned = new Set(out.combat.inventory.map((i) => i.uid));
