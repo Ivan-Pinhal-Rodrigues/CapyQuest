@@ -137,12 +137,12 @@
   border-left: 1px solid var(--border);
 }
 
-/* Ten tabs as two full rows of five. Three columns left a stranded tab on the
-   fourth row once the Store landed; five fits because the labels are short and
-   the pixel font is tiny — measured at 390px, where nothing clips. */
+/* Six columns by two rows. Eleven tabs leave one gap, which the Profile screen
+   fills next; six fits at 390px because the labels are short and the pixel font
+   is tiny — measured, not assumed. */
 .tabs {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }

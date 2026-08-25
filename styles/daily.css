@@ -161,59 +161,6 @@
 .calendar__reward { font-size: 0.62rem; font-weight: 700; color: var(--text-dim); }
 .calendar__day.is-current .calendar__reward { color: var(--zen); }
 
-/* ---------------------------------------------------------------- zen pass */
-
-.pass__note { font-size: 0.74rem; color: var(--text-faint); font-style: italic; }
-
-.pass-track {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
-  gap: 0.3rem;
-}
-
-.pass-tier {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.1rem;
-  padding: 0.4rem 0.2rem;
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  opacity: 0.4;
-  transition: all 140ms ease;
-}
-
-.pass-tier.is-unlocked { opacity: 1; }
-
-.pass-tier.is-ready {
-  border-color: var(--zen);
-  background: linear-gradient(180deg, rgba(247, 201, 72, 0.12), var(--surface));
-  box-shadow: 0 0 10px rgba(247, 201, 72, 0.15);
-}
-
-.pass-tier.is-ready:hover { background: var(--surface-3); }
-
-.pass-tier.is-claimed {
-  opacity: 0.55;
-  border-color: var(--leaf);
-}
-
-.pass-tier__level {
-  font-family: var(--font-pixel);
-  font-size: 0.46rem;
-  color: var(--text-dim);
-}
-
-.pass-tier.is-ready .pass-tier__level { color: var(--zen); }
-
-.pass-tier__reward {
-  font-size: 0.58rem;
-  color: var(--text-faint);
-  text-align: center;
-  line-height: 1.2;
-}
-
 /* ---------------------------------------------------------- login reward */
 
 .login-reward { text-align: center; }
@@ -271,5 +218,4 @@
   .calendar__day { min-height: 46px; padding: 0.3rem 0.1rem; }
   .calendar__label { font-size: 0.48rem; }
   .calendar__reward { font-size: 0.56rem; }
-  .pass-track { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); }
 }

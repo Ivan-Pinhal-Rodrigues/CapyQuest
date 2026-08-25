@@ -8,7 +8,6 @@
 import {
   DAILY_POOL, WEEKLY_POOL, DAILY_COUNT, WEEKLY_COUNT,
   LOGIN_REWARDS, CHEST_FILL_MS, CHEST_MAX_STORED,
-  PASS_LEVELS, PASS_XP_PER_LEVEL, passReward,
 } from '../data/quests.js';
 import { lookupCode } from '../data/codes.js';
 import { makeRng } from '../balance.js';
@@ -243,56 +242,6 @@ export function collectChests(state, now = Date.now()) {
   return { count };
 }
 
-// ---------------------------------------------------------------- zen pass
-
-export function passLevel(xp) {
-  return Math.min(PASS_LEVELS, Math.floor(xp / PASS_XP_PER_LEVEL) + 1);
-}
-
-export function passProgress(state) {
-  const level = passLevel(state.pass.xp);
-  const into = state.pass.xp % PASS_XP_PER_LEVEL;
-  return {
-    level,
-    into,
-    needed: PASS_XP_PER_LEVEL,
-    ratio: level >= PASS_LEVELS ? 1 : into / PASS_XP_PER_LEVEL,
-    maxed: level >= PASS_LEVELS,
-  };
-}
-
-export function addPassXp(state, amount) {
-  const before = passLevel(state.pass.xp);
-  state.pass.xp += Math.max(0, amount);
-  const after = passLevel(state.pass.xp);
-  return { levelled: after > before, from: before, to: after };
-}
-
-/** Every pass level with its reward and whether it is claimable. */
-export function passTrack(state) {
-  const level = passLevel(state.pass.xp);
-  return Array.from({ length: PASS_LEVELS }, (_, i) => {
-    const lvl = i + 1;
-    return {
-      level: lvl,
-      reward: passReward(lvl),
-      unlocked: lvl <= level,
-      claimed: !!state.pass.claimed[lvl],
-    };
-  });
-}
-
-export function claimPassLevel(state, level) {
-  if (level > passLevel(state.pass.xp)) return null;
-  if (state.pass.claimed[level]) return null;
-  state.pass.claimed[level] = true;
-  return passReward(level);
-}
-
-export function unclaimedPassLevels(state) {
-  return passTrack(state).filter((t) => t.unlocked && !t.claimed).length;
-}
-
 // ------------------------------------------------------------------- codes
 
 /** Redeem a secret code. Each works once per save. */
@@ -304,4 +253,4 @@ export function redeemCode(state, input) {
   return { ok: true, reward: code, key: code.key };
 }
 
-export { CHEST_FILL_MS, CHEST_MAX_STORED, PASS_LEVELS };
+export { CHEST_FILL_MS, CHEST_MAX_STORED };

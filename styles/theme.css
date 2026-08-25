@@ -129,3 +129,15 @@ body[data-pond='aurora'] {
   --water: #7df0c4;
   --water-deep: #2fa88b;
 }
+
+body[data-pond='lantern'] {
+  --bg: #1a1410;
+  --bg-deep: #110c09;
+  --surface: #271d14;
+  --surface-2: #33271b;
+  --surface-3: #423323;
+  --border: #453425;
+  --border-bright: #674c33;
+  --water: #f7d08a;
+  --water-deep: #b8843c;
+}

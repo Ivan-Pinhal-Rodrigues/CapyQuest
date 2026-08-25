@@ -28,6 +28,8 @@ export const CAPY_SKINS = {
   matcha: { ...CAPY_PALETTE, d: '#5f7a3a', m: '#87a353', l: '#b4cc80', n: '#42551f' },
   frost: { ...CAPY_PALETTE, d: '#6b8fa3', m: '#96b8c9', l: '#c9e2ed', n: '#4a6675' },
   void: { ...CAPY_PALETTE, d: '#241c33', m: '#3b2f52', l: '#5c4b7d', n: '#160f22' },
+  // Season-pass exclusive: steam-flushed, like it has been in the water too long.
+  seasonal: { ...CAPY_PALETTE, d: '#a8543f', m: '#d1795c', l: '#f0a88c', n: '#7d3a2b' },
 };
 
 export const PROP_PALETTE = {

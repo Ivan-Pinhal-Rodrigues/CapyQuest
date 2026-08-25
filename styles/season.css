@@ -1,0 +1,130 @@
+/* The Season panel: the season clock, the premium offer, and 100 levels of a
+   two-track pass. */
+
+.season-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.season-head__name { font-size: 1.05rem; font-weight: 800; }
+.season-head__clock { font-family: var(--font-pixel); font-size: 0.4rem; color: var(--text-faint); }
+.season-head__day { font-size: 0.74rem; color: var(--text-faint); }
+
+.season-level {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+.season-level__value { font-size: 0.95rem; color: var(--zen); }
+.season-level__xp { font-family: var(--font-pixel); font-size: 0.4rem; color: var(--text-faint); }
+
+/* ------------------------------------------------------------ premium offer */
+
+.season-offer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.7rem;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(247, 201, 72, 0.08), var(--surface));
+  border: 1px solid rgba(247, 201, 72, 0.4);
+}
+
+.season-offer__title { font-size: 0.95rem; color: var(--zen); }
+.season-offer__lead { font-size: 0.78rem; color: var(--text-dim); line-height: 1.4; }
+.season-offer__backlog { font-size: 0.74rem; color: var(--leaf); }
+
+.season-offer__buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; }
+
+/* --------------------------------------------------------------- the track */
+
+.pass-legend {
+  display: grid;
+  grid-template-columns: 1fr 2.2rem 1fr;
+  gap: 0.3rem;
+  padding: 0 0.1rem;
+  font-family: var(--font-pixel);
+  font-size: 0.38rem;
+  color: var(--text-faint);
+}
+
+.pass-legend__free { text-align: left; }
+.pass-legend__lvl { text-align: center; }
+.pass-legend__premium { text-align: right; color: var(--zen); }
+
+.pass-track { display: flex; flex-direction: column; gap: 0.2rem; }
+
+.pass-row {
+  display: grid;
+  grid-template-columns: 1fr 2.2rem 1fr;
+  align-items: stretch;
+  gap: 0.3rem;
+}
+
+.pass-row__lvl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-pixel);
+  font-size: 0.38rem;
+  color: var(--text-faint);
+}
+
+.pass-row.is-locked { opacity: 0.45; }
+
+.pass-row.is-current .pass-row__lvl {
+  color: var(--bg-deep);
+  background: var(--zen);
+  border-radius: var(--radius-sm);
+}
+
+.pass-cell {
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  min-height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  text-align: left;
+  transition: all 140ms ease;
+}
+
+.pass-cell--premium { justify-content: flex-end; text-align: right; border-color: rgba(247, 201, 72, 0.25); }
+
+.pass-cell__text { font-size: 0.7rem; color: var(--text-dim); line-height: 1.2; }
+
+.pass-cell.is-ready {
+  background: var(--surface-2);
+  border-color: var(--zen);
+  box-shadow: 0 0 8px rgba(247, 201, 72, 0.15);
+}
+
+.pass-cell.is-ready .pass-cell__text { color: var(--text); }
+
+.pass-cell.is-claimed { opacity: 0.4; }
+.pass-cell.is-claimed .pass-cell__text { text-decoration: line-through; }
+
+/* A locked premium cell is deliberately still legible: the point of showing the
+   second track is that you can read what is on it. */
+.pass-cell.is-shut { border-style: dashed; opacity: 0.6; }
+
+/* ------------------------------------------------------------ past seasons */
+
+.season-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.season-history__title { font-size: 0.8rem; color: var(--text-dim); }
+.season-history__row { font-size: 0.72rem; color: var(--text-faint); }

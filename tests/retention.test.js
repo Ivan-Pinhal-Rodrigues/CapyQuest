@@ -1,4 +1,6 @@
-// Quests, login streak, chests, the Zen Pass and codes.
+// Quests, login streak, chests and codes.
+//
+// The season pass has its own file now that it has two tracks — season.test.js.
 //
 // All the date maths takes an explicit `now`, so these move time without
 // touching the system clock. The cases that matter most are the ugly ones:
@@ -16,12 +18,11 @@ import {
   rollQuests, activeQuests, claimQuest, questSummary, counters,
   checkLogin, loginCalendar,
   chestsReady, chestProgress, msUntilNextChest, collectChests,
-  passLevel, passProgress, addPassXp, passTrack, claimPassLevel, unclaimedPassLevels,
   redeemCode,
-  CHEST_FILL_MS, CHEST_MAX_STORED, PASS_LEVELS,
+  CHEST_FILL_MS, CHEST_MAX_STORED,
 } from '../src/systems/quests.js';
 import { grantReward, describeGrant, rewardBase } from '../src/systems/rewards.js';
-import { DAILY_POOL, WEEKLY_POOL, DAILY_COUNT, WEEKLY_COUNT, LOGIN_REWARDS, passReward } from '../src/data/quests.js';
+import { DAILY_POOL, WEEKLY_POOL, DAILY_COUNT, WEEKLY_COUNT, LOGIN_REWARDS } from '../src/data/quests.js';
 import { CODES, normaliseCode, lookupCode } from '../src/data/codes.js';
 
 /** Midday on a given date, to keep away from midnight boundaries. */
@@ -332,63 +333,6 @@ test('a chest timer from the future is repaired on load', () => {
   assert.ok(s.chest.lastAt <= now);
 });
 
-// ---------------------------------------------------------------- zen pass
-
-test('pass levels advance with xp and stop at the cap', () => {
-  assert.equal(passLevel(0), 1);
-  assert.equal(passLevel(99), 1);
-  assert.equal(passLevel(100), 2);
-  assert.equal(passLevel(1e9), PASS_LEVELS);
-});
-
-test('adding xp reports a level-up exactly when one happens', () => {
-  const s = createState();
-  assert.equal(addPassXp(s, 50).levelled, false);
-  const up = addPassXp(s, 50);
-  assert.equal(up.levelled, true);
-  assert.equal(up.from, 1);
-  assert.equal(up.to, 2);
-});
-
-test('pass progress reports the fraction into the level', () => {
-  const s = createState();
-  s.pass.xp = 250;
-  const p = passProgress(s);
-  assert.equal(p.level, 3);
-  assert.equal(p.into, 50);
-  assert.ok(Math.abs(p.ratio - 0.5) < 1e-9);
-  assert.equal(p.maxed, false);
-});
-
-test('pass levels claim once, and only once unlocked', () => {
-  const s = createState();
-  assert.equal(claimPassLevel(s, 5), null, 'cannot claim a level you have not reached');
-
-  s.pass.xp = 1000; // level 11
-  assert.ok(claimPassLevel(s, 5));
-  assert.equal(claimPassLevel(s, 5), null, 'cannot claim twice');
-  assert.equal(passTrack(s).find((t) => t.level === 5).claimed, true);
-});
-
-test('unclaimed pass levels drive the badge', () => {
-  const s = createState();
-  assert.equal(unclaimedPassLevels(s), 1, 'level 1 is available immediately');
-  s.pass.xp = 400; // level 5
-  assert.equal(unclaimedPassLevels(s), 5);
-  claimPassLevel(s, 1);
-  assert.equal(unclaimedPassLevels(s), 4);
-});
-
-test('every pass level describes a real reward, and milestones are better', () => {
-  for (let lvl = 1; lvl <= PASS_LEVELS; lvl++) {
-    const reward = passReward(lvl);
-    assert.ok(reward.text, `level ${lvl}: no description`);
-    assert.ok(Object.keys(reward).length > 1, `level ${lvl}: nothing but text`);
-  }
-  assert.ok((passReward(10).tickets || 0) > (passReward(5).tickets || 0));
-  assert.ok((passReward(5).tickets || 0) > (passReward(4).tickets || 0));
-});
-
 // ------------------------------------------------------------------- codes
 
 test('codes are matched loosely and redeem once', () => {
@@ -468,7 +412,7 @@ test('rebirth keeps the streak, quests, chest and pass', () => {
   rollQuests(s, TUESDAY);
   checkLogin(s, TUESDAY);
   s.pass.xp = 640;
-  s.pass.claimed[3] = true;
+  s.pass.claimed.free[3] = true;
   s.codes.capybara = 1;
   s.chest.lastAt = 12345;
   const dailyBefore = [...s.quests.daily];
@@ -480,7 +424,7 @@ test('rebirth keeps the streak, quests, chest and pass', () => {
   assert.equal(s.login.streak, 1);
   assert.deepEqual(s.quests.daily, dailyBefore);
   assert.equal(s.pass.xp, 640);
-  assert.equal(s.pass.claimed[3], true);
+  assert.equal(s.pass.claimed.free[3], true);
   assert.equal(s.codes.capybara, 1);
   assert.equal(s.chest.lastAt, 12345);
 });
@@ -517,7 +461,7 @@ test('a mangled retention block is repaired, not fatal', () => {
   assert.equal(s.login.best, 0);
   assert.equal(s.login.lastDay, '2026-08-25', 'a valid day key survives');
   assert.equal(s.pass.xp, 0);
-  assert.deepEqual(s.pass.claimed, {});
+  assert.deepEqual(s.pass.claimed, { free: {}, premium: {} });
   assert.deepEqual(s.codes, {});
   assert.equal(s.chest.lastAt, now);
 });
@@ -527,7 +471,7 @@ test('retention state round-trips through a save', () => {
   rollQuests(s, TUESDAY);
   checkLogin(s, TUESDAY);
   s.pass.xp = 350;
-  s.pass.claimed[2] = true;
+  s.pass.claimed.free[2] = true;
   s.codes.onsen = 999;
 
   const reloaded = reconcileState(JSON.parse(JSON.stringify(s)));
@@ -535,6 +479,6 @@ test('retention state round-trips through a save', () => {
   assert.deepEqual(reloaded.quests.dailyBase, s.quests.dailyBase);
   assert.equal(reloaded.login.streak, 1);
   assert.equal(reloaded.pass.xp, 350);
-  assert.equal(reloaded.pass.claimed[2], true);
+  assert.equal(reloaded.pass.claimed.free[2], true);
   assert.equal(reloaded.codes.onsen, 999);
 });

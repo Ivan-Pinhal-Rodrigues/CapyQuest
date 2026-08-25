@@ -19,6 +19,7 @@ export const SOURCES = {
   start: 'Yours from the start',
   play: 'Earned',
   store: 'Store',
+  pass: 'Season pass',
 };
 
 export const SKINS = [
@@ -29,6 +30,7 @@ export const SKINS = [
   { id: 'midnight', name: 'Midnight', source: 'store', cost: 250, blurb: 'Awake at the wrong hours.' },
   { id: 'sakura', name: 'Sakura', source: 'store', cost: 250, blurb: 'Petals in the water, all year.' },
   { id: 'void', name: 'Void', source: 'store', cost: 600, blurb: 'Something looked back.' },
+  { id: 'seasonal', name: 'Hot Spring', source: 'pass', blurb: 'Premium pass, level 1. In the water too long.' },
 ];
 
 export const PONDS = [
@@ -38,6 +40,7 @@ export const PONDS = [
   { id: 'ember', name: 'Ember', source: 'store', cost: 300, blurb: 'Somebody put the fire too close.' },
   { id: 'deep', name: 'Deep', source: 'store', cost: 300, blurb: 'The water goes further down than it should.' },
   { id: 'aurora', name: 'Aurora', source: 'store', cost: 750, blurb: 'The sky, showing off.' },
+  { id: 'lantern', name: 'Lantern', source: 'pass', blurb: 'Free pass, level 40. Somebody hung lights.' },
 ];
 
 export const TITLES = [
@@ -48,6 +51,8 @@ export const TITLES = [
   { id: 'deepDweller', name: 'Deep Dweller', source: 'play', need: { bestDepth: 200 }, blurb: 'Reach stage 20.' },
   { id: 'patron', name: 'Patron of the Onsen', source: 'store', cost: 400, blurb: 'Somebody has to keep the lights on.' },
   { id: 'stillPoint', name: 'Of The Still Point', source: 'store', cost: 900, blurb: 'The calm centre of an enormous amount of nothing.' },
+  { id: 'seasoned', name: 'Seasoned', source: 'pass', blurb: 'Free pass, level 100. You saw it through.' },
+  { id: 'patronOfSeasons', name: 'Of Every Season', source: 'pass', blurb: 'Premium pass, level 100.' },
 ];
 
 /** kind -> the table, so the panel and the systems agree on what exists. */

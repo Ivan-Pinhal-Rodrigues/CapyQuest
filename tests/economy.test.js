@@ -308,7 +308,7 @@ test('every cosmetic is complete, unique, and reachable one way or another', () 
     assert.ok(!seen.has(key), `duplicate cosmetic "${key}"`);
     seen.add(key);
     assert.ok(def.name && def.blurb, `${key}: incomplete`);
-    assert.ok(['start', 'play', 'store'].includes(def.source), `${key}: unknown source`);
+    assert.ok(['start', 'play', 'store', 'pass'].includes(def.source), `${key}: unknown source`);
     if (def.source === 'store') assert.ok(def.cost > 0, `${key}: for sale at no price`);
     if (def.source === 'play') assert.ok(def.need, `${key}: earned, but no condition`);
   }
@@ -378,6 +378,14 @@ test('every earned condition reads a counter that exists', () => {
     rich.login.total = 1e6;
     assert.equal(meetsNeed(rich, def.need), true, `${def.name} can never be earned`);
   }
+});
+
+test('a pass cosmetic cannot be bought, only earned by playing the season', () => {
+  const s = createState();
+  s.leafs = 1e9;
+  assert.equal(buyCosmetic(s, 'skin', 'seasonal').reason, 'notForSale');
+  assert.equal(owns(s, 'skin', 'seasonal'), false);
+  assert.deepEqual(checkUnlocks(s), [], 'a pass look must not open itself');
 });
 
 test('a store cosmetic is bought once, and only with the leafs for it', () => {

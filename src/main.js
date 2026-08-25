@@ -40,9 +40,14 @@ import { ticketsPerBoss } from './systems/meta.js';
 import { COMPANIONS_BY_ID, PARTY_SIZE } from './data/companions.js';
 import { DailyPanel } from './ui/dailyPanel.js';
 import {
-  rollQuests, claimQuest, questSummary, checkLogin, collectChests, chestsReady,
-  claimPassLevel, unclaimedPassLevels, redeemCode,
+  rollQuests, claimQuest, questSummary, checkLogin, collectChests, chestsReady, redeemCode,
 } from './systems/quests.js';
+import {
+  checkRollover, claimPassLevel, unclaimedPassLevels, passTrack,
+  passXpForClear, addPassXp, unlockPremium,
+} from './systems/season.js';
+import { SeasonPanel } from './ui/seasonPanel.js';
+import { PREMIUM_PRICE, PREMIUM_LEAFS } from './data/pass.js';
 import { grantReward, describeGrant } from './systems/rewards.js';
 import { LOGIN_REWARDS } from './data/quests.js';
 import { Scene } from './render/scene.js';
@@ -177,7 +182,13 @@ class Game {
     this.dailyPanel = new DailyPanel($('dailyPanel'), {
       onClaimQuest: (id) => this.claimQuest(id),
       onCollectChest: () => this.collectChest(),
-      onClaimPass: (level) => this.claimPass(level),
+    });
+
+    this.seasonPanel = new SeasonPanel($('seasonPanel'), {
+      onClaim: (level, track) => this.claimPass(level, track),
+      onClaimAll: () => this.claimAllPass(),
+      onBuyPremiumPrice: () => this.confirmPremiumPrice(),
+      onBuyPremiumLeafs: () => this.buyPremiumWithLeafs(),
     });
 
     this.tabs = new Tabs($('tabs'), {
@@ -189,6 +200,7 @@ class Game {
       summon: $('panel-summon'),
       rebirth: $('panel-rebirth'),
       store: $('panel-store'),
+      season: $('panel-season'),
       achievements: $('panel-achievements'),
       stats: $('panel-stats'),
     }, {
@@ -277,10 +289,20 @@ class Game {
 
   // -------------------------------------------------------------- retention
 
-  /** Roll quests and pay the login streak. Runs at boot and at midnight. */
+  /** Roll quests, pay the login streak, roll the season. Boot and midnight. */
   handleRetention(now = Date.now()) {
     const rolled = rollQuests(this.state, now);
     const login = checkLogin(this.state, now);
+    const rolledSeason = checkRollover(this.state, now);
+
+    if (rolledSeason) {
+      this.toaster.show({
+        title: rolledSeason.to.name,
+        body: `A new season. Last one you reached pass level ${rolledSeason.from.level}; every look it gave you is still yours.`,
+        kind: 'achievement',
+        icon: '🎋',
+      });
+    }
 
     if (login) {
       // Queued rather than shown immediately — the Nap Report opens on top of
@@ -380,21 +402,106 @@ class Game {
     this.afterRetentionChange(total);
   }
 
-  claimPass(level) {
-    const reward = claimPassLevel(this.state, level);
-    if (!reward) {
+  claimPass(level, track) {
+    const result = claimPassLevel(this.state, level, track);
+    if (!result.ok) {
       audio.denied();
       return;
     }
-    const grant = grantReward(this.state, reward, this.derived);
+    const grant = grantReward(this.state, result.reward, this.derived);
     audio.buy();
     this.toaster.show({
-      title: `Pass level ${level}`,
-      body: describeGrant(grant, fmt),
+      title: `${track === 'premium' ? 'Premium' : 'Free'} level ${level}`,
+      body: result.reward.cosmetic ? result.reward.text : describeGrant(grant, fmt),
       kind: 'info',
       icon: '🎋',
     });
     this.afterRetentionChange(grant);
+    this.seasonPanel.update(this.state);
+  }
+
+  /**
+   * A hundred levels across two tracks is too many to claim one at a time, so
+   * the panel offers to take the lot. Each one still goes through claimPass's
+   * checks — this only saves the tapping.
+   */
+  claimAllPass() {
+    let count = 0;
+    for (const row of passTrack(this.state)) {
+      for (const track of ['free', 'premium']) {
+        if (!row[track].claimable) continue;
+        const result = claimPassLevel(this.state, row.level, track);
+        if (!result.ok) continue;
+        grantReward(this.state, result.reward, this.derived);
+        count++;
+      }
+    }
+    if (!count) {
+      audio.denied();
+      return;
+    }
+    audio.levelUp();
+    this.afterRetentionChange({});
+    this.checkCosmeticUnlocks();
+    this.seasonPanel.update(this.state);
+    this.toaster.show({
+      title: `${count} reward${count === 1 ? '' : 's'} claimed`,
+      body: 'Everything on the track, collected.',
+      kind: 'buff',
+      icon: '🎋',
+    });
+  }
+
+  /**
+   * Simulated, exactly like the leaf packs. See systems/store.js — PAYMENTS is
+   * false, nothing is charged, and the dialog says so before the button rather
+   * than after it.
+   */
+  confirmPremiumPrice() {
+    const body = el('div', 'confirm');
+    body.appendChild(el('p', 'confirm__gain', 'Premium track'));
+    body.appendChild(el('p', 'confirm__warn', SIMULATED_NOTICE));
+    body.appendChild(
+      el(
+        'p',
+        'confirm__lead',
+        `The ${PREMIUM_PRICE} is a price tag, not a price. Nothing asks for a card and nothing is charged — this simply unlocks the track. If you would rather pay in something the game actually has, it is also ${fmtInt(PREMIUM_LEAFS)} leafs.`,
+      ),
+    );
+
+    openModal({
+      title: 'Unlock the premium track?',
+      bodyNode: body,
+      actions: [
+        { label: 'Not now' },
+        {
+          label: 'Unlock it',
+          variant: 'gold',
+          onClick: () => this.grantPremium({ leafs: false }),
+        },
+      ],
+    });
+  }
+
+  buyPremiumWithLeafs() {
+    this.grantPremium({ leafs: true });
+  }
+
+  grantPremium({ leafs }) {
+    const result = unlockPremium(this.state, { leafs });
+    if (!result.ok) {
+      audio.denied();
+      return;
+    }
+    audio.golden();
+    this.afterRetentionChange({});
+    this.seasonPanel.update(this.state);
+    this.toaster.show({
+      title: 'Premium track unlocked',
+      body: 'Everything you have already passed is waiting on it.',
+      kind: 'achievement',
+      icon: '🎋',
+    });
   }
 
   /** Repaint after a payout, and celebrate a pass level-up if one landed. */
@@ -588,6 +695,9 @@ class Game {
     if (this.tabs.current === 'store') {
       this.storePanel.update(this.state, now);
     }
+    if (this.tabs.current === 'season') {
+      this.seasonPanel.update(this.state, now);
+    }
 
     this.tabs.badge('achievements', this.newAchievements);
     this.tabs.badge('kit', this.newGear);
@@ -596,11 +706,12 @@ class Game {
     // actually claimable right now rather than what happened since you looked.
     this.tabs.badge(
       'daily',
-      questSummary(this.state).ready + chestsReady(this.state, now) + unclaimedPassLevels(this.state),
+      questSummary(this.state).ready + chestsReady(this.state, now),
     );
     // Same rule for the Store: the badge is the free leafs waiting, not a count
     // of things the player has not looked at.
     this.tabs.badge('store', dailyLeafsReady(this.state, now) ? 1 : 0);
+    this.tabs.badge('season', unclaimedPassLevels(this.state));
   }
 
   summonUnlocked() {
@@ -672,6 +783,9 @@ class Game {
 
     const zen = enemy.reward * this.derived.globalMult;
     this.earn(zen);
+
+    // The pass moves while you play, not only while you quest.
+    addPassXp(this.state, passXpForClear(enemy.boss));
 
     const gainedXp = xpForStage(stage, enemy.boss);
     const beforeLevel = this.cstats.level;

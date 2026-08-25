@@ -1,18 +1,21 @@
-// The Daily panel: quests, the timed chest, the login calendar and the Zen Pass.
+// The Daily panel: quests, the timed chest and the login calendar.
+//
+// The season pass used to live here too. At forty levels it fitted; at a
+// hundred across two tracks it did not, so it has its own screen — see
+// ui/seasonPanel.js.
 
 import { fmtInt, fmtClock, fmtTime } from './numbers.js';
 import {
   activeQuests, questSummary, chestsReady, chestProgress, msUntilNextChest,
-  msUntilTomorrow, loginCalendar, passProgress, passTrack,
+  msUntilTomorrow, loginCalendar,
   CHEST_MAX_STORED,
 } from '../systems/quests.js';
 
 export class DailyPanel {
-  constructor(root, { onClaimQuest, onCollectChest, onClaimPass }) {
+  constructor(root, { onClaimQuest, onCollectChest }) {
     this.root = root;
-    this.h = { onClaimQuest, onCollectChest, onClaimPass };
+    this.h = { onClaimQuest, onCollectChest };
     this.questNodes = new Map();
-    this.passNodes = new Map();
     this.calendarNodes = [];
     this.build();
   }
@@ -54,28 +57,12 @@ export class DailyPanel {
     }
     r.appendChild(this.calendar);
 
-    // --- zen pass
-    const passHead = div('daily__head');
-    this.passTitle = add(passHead, 'h3', 'kit__heading', 'Zen Pass');
-    this.passLevelLabel = add(passHead, 'span', 'daily__reset');
-    r.appendChild(passHead);
-
-    const passBar = div('progress');
-    this.passFill = div('progress__fill');
-    passBar.appendChild(this.passFill);
-    r.appendChild(passBar);
-
-    add(r, 'p', 'pass__note', 'Free track only. Nothing here is for sale.');
-
-    this.passTrackEl = div('pass-track');
-    r.appendChild(this.passTrackEl);
   }
 
   update(state, now = Date.now()) {
     this.updateChest(state, now);
     this.updateQuests(state, now);
     this.updateStreak(state);
-    this.updatePass(state);
   }
 
   updateChest(state, now) {
@@ -169,30 +156,6 @@ export class DailyPanel {
       node.cell.classList.toggle('is-current', day.current || day.pending);
       node.cell.title = day.text;
     });
-  }
-
-  updatePass(state) {
-    const p = passProgress(state);
-    setText(this.passTitle, `Zen Pass · Lv ${p.level}`);
-    setText(this.passLevelLabel, p.maxed ? 'complete' : `${p.into}/${p.needed} xp`);
-    this.passFill.style.transform = `scaleX(${p.ratio})`;
-
-    for (const tier of passTrack(state)) {
-      let entry = this.passNodes.get(tier.level);
-      if (!entry) {
-        const node = button('pass-tier', '', () => this.h.onClaimPass(tier.level));
-        const lvl = add(node, 'span', 'pass-tier__level', String(tier.level));
-        const reward = add(node, 'span', 'pass-tier__reward', tier.reward.text);
-        this.passTrackEl.appendChild(node);
-        entry = { node, lvl, reward };
-        this.passNodes.set(tier.level, entry);
-      }
-      entry.node.classList.toggle('is-unlocked', tier.unlocked);
-      entry.node.classList.toggle('is-claimed', tier.claimed);
-      entry.node.classList.toggle('is-ready', tier.unlocked && !tier.claimed);
-      entry.node.disabled = !tier.unlocked || tier.claimed;
-      entry.node.title = `Level ${tier.level} — ${tier.reward.text}`;
-    }
   }
 }
 

@@ -4,15 +4,16 @@
 // in the same shape, so the game only has one place that can get "grant a
 // ticket" wrong.
 //
-// Shape: { zenMult, zen, tickets, shards, pass }
+// Shape: { zenMult, zen, tickets, shards, leafs, pass }
 //   zenMult  multiplied by current income, so a reward stays meaningful at
 //            every stage instead of being huge early and irrelevant later
 //   zen      a flat amount, used only where the payout should not scale
 //   tickets  summon tickets
 //   shards   forge shards
-//   pass     Zen Pass xp
+//   leafs    the simulated premium currency — paid sparingly, on purpose
+//   pass     season pass xp
 
-import { addPassXp } from './quests.js';
+import { addPassXp } from './season.js';
 
 /**
  * Income-scaled base: whichever of "a few seconds of idle" and "a few taps" is
@@ -27,7 +28,7 @@ export function rewardBase(derived) {
  * `derived` is needed only for zenMult rewards.
  */
 export function grantReward(state, reward, derived) {
-  const out = { zen: 0, tickets: 0, shards: 0, pass: 0, passLevels: null };
+  const out = { zen: 0, tickets: 0, shards: 0, leafs: 0, pass: 0, passLevels: null };
   if (!reward) return out;
 
   if (reward.zenMult && derived) {
@@ -51,6 +52,12 @@ export function grantReward(state, reward, derived) {
     out.shards = reward.shards;
   }
 
+  if (reward.leafs) {
+    state.leafs += reward.leafs;
+    state.lifetimeLeafs += reward.leafs;
+    out.leafs = reward.leafs;
+  }
+
   if (reward.pass) {
     out.pass = reward.pass;
     const result = addPassXp(state, reward.pass);
@@ -66,6 +73,7 @@ export function describeGrant(grant, fmt) {
   if (grant.zen > 0) parts.push(`${fmt(grant.zen)} zen`);
   if (grant.tickets) parts.push(`${grant.tickets} ticket${grant.tickets === 1 ? '' : 's'}`);
   if (grant.shards) parts.push(`${grant.shards} shards`);
+  if (grant.leafs) parts.push(`${grant.leafs} leafs`);
   if (grant.pass) parts.push(`${grant.pass} pass XP`);
   return parts.join(' · ');
 }

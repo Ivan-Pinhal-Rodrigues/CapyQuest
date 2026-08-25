@@ -73,7 +73,16 @@ export function createState(now = Date.now()) {
 
     login: { lastDay: null, streak: 0, best: 0, total: 0, pendingDay: 0 },
     chest: { lastAt: now, opened: 0 },
-    pass: { xp: 0, claimed: {} },
+    // The season pass. `season` is the index the save last saw — when the clock
+    // moves past it, systems/season.js rolls the pass over and keeps the looks.
+    pass: {
+      season: null,
+      xp: 0,
+      premium: false,
+      claimed: { free: {}, premium: {} },
+      bestLevel: 0,
+      history: [], // [{ index, level, premium, claimed }], newest first
+    },
     codes: {}, // redeemed code key -> timestamp
 
     // --- transient-ish but worth persisting
@@ -259,7 +268,31 @@ export function reconcileState(state, now = Date.now()) {
 
   out.pass = { ...base.pass, ...(state.pass || {}) };
   out.pass.xp = safeNumber(out.pass.xp);
-  out.pass.claimed = isPlainObject(out.pass.claimed) ? { ...out.pass.claimed } : {};
+  out.pass.premium = !!out.pass.premium;
+  out.pass.bestLevel = Math.floor(safeNumber(out.pass.bestLevel));
+  out.pass.season = Number.isInteger(out.pass.season) && out.pass.season >= 0 ? out.pass.season : null;
+  out.pass.history = Array.isArray(out.pass.history)
+    ? out.pass.history
+        .filter(isPlainObject)
+        .slice(0, 8)
+        .map((h) => ({
+          index: Math.floor(safeNumber(h.index)),
+          level: Math.floor(safeNumber(h.level)),
+          premium: !!h.premium,
+          claimed: Math.floor(safeNumber(h.claimed)),
+        }))
+    : [];
+
+  // The pass grew a second track. A one-track save has `claimed` as a flat
+  // level->true map; those claims were all on the free track, so that is where
+  // they go. Doing it here rather than in a migration step means a hand-edited
+  // save with the old shape is repaired too.
+  const claimed = isPlainObject(out.pass.claimed) ? out.pass.claimed : {};
+  const flat = !isPlainObject(claimed.free) && !isPlainObject(claimed.premium);
+  out.pass.claimed = {
+    free: flat ? { ...claimed } : { ...(claimed.free || {}) },
+    premium: flat ? {} : { ...(claimed.premium || {}) },
+  };
 
   out.codes = isPlainObject(state.codes) ? { ...state.codes } : {};
   out.buffs = Array.isArray(state.buffs) ? state.buffs.filter((b) => b && b.until > now) : [];

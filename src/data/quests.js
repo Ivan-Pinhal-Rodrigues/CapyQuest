@@ -58,18 +58,4 @@ export const LOGIN_REWARDS = [
 export const CHEST_FILL_MS = 15 * 60 * 1000;
 export const CHEST_MAX_STORED = 4; // stop accruing past four, so it is worth checking in
 
-// ---------------------------------------------------------------- zen pass
-
-export const PASS_LEVELS = 40;
-export const PASS_XP_PER_LEVEL = 100;
-
-/**
- * The Zen Pass is a free track only. There is no paid tier and nothing to buy —
- * it is a progress bar over the season, not a storefront.
- */
-export function passReward(level) {
-  if (level % 10 === 0) return { tickets: 3, shards: 500, text: '3 tickets · 500 shards' };
-  if (level % 5 === 0) return { tickets: 1, shards: 200, text: '1 ticket · 200 shards' };
-  if (level % 2 === 0) return { shards: 120, text: '120 shards' };
-  return { zenMult: 300, text: 'A pile of zen' };
-}
+// The season pass moved to data/pass.js when it grew a second track.
