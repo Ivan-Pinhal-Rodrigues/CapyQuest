@@ -26,6 +26,7 @@
 <link rel="stylesheet" href="styles/store.css">
 <link rel="stylesheet" href="styles/season.css">
 <link rel="stylesheet" href="styles/leaderboard.css">
+<link rel="stylesheet" href="styles/story.css">
 <link rel="stylesheet" href="styles/daily.css">
 <link rel="stylesheet" href="styles/animations.css">
 
@@ -86,7 +87,7 @@
       <button class="tab" data-tab="season" role="tab" type="button" aria-controls="panel-season">Season</button>
       <button class="tab" data-tab="rivals" role="tab" type="button" aria-controls="panel-rivals">Rivals</button>
       <button class="tab" data-tab="achievements" role="tab" type="button" aria-controls="panel-achievements">Trophies</button>
-      <button class="tab" data-tab="stats" role="tab" type="button" aria-controls="panel-stats">Stats</button>
+      <button class="tab" data-tab="stats" role="tab" type="button" aria-controls="panel-stats">You</button>
     </nav>
 
     <div class="panel__body">
@@ -157,7 +158,9 @@
         <div id="achievementPanel"></div>
       </section>
 
-      <section class="panel__section" id="panel-stats" role="tabpanel" aria-label="Statistics" hidden>
+      <section class="panel__section" id="panel-stats" role="tabpanel" aria-label="You" hidden>
+        <div id="profilePanel"></div>
+        <h3 class="kit__heading">Everything you have done</h3>
         <div id="statsPanel"></div>
       </section>
     </div>

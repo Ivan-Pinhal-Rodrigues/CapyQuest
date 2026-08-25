@@ -111,6 +111,11 @@ export function rebirth(state, now = Date.now()) {
     // login streak or a half-finished daily because the player rebirthed would
     // punish them for playing well.
     quests: state.quests,
+    // The narrative layer is knowledge, not progress. Sitting through the
+    // opening again after a reset would be unbearable, and your own name is
+    // yours — neither is something a button should be able to take.
+    story: state.story,
+    profile: state.profile,
     login: state.login,
     chest: state.chest,
     pass: state.pass,

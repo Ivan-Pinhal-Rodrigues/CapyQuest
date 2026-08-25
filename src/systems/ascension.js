@@ -51,6 +51,11 @@ export function ascend(state, now = Date.now()) {
     stats: state.stats,
     settings: state.settings,
     quests: state.quests,
+    // The narrative layer is knowledge, not progress. Sitting through the
+    // opening again after a reset would be unbearable, and your own name is
+    // yours — neither is something a button should be able to take.
+    story: state.story,
+    profile: state.profile,
     login: state.login,
     chest: state.chest,
     pass: state.pass,

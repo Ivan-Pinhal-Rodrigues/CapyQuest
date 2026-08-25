@@ -73,6 +73,13 @@ export function createState(now = Date.now()) {
     // Petals belong to one event occurrence. `key` names it; when the clock
     // moves past that event, systems/events.js zeroes the lot — see syncEvent.
     events: { key: null, petals: 0, claimed: {} },
+    // Story beats fire once, ever. This survives every reset in the game —
+    // being made to sit through the opening again after a rebirth would be
+    // unbearable, and a season has no business touching it.
+    story: { seen: {}, skip: false, onboarded: false, tutorial: {} },
+    // No account, no server. A profile is a name you can change and two things
+    // you chose to wear; `name` empty means "still using the generated one".
+    profile: { name: '' },
 
     login: { lastDay: null, streak: 0, best: 0, total: 0, pendingDay: 0 },
     chest: { lastAt: now, opened: 0 },
@@ -112,6 +119,7 @@ export function createState(now = Date.now()) {
       bestStars: 1,
       fuses: 0,
       refines: 0,
+      metCapybara: 0, // a hostile capybara, which is a story beat as well as a fight
 
       // lifetime purchase counters, read by quests
       buildingsBought: 0,
@@ -254,6 +262,15 @@ export function reconcileState(state, now = Date.now()) {
   out.events.key = typeof out.events.key === 'string' ? out.events.key : null;
   out.events.petals = Math.floor(safeNumber(out.events.petals));
   out.events.claimed = numberMap(out.events.claimed);
+
+  out.profile = { ...base.profile, ...(state.profile || {}) };
+  out.profile.name = typeof out.profile.name === 'string' ? out.profile.name.slice(0, 22) : '';
+
+  out.story = { ...base.story, ...(state.story || {}) };
+  out.story.seen = numberMap(out.story.seen);
+  out.story.tutorial = numberMap(out.story.tutorial);
+  out.story.skip = !!out.story.skip;
+  out.story.onboarded = !!out.story.onboarded;
 
   out.store = { ...base.store, ...(state.store || {}) };
   out.store.packs = numberMap(out.store.packs);

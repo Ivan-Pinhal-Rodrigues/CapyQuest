@@ -1,0 +1,317 @@
+/* The speech bar, the cutscene, the coach marks and the profile card. */
+
+/* ------------------------------------------------------------ speech bar */
+
+/* Sits over the scene rather than over the game. It is deliberately not a
+   modal: nothing behind it stops, and you can ignore it entirely. */
+.dialogue {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 1.5rem));
+  display: grid;
+  grid-template-columns: 44px 1fr auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg-deep) 88%, transparent);
+  backdrop-filter: blur(3px);
+  border: 1px solid var(--border-bright);
+  border-left: 3px solid var(--who, var(--border-bright));
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  z-index: 30;
+}
+
+.dialogue.is-in { animation: dialogue-in 220ms ease-out; }
+
+@keyframes dialogue-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.dialogue__portrait { width: 44px; height: 44px; }
+.dialogue__body { min-width: 0; }
+.dialogue__name { display: block; font-size: 0.76rem; color: var(--who, var(--text)); }
+.dialogue__text { font-size: 0.84rem; color: var(--text); line-height: 1.4; }
+.dialogue__more { font-size: 0.7rem; color: var(--text-faint); align-self: flex-end; }
+
+.dialogue__close {
+  width: 20px;
+  height: 20px;
+  border-radius: 99px;
+  color: var(--text-faint);
+  background: transparent;
+  font-size: 0.7rem;
+}
+
+.dialogue__close:hover { color: var(--text); background: var(--surface-2); }
+
+/* On the narrow layout the toast stack moves to the bottom of the stage, which
+   is where this was sitting — so the bar moves to the top, where nothing else
+   lives. Matching the 900px breakpoint in layout.css that moves the toasts. */
+@media (max-width: 900px) {
+  .dialogue {
+    top: 0.6rem;
+    bottom: auto;
+    grid-template-columns: 34px 1fr auto auto;
+    gap: 0.45rem;
+  }
+
+  .dialogue.is-in { animation-name: dialogue-in-top; }
+
+  @keyframes dialogue-in-top {
+    from { opacity: 0; transform: translate(-50%, -8px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+
+  .dialogue__portrait { width: 34px; height: 34px; }
+  .dialogue__text { font-size: 0.78rem; }
+}
+
+[data-motion='reduced'] .dialogue.is-in { animation: none; }
+
+/* ---------------------------------------------------------- the cutscene */
+
+.cutscene {
+  position: fixed;
+  inset: 0;
+  /* Above the modal layer (100). Nothing should be able to stack on frame one —
+     a login reward landing on top of the opening is how a first-run player
+     learns that the game interrupts. */
+  z-index: 120;
+  display: grid;
+  /* Packed to the middle rather than spread with a 1fr row: a fixed-height
+     frame in a flexible row leaves a hole between the picture and the words. */
+  grid-template-rows: repeat(4, auto);
+  align-content: center;
+  justify-items: center;
+  gap: 0.8rem;
+  padding: 1rem;
+  background: var(--bg-deep);
+}
+
+/* First in the DOM and first in the tab order, not tucked in a corner at the
+   end: someone reopening the game on a new device should reach their save
+   without reading anything. */
+.cutscene__skip {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  z-index: 1;
+}
+
+.cutscene__skip:hover { color: var(--text); background: var(--surface-3); }
+
+.cutscene__frame {
+  position: relative;
+  width: min(560px, 100%);
+  height: min(46vh, 320px);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.cutscene__ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28%;
+}
+
+.cutscene__art {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  margin-bottom: 6%;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.5));
+}
+
+.cutscene__art.is-in { animation: cut-in 420ms ease-out; }
+
+@keyframes cut-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+
+.cutscene__box {
+  width: min(560px, 100%);
+  padding: 0.8rem 0.9rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+}
+
+.cutscene__text {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-line;
+}
+
+.cutscene__dots { display: flex; gap: 0.35rem; }
+
+.cutscene__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--border-bright);
+  transition: background 180ms ease;
+}
+
+.cutscene__dot.is-on { background: var(--zen); }
+
+.cutscene__next { min-width: 160px; }
+
+@media (max-width: 640px) {
+  .cutscene__frame { height: 34vh; }
+  .cutscene__art { width: 104px; height: 104px; }
+  .cutscene__text { font-size: 0.84rem; }
+}
+
+[data-motion='reduced'] .cutscene__art.is-in { animation: none; }
+
+/* -------------------------------------------------------- the coach marks */
+
+.coach {
+  position: fixed;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--zen);
+  box-shadow: var(--shadow-lg);
+}
+
+.coach__title { font-size: 0.84rem; color: var(--zen); }
+.coach__body { font-size: 0.76rem; color: var(--text-dim); line-height: 1.4; }
+.coach__ok { align-self: flex-end; margin-top: 0.15rem; }
+
+/* The target stays clickable — the ring is decoration over the top of it. */
+.coach__ring {
+  position: fixed;
+  z-index: 54;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--zen);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  animation: coach-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes coach-pulse {
+  0%, 100% { border-color: var(--zen); }
+  50% { border-color: rgba(247, 201, 72, 0.35); }
+}
+
+[data-motion='reduced'] .coach__ring { animation: none; }
+
+/* ------------------------------------------------------------ the profile */
+
+.profile {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 0.7rem;
+  padding: 0.8rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.profile__avatar { width: 64px; height: 64px; }
+.profile__body { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.profile__name-row { display: flex; align-items: center; gap: 0.35rem; }
+.profile__name { font-size: 1.05rem; }
+.profile.is-generated .profile__name { color: var(--text-dim); }
+
+.profile__edit {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  background: transparent;
+  font-size: 0.72rem;
+}
+
+.profile__edit:hover { color: var(--zen); background: var(--surface-2); }
+
+.profile__title { font-size: 0.78rem; color: var(--zen); }
+.profile__sub { font-size: 0.72rem; color: var(--text-faint); }
+
+.profile__actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.profile__input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-deep);
+  border: 1px solid var(--border-bright);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+}
+
+.profile__input:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* -------------------------------------------------------------- story log */
+
+.profile__story-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.profile__story-count { font-family: var(--font-pixel); font-size: 0.4rem; color: var(--text-faint); }
+
+.story-log { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.story-act {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.6rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.story-act__name { font-size: 0.88rem; }
+.story-act__blurb { font-size: 0.72rem; color: var(--text-faint); line-height: 1.35; }
+.story-act__beats { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+
+.story-beat {
+  padding: 0.22rem 0.5rem;
+  border-radius: 99px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 0.68rem;
+}
+
+.story-beat.is-seen { color: var(--who, var(--text)); border-color: var(--who, var(--border-bright)); }
+.story-beat.is-seen:hover { background: var(--surface-3); }
+.story-beat:disabled { opacity: 0.45; letter-spacing: 0.1em; }
+
+/* ------------------------------------------------------- re-reading a beat */
+
+.beat-read { display: flex; flex-direction: column; gap: 0.5rem; }
+.beat-read__head { display: grid; grid-template-columns: 48px 1fr; gap: 0.6rem; align-items: center; }
+.beat-read__portrait { width: 48px; height: 48px; }
+.beat-read__who { display: flex; flex-direction: column; }
+.beat-read__name { font-size: 0.95rem; }
+.beat-read__role { font-size: 0.72rem; color: var(--text-faint); }
+.beat-read__line { font-size: 0.88rem; line-height: 1.5; color: var(--text-dim); }

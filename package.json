@@ -5,8 +5,8 @@
   "description": "A pixel-art idle clicker RPG about a very relaxed capybara.",
   "type": "module",
   "scripts": {
-    "test": "node --test \"tests/*.test.js\"",
+    "test": "node --experimental-vm-modules --test \"tests/*.test.js\"",
     "serve": "python3 -m http.server 8000"
   },
-  "//": "There are no dependencies and no build step. This file exists so Node treats src/ as ES modules when running the test suite; the game itself is served as plain static files."
+  "//": "There are no dependencies and no build step. This file exists so Node treats src/ as ES modules when running the test suite; the game itself is served as plain static files. The vm-modules flag is for tests/modules.test.js, which parses every source file \u2014 including main.js, which needs a DOM and so is never imported by anything else."
 }

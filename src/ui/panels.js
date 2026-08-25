@@ -183,6 +183,13 @@ export function openSettings(state, { onChange, onReset, onCode, toaster }) {
     onChange();
   }));
 
+  // Opt out of the whole narrative layer — beats and coach marks both. Anyone
+  // who wants an idle game and not a story should be able to have one.
+  body.appendChild(toggle('Skip story and tips', state.story.skip, (v) => {
+    state.story.skip = v;
+    onChange();
+  }));
+
   body.appendChild(el('hr', 'settings__rule'));
 
   // --- secret codes

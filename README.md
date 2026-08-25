@@ -45,13 +45,15 @@ Because it is plain static files, pushing to the Pages branch is the whole deplo
 ## Tests
 
 ```sh
-npm test    # node --test "tests/*.test.js"
+npm test    # node --experimental-vm-modules --test "tests/*.test.js"
 ```
 
 Node's built-in runner, no test framework installed. The suite covers the balance formulas, the
 save/migration path, purchase logic, and the integrity of the content tables — including a check
 that every hand-drawn sprite grid is rectangular and that every character it uses has a colour in
-the palette it gets drawn with.
+the palette it gets drawn with. One suite parses every module in `src/` — `main.js` included, which
+nothing else imports because it needs a DOM — so a syntax error in the file that boots the game
+cannot hide behind a green suite again.
 
 ## How it is put together
 
@@ -102,7 +104,9 @@ synthesised with WebAudio oscillators, so there are no audio files either.
 - **A reset never costs a collection.** Prestige and ascension are rebuilt from `createState()` and
   then explicitly carry a whitelist across, so a field added later resets by default instead of
   leaking through. Companions, gear and trophies are always on the keep list — losing an hour of
-  income is a decision the player made; losing a 5★ they pulled is a betrayal.
+  income is a decision the player made; losing a 5★ they pulled is a betrayal. The story you have
+  read and the name you chose are on that list too — sitting through the opening again is not a
+  cost anyone agreed to.
 - **The gacha shows its numbers.** Both pity counters, the live 5★ rate, and the fact that the rate
   climbs from pull 65 are on screen at all times.
 
@@ -119,6 +123,7 @@ synthesised with WebAudio oscillators, so there are no audio files either.
 | Currencies | Zen, Essence, Leafs, Lotus, tickets, shards |
 | Store | 3 cases with their odds on the card, 5 boosts, 24 cosmetics — all simulated |
 | Season | 45 days, a 100-level two-track pass, 60 simulated rivals, 3 live events of 10 designed |
+| Story | 3 acts, 20 beats, 5 NPCs, a 6-frame opening and 6 coach-marked tutorial steps |
 
 **470 collectible or purchasable entries in total**, plus the systems around them: combo chains,
 crits, Golden Capybaras, offline income, auto-battle, elemental stances, a forge, gacha pity,
@@ -154,5 +159,11 @@ Built in stages. Landed so far:
 - [x] **The season** — 45 days computed from the clock rather than announced by a server, a
       100-level pass across a free and a premium track, sixty simulated rivals whose gear you can
       actually open and read, and three live events of ten designed in `docs/EVENTS.md`
+- [x] **The story** — a pond gone cold and the water stopped somewhere upstream, told in twenty
+      beats across three acts by five capybaras who turn up when something actually happens: a new
+      terrain, a boss down, the wall, a rebirth. A six-frame opening you can skip, then six coach
+      marks that point at the real UI as it unlocks rather than at a wall of modal text. A profile
+      with a name you can change, an avatar and a title from what you own, and a story log that
+      lets you read any beat again. None of it can be reset away.
 - [x] **Retention** — daily and weekly quests, a seven-day login streak, a 40-level free Zen Pass,
       a chest that fills every 15 minutes, eight secret codes, and a stats page that grows as you do

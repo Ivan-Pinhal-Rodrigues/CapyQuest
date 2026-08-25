@@ -32,6 +32,15 @@ export const CAPY_SKINS = {
   seasonal: { ...CAPY_PALETTE, d: '#a8543f', m: '#d1795c', l: '#f0a88c', n: '#7d3a2b' },
   // Event exclusive: Yuzu Harvest.
   harvest: { ...CAPY_PALETTE, d: '#b8902b', m: '#e3c04a', l: '#f7e08a', n: '#8a681a' },
+
+  // The five NPCs. Portraits only — these are not in the cosmetics table and
+  // cannot be worn, because a capybara wearing another capybara is a different
+  // kind of game.
+  npcElder: { ...CAPY_PALETTE, d: '#8e8378', m: '#b5a99b', l: '#ded4c6', n: '#665d54' },
+  npcKeeper: { ...CAPY_PALETTE, d: '#8a5a3c', m: '#b57b54', l: '#d9a37b', n: '#5f3c26' },
+  npcYoung: { ...CAPY_PALETTE, d: '#a3763f', m: '#d19f5c', l: '#f0c78e', n: '#78542a' },
+  npcQuiet: { ...CAPY_PALETTE, d: '#3b3550', m: '#544c70', l: '#7b7199', n: '#26213a' },
+  npcTanuki: { ...CAPY_PALETTE, d: '#4a3a2f', m: '#6e5544', l: '#96775f', n: '#2e231b' },
 };
 
 export const PROP_PALETTE = {

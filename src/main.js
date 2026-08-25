@@ -48,6 +48,14 @@ import {
 } from './systems/season.js';
 import { SeasonPanel } from './ui/seasonPanel.js';
 import { LeaderboardPanel, rivalBody } from './ui/leaderboardPanel.js';
+import { Dialogue } from './ui/dialogue.js';
+import { playCutscene, cutsceneOpen } from './ui/cutscene.js';
+import { showCoachmark, closeCoachmark, coachmarkOpen } from './ui/coachmark.js';
+import { ProfileCard, beatBody, renameBody, lookPickerBody } from './ui/profilePanel.js';
+import { nextStep, markStep } from './systems/onboarding.js';
+import { displayName, setName } from './systems/profile.js';
+import { nextBeat, markSeen, beat as storyBeat } from './systems/story.js';
+import { HOSTILE_CAPYBARAS } from './data/capybaras.js';
 import { leaderboard, rivalsFor } from './systems/leaderboard.js';
 import { activeEvent, syncEvent, addPetals, petalsForClear, exchange } from './systems/events.js';
 import { PREMIUM_PRICE, PREMIUM_LEAFS } from './data/pass.js';
@@ -98,6 +106,7 @@ class Game {
     this.bindDom();
     this.applySettings();
     this.handleRetention();
+    this.maybeOpen();
     this.handleReturn();
     this.golden.start(Date.now(), this.derived.goldenChanceMult);
 
@@ -124,6 +133,13 @@ class Game {
     };
 
     this.scene = new Scene($('scene'));
+    // Over the scene, not over the game: a beat never stops anything.
+    this.dialogue = new Dialogue(document.querySelector('.stage'), {
+      onDone: (beat) => {
+        markSeen(this.state, beat.id);
+        this.save();
+      },
+    });
     this.hud = new Hud(this.refs);
     this.toaster = new Toaster($('toasts'));
 
@@ -135,6 +151,12 @@ class Game {
     });
     this.achievementPanel = new AchievementPanel($('achievementPanel'));
     this.statsPanel = new StatsPanel($('statsPanel'));
+    this.profileCard = new ProfileCard($('profilePanel'), {
+      onRename: () => this.renameProfile(),
+      onPickAvatar: () => this.pickLook('skin'),
+      onPickTitle: () => this.pickLook('title'),
+      onReadBeat: (id) => this.readBeat(id),
+    });
 
     this.questLocked = $('questLocked');
     this.kitLocked = $('kitLocked');
@@ -343,7 +365,7 @@ class Game {
 
   /** Show the login reward once nothing else is holding the screen. */
   flushPendingLogin() {
-    if (!this.pendingLogin || isModalOpen()) return;
+    if (!this.pendingLogin || isModalOpen() || cutsceneOpen()) return;
     const login = this.pendingLogin;
     this.pendingLogin = null;
 
@@ -563,6 +585,28 @@ class Game {
     return true;
   }
 
+  /**
+   * The opening cutscene, once. A save that has played anything at all is not a
+   * new player — someone importing a code onto a new device should land in their
+   * pond, not in a story they have already had.
+   */
+  maybeOpen() {
+    if (this.state.story.onboarded) return;
+
+    if (this.state.lifetimeClicks > 0 || this.state.totalZen > 0) {
+      this.state.story.onboarded = true;
+      this.save();
+      return;
+    }
+
+    playCutscene({
+      onDone: () => {
+        this.state.story.onboarded = true;
+        this.save();
+      },
+    });
+  }
+
   // ----------------------------------------------------------------- return
 
   handleReturn() {
@@ -693,10 +737,15 @@ class Game {
     // Cheap once it has fired: noteWall() returns immediately on a state that
     // has already seen the wall, so this costs nothing for the rest of the run.
     if (!this.state.rebirthUnlocked) this.checkWall();
+    this.checkStory();
+    this.checkTutorial();
 
     // Only the visible panel needs refreshing.
     if (this.tabs.current === 'achievements') this.achievementPanel.update(this.state);
-    if (this.tabs.current === 'stats') this.statsPanel.update(this.state, this.derived, now);
+    if (this.tabs.current === 'stats') {
+      this.profileCard.update(this.state);
+      this.statsPanel.update(this.state, this.derived, now);
+    }
     if (this.tabs.current === 'quest' && this.state.combat.unlocked) {
       this.battlePanel.update(this.state, this.combat, this.cstats);
     }
@@ -813,6 +862,10 @@ class Game {
     // The pass moves while you play, not only while you quest.
     addPassXp(this.state, passXpForClear(enemy.boss));
     addPetals(this.state, petalsForClear(enemy.boss));
+
+    // Meeting a hostile capybara is a story beat as well as a fight — it is the
+    // moment the cold stops being something happening to the water.
+    if (HOSTILE_CAPYBARAS[enemy.id]) s.stats.metCapybara = 1;
 
     const gainedXp = xpForStage(stage, enemy.boss);
     const beforeLevel = this.cstats.level;
@@ -1529,6 +1582,92 @@ class Game {
     this.storePanel.update(this.state);
     this.gearPanel.update(this.state, this.cstats);
     this.save();
+  }
+
+  // ------------------------------------------------------------------- story
+
+  /**
+   * Show whatever beat has come due. dueBeats() only reads, so a beat that
+   * cannot be shown right now — a modal is up, one is already running — simply
+   * comes round again next tick rather than being lost.
+   */
+  checkStory() {
+    if (this.dialogue.open || isModalOpen() || cutsceneOpen()) return;
+    const beat = nextBeat(this.state);
+    if (beat) this.dialogue.show(beat);
+  }
+
+  /**
+   * The next coach mark, if one is due and there is room for it. Marks are
+   * mutually exclusive with the speech bar and with any modal — three things
+   * competing for the same attention is how a tutorial gets hated.
+   */
+  checkTutorial() {
+    // A mark shown a moment before a modal opened is now stranded behind it.
+    // closeCoachmark() does not fire onDismiss, so the step is not marked seen
+    // and simply comes round again once the screen is clear.
+    if (isModalOpen() && coachmarkOpen()) closeCoachmark();
+    if (coachmarkOpen() || this.dialogue.open || isModalOpen() || cutsceneOpen()) return;
+    if (!this.state.story.onboarded) return;
+
+    const step = nextStep(this.state);
+    if (!step) return;
+
+    const mark = showCoachmark({
+      selector: step.selector,
+      title: step.title,
+      body: step.body,
+      onDismiss: () => {
+        markStep(this.state, step.id);
+        this.save();
+      },
+    });
+    // The element was not on screen; it will come round again next tick.
+    if (!mark) return;
+  }
+
+  // ----------------------------------------------------------------- profile
+
+  renameProfile() {
+    const { body, input } = renameBody(displayName(this.state));
+    openModal({
+      title: 'What should we call you?',
+      bodyNode: body,
+      actions: [
+        { label: 'Cancel' },
+        {
+          label: 'That one',
+          variant: 'primary',
+          onClick: () => {
+            setName(this.state, input.value);
+            this.profileCard.update(this.state);
+            this.save();
+          },
+        },
+      ],
+    });
+    setTimeout(() => input.focus(), 30);
+  }
+
+  pickLook(kind) {
+    const body = lookPickerBody(this.state, kind, (id) => {
+      equipCosmetic(this.state, kind, id);
+      this.applyCosmetics();
+      this.profileCard.update(this.state);
+      this.save();
+      closeModal();
+    });
+    openModal({
+      title: kind === 'skin' ? 'Choose a look' : 'Choose a title',
+      bodyNode: body,
+      actions: [{ label: 'Close' }],
+    });
+  }
+
+  readBeat(id) {
+    const beat = storyBeat(id);
+    if (!beat) return;
+    openModal({ title: beat.speaker.name, bodyNode: beatBody(beat), actions: [{ label: 'Close' }] });
   }
 
   // ------------------------------------------------------------------ rivals
