@@ -122,8 +122,9 @@ export class StatsPanel {
     this.row('Global multiplier', fmtMult(derived.globalMult));
 
     // --- quest line
-    if (state.combat.bestStage > 0 || state.combat.clears > 0) {
-      this.row('Best stage', fmtInt(state.combat.bestStage + 1));
+    if (state.combat.bestDepth > 0 || state.combat.clears > 0) {
+      this.row('Best stage', fmtInt(Math.floor(state.combat.bestDepth / 10) + 1));
+      this.row('Deepest level', fmtInt(state.combat.bestDepth + 1));
       this.row('Stages cleared', fmtInt(state.combat.clears));
       this.row('Bosses beaten', fmtInt(state.combat.bossKills));
       this.row('Gear found', fmtInt(state.stats.drops));

@@ -65,10 +65,28 @@ export function fmtMult(value, decimals = 2) {
   return `×${fmt(value, decimals)}`;
 }
 
-/** Duration in ms -> "1h 04m", "3m 20s", "12s". */
+const YEAR_SEC = 365 * 86400;
+
+/**
+ * Duration in ms -> "1h 04m", "3m 20s", "12s".
+ *
+ * Idle-game durations can be genuinely astronomical — the wall detector asks
+ * how long a boss would take to kill, and at depth the honest answer is 10^41
+ * days. Rolling into scientific notation there reads as a bug, so anything past
+ * a year becomes plain language instead.
+ */
 export function fmtTime(ms) {
-  if (!Number.isFinite(ms) || ms < 0) ms = 0;
+  if (Number.isNaN(ms) || ms < 0) ms = 0;
+  // Infinity is a real answer here — an enemy you cannot hurt at all.
+  if (!Number.isFinite(ms)) return 'longer than there has been a pond';
   const totalSec = Math.floor(ms / 1000);
+
+  if (totalSec >= YEAR_SEC * 1000) return 'longer than there has been a pond';
+  if (totalSec >= YEAR_SEC) {
+    const years = totalSec / YEAR_SEC;
+    return `${fmt(years, 1)} year${Math.abs(years - 1) < 0.05 ? '' : 's'}`;
+  }
+
   const d = Math.floor(totalSec / 86400);
   const h = Math.floor((totalSec % 86400) / 3600);
   const m = Math.floor((totalSec % 3600) / 60);

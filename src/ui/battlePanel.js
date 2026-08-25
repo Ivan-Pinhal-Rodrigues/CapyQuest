@@ -1,11 +1,13 @@
-// The Quest panel: the fight itself, zone progress, and the stance selector.
+// The Quest panel: the fight itself, stage progress, the stance selector, and
+// the wall warning that tells you when the run is over.
 
-import { fmt, fmtInt } from './numbers.js';
-import { zoneForStage, stageInZone, isBossStage, STAGES_PER_ZONE, MAX_STAGE } from '../data/zones.js';
+import { fmt, fmtInt, fmtTime } from './numbers.js';
+import { LEVELS_PER_STAGE } from '../balance.js';
 import { ELEMENTS, ELEMENT_IDS } from '../data/elements.js';
-import { buildEnemy } from '../systems/combat.js';
+import { buildEnemy, depthInfo, terrainForDepth } from '../systems/stages.js';
+import { assess } from '../systems/wall.js';
 import { spriteDataUrl } from './icons.js';
-import { ENEMY_SHAPES } from '../render/enemySprites.js';
+import { SHAPES } from '../render/shapes.js';
 
 export class BattlePanel {
   constructor(root, { onToggleAuto, onTravel, onStance }) {
@@ -31,14 +33,25 @@ export class BattlePanel {
     // --- zone progress pips: ten stages, boss last
     this.pips = div('battle__pips');
     this.pipNodes = [];
-    for (let i = 0; i < STAGES_PER_ZONE; i++) {
+    for (let i = 0; i < LEVELS_PER_STAGE; i++) {
       const pip = document.createElement('span');
       pip.className = 'pip';
-      if (i === STAGES_PER_ZONE - 1) pip.classList.add('pip--boss');
+      if (i === LEVELS_PER_STAGE - 1) pip.classList.add('pip--boss');
       this.pips.appendChild(pip);
       this.pipNodes.push(pip);
     }
     r.appendChild(this.pips);
+
+    // --- wall warning
+    this.wall = div('wall');
+    this.wallTitle = div('wall__title');
+    this.wallBody = div('wall__body');
+    const wallTrack = div('wall__track');
+    this.wallFill = div('wall__fill');
+    wallTrack.appendChild(this.wallFill);
+    this.wall.append(this.wallTitle, this.wallBody, wallTrack);
+    this.wall.hidden = true;
+    r.appendChild(this.wall);
 
     // --- the enemy
     this.arena = div('battle__arena');
@@ -117,25 +130,28 @@ export class BattlePanel {
   }
 
   update(state, combat, stats) {
-    const stage = state.combat.stage;
-    const zone = zoneForStage(stage);
-    const inZone = stageInZone(stage);
+    const depth = state.combat.depth;
+    const { stage, level } = depthInfo(depth);
+    const terrain = terrainForDepth(depth);
 
-    setText(this.zoneName, zone.name);
-    setText(this.zoneBlurb, zone.blurb);
-    setText(this.stageLabel, `Stage ${stage + 1} / ${MAX_STAGE + 1}`);
+    setText(this.zoneName, terrain.displayName);
+    setText(this.zoneBlurb, terrain.blurb);
+    // No denominator any more — there is no last stage to count towards.
+    setText(this.stageLabel, `Stage ${stage + 1} · Lv ${level + 1}/${LEVELS_PER_STAGE}`);
 
     this.pipNodes.forEach((pip, i) => {
-      pip.classList.toggle('is-done', i + 1 < inZone);
-      pip.classList.toggle('is-current', i + 1 === inZone);
+      pip.classList.toggle('is-done', i < level);
+      pip.classList.toggle('is-current', i === level);
     });
 
+    this.updateWall(state, stats, stage);
+
     // Show the live enemy when fighting, otherwise a preview of what waits here.
-    const enemy = combat.enemy || buildEnemy(stage);
+    const enemy = combat.enemy || buildEnemy(depth);
     if (enemy.id !== this.currentEnemyId) {
       this.currentEnemyId = enemy.id;
       this.enemySprite.src = spriteDataUrl(
-        ENEMY_SHAPES[enemy.shape],
+        SHAPES[enemy.shape],
         enemy.palette,
         `enemy:${enemy.id}`,
       );
@@ -168,8 +184,34 @@ export class BattlePanel {
     // --- controls
     this.autoBtn.textContent = state.combat.autoBattle ? 'Pause the fight' : 'Start fighting';
     this.autoBtn.classList.toggle('btn--primary', !state.combat.autoBattle);
-    this.backBtn.disabled = stage <= 0;
-    this.fwdBtn.disabled = stage >= Math.min(MAX_STAGE, state.combat.bestStage);
+    this.backBtn.disabled = depth <= 0;
+    this.fwdBtn.disabled = depth >= state.combat.bestDepth;
+  }
+
+  /**
+   * The wall banner. This is the whole point of the rebirth redesign: the game
+   * says "you are stuck" out loud, with the number, instead of leaving the
+   * player to grind into a ceiling they cannot see.
+   */
+  updateWall(state, stats, stage) {
+    const report = assess(stage, stats);
+    const walled = report.walled && stage >= 1;
+
+    this.wall.hidden = !walled && report.pressure < 0.55;
+    if (this.wall.hidden) return;
+
+    this.wall.classList.toggle('is-walled', walled);
+    setText(
+      this.wallTitle,
+      walled ? 'You are stuck here' : 'This boss is getting slow',
+    );
+    setText(
+      this.wallBody,
+      Number.isFinite(report.ttk)
+        ? `${report.boss.name} would take ${fmtTime(report.ttk * 1000)} to bring down. Thirty seconds is the limit.`
+        : `${report.boss.name} cannot be hurt with what you are carrying.`,
+    );
+    this.wallFill.style.transform = `scaleX(${Math.min(1, report.ttk / report.seconds)})`;
   }
 
   updateMatchup(mine, theirs) {
@@ -203,7 +245,7 @@ export class BattlePanel {
       } else if (ev.kind === 'defeat') {
         this.logLine('You went down. Getting back up.', 'lose');
       } else if (ev.kind === 'retreat') {
-        this.logLine(`Fell back to stage ${ev.stage + 1}.`, 'lose');
+        this.logLine(`Fell back to level ${ev.depth + 1}.`, 'lose');
       } else if (ev.kind === 'skill') {
         this.logLine(ev.heal ? `${ev.skill} — recovered ${fmt(ev.heal)} HP` : `${ev.skill}!`, 'skill');
       }

@@ -115,9 +115,53 @@ test('xp and level are inverses', () => {
 });
 
 test('enemy hp and reward scale with stage, bosses are harder', () => {
-  assert.ok(B.enemyHp(10) > B.enemyHp(0));
-  assert.equal(B.enemyHp(5, true), B.enemyHp(5) * 8);
-  assert.ok(B.enemyReward(10) > B.enemyReward(0));
+  assert.ok(B.enemyHp(10, 0) > B.enemyHp(0, 0));
+  assert.equal(B.enemyHp(5, B.BOSS_LEVEL), B.enemyHp(5, B.BOSS_LEVEL, false) * B.BOSS_HP_MULT);
+  assert.ok(B.enemyReward(10, 0) > B.enemyReward(0, 0));
+});
+
+test('every generated stat stays finite at any depth', () => {
+  // Stages are unbounded but doubles are not. Past roughly stage 430 the curve
+  // must flatten into an asymptote rather than becoming Infinity and poisoning
+  // every downstream calculation with NaN.
+  for (const stage of [0, 100, 430, 1000, 100000]) {
+    for (const fn of ['enemyHp', 'enemyAtk', 'enemyDef', 'enemyReward']) {
+      const v = B[fn](stage, 5);
+      assert.ok(Number.isFinite(v), `${fn}(${stage}) is not finite`);
+      assert.ok(v > 0, `${fn}(${stage}) is not positive`);
+      assert.ok(v <= B.VALUE_CEILING, `${fn}(${stage}) exceeded the ceiling`);
+    }
+  }
+  assert.ok(B.enemyHp(200, 0) > B.enemyHp(100, 0), 'growth still applies below the ceiling');
+});
+
+test('the boss wall is what decides a rebirth, not a currency threshold', () => {
+  const bossHp = B.enemyHp(5, B.BOSS_LEVEL);
+  // Exactly enough damage to finish inside the limit is not walled.
+  const justEnough = bossHp / B.WALL_SECONDS;
+  assert.equal(B.isWalled(5, justEnough * 1.01), false);
+  assert.equal(B.isWalled(5, justEnough * 0.99), true);
+  assert.equal(B.isWalled(5, 0), true, 'no damage is always walled');
+  assert.equal(B.timeToKillBoss(5, 0), Infinity);
+});
+
+test('essence pays off depth reached and round-trips', () => {
+  assert.equal(B.essenceFromStage(0), 0);
+  assert.ok(B.essenceFromStage(20) > B.essenceFromStage(10));
+  for (const target of [12, 200, 5000]) {
+    const stage = B.stageForEssence(target);
+    assert.ok(B.essenceFromStage(Math.ceil(stage)) >= target, `${stage} should reach ${target}`);
+  }
+});
+
+test('depth splits and rejoins', () => {
+  for (const depth of [0, 7, 10, 199, 4321]) {
+    const { stage, level } = B.splitLevel(depth);
+    assert.equal(B.absoluteLevel(stage, level), depth);
+    assert.ok(level < B.LEVELS_PER_STAGE);
+  }
+  assert.equal(B.isBossLevel(B.BOSS_LEVEL), true);
+  assert.equal(B.isBossLevel(0), false);
 });
 
 test('gacha pity ramps to a guaranteed five star', () => {

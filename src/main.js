@@ -720,7 +720,7 @@ class Game {
   }
 
   travel(direction) {
-    this.combat.travelTo(this.state.combat.stage + direction);
+    this.combat.travelTo(this.state.combat.depth + direction);
     if (this.state.combat.autoBattle) this.combat.engage(this.cstats);
     audio.buy();
   }

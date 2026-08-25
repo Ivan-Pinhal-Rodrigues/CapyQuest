@@ -393,3 +393,45 @@
   .battle__enemy { width: 80px; height: 80px; }
   .battle__enemy.is-boss { width: 96px; height: 96px; }
 }
+
+/* ------------------------------------------------------------- wall warning */
+
+/* The run-is-over banner. Amber while the boss is merely slowing down, red once
+   thirty seconds is genuinely out of reach. */
+.wall {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(240, 166, 61, 0.12), var(--surface));
+  border: 1px solid var(--gold);
+}
+
+.wall.is-walled {
+  background: linear-gradient(180deg, rgba(232, 85, 109, 0.16), var(--surface));
+  border-color: var(--danger);
+  box-shadow: 0 0 14px rgba(232, 85, 109, 0.2);
+}
+
+.wall__title { font-size: 0.88rem; font-weight: 800; color: var(--gold); }
+.wall.is-walled .wall__title { color: var(--danger); }
+.wall__body { font-size: 0.78rem; color: var(--text-dim); line-height: 1.4; }
+
+.wall__track {
+  height: 5px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.wall__fill {
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--leaf), var(--gold));
+  transition: transform 300ms ease;
+}
+
+.wall.is-walled .wall__fill { background: linear-gradient(90deg, var(--gold), var(--danger)); }

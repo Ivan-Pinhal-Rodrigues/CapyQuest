@@ -1,8 +1,11 @@
-// 13 regular enemies and 12 bosses, built from the eight shapes in
-// render/enemySprites.js by palette swap.
+// The enemy registry: 53 regulars and 18 bosses, built from twelve 24×24 shapes
+// in render/enemySprites.js and two hostile-capybara poses in capySprites.js,
+// all by palette swap.
 //
 // statMod scales the base curve from balance.js: hp/atk/def are multipliers, so
-// a Golem-shaped enemy can be a wall without needing its own formula.
+// a Turtle-shaped enemy can be a wall without needing its own formula.
+
+import { HOSTILE_CAPYBARAS } from './capybaras.js';
 
 const EYE = { e: '#141018', w: '#fdf6e8' };
 
@@ -166,8 +169,209 @@ export const ENEMIES = {
   },
 };
 
+// ---------------------------------------------------------- terrain natives
+//
+// The creatures the infinite-stage terrains introduced, from the four new
+// templates: serpent, moth, turtle, spirit.
+
+const NATIVES = {
+  // --- serpents
+  riversnake: {
+    name: 'River Snake', shape: 'SERPENT', element: 'water',
+    palette: palette('#1e3a5c', '#2f5c87', '#4d8fc9', '#a8d4ff'),
+    statMod: { hp: 1, atk: 1.3, def: 0.85 },
+    blurb: 'Moves with the current, strikes against it.',
+  },
+  brinesnake: {
+    name: 'Brine Serpent', shape: 'SERPENT', element: 'water',
+    palette: palette('#2a4442', '#3f6d68', '#63a39a', '#c9f0e0'),
+    statMod: { hp: 1.15, atk: 1.35, def: 0.95 },
+    blurb: 'Tastes the salt in the water and follows it to you.',
+  },
+  ventsnake: {
+    name: 'Vent Coil', shape: 'SERPENT', element: 'ember',
+    palette: palette('#4a2a3a', '#754458', '#c46b84', '#ffb8c9'),
+    statMod: { hp: 1.2, atk: 1.5, def: 1 },
+    blurb: 'Lives in the hot exhale. Comes out on the inhale.',
+  },
+  abyssnake: {
+    name: 'Abyss Coil', shape: 'SERPENT', element: 'water',
+    palette: palette('#101c2c', '#1e3448', '#385a78', '#8fc4e0'),
+    statMod: { hp: 1.4, atk: 1.7, def: 1.2 },
+    blurb: 'Longer than the light goes.',
+  },
+
+  // --- moths
+  grovemoth: {
+    name: 'Grove Moth', shape: 'MOTH', element: 'leaf',
+    palette: palette('#2f4a1e', '#44702f', '#7cc255', '#e0f0a8'),
+    statMod: { hp: 0.8, atk: 1.2, def: 0.7 },
+    blurb: 'Eats bamboo shoots. Resents being interrupted.',
+  },
+  palemoth: {
+    name: 'Pale Moth', shape: 'MOTH', element: 'moon',
+    palette: palette('#2a2444', '#443a6b', '#8f7cc2', '#e0d4ff'),
+    statMod: { hp: 0.85, atk: 1.3, def: 0.75 },
+    blurb: 'Drawn to the pool, not to you. You are simply in the way.',
+  },
+  lucidmoth: {
+    name: 'Lucid Moth', shape: 'MOTH', element: 'moon',
+    palette: palette('#3a2454', '#573a80', '#9f7cd4', '#ecd9ff'),
+    statMod: { hp: 0.95, atk: 1.4, def: 0.8 },
+    blurb: 'You are fairly sure you dreamt this one first.',
+  },
+  cindermoth: {
+    name: 'Cinder Moth', shape: 'MOTH', element: 'ember',
+    palette: palette('#5c2418', '#8a3a24', '#d97a4a', '#ffcf9a'),
+    statMod: { hp: 0.9, atk: 1.5, def: 0.75 },
+    blurb: 'Wings leave a mark on the air behind them.',
+  },
+  glassmoth: {
+    name: 'Glass Moth', shape: 'MOTH', element: 'moon',
+    palette: palette('#243044', '#3f5470', '#8fb4d4', '#e4f4ff'),
+    statMod: { hp: 0.9, atk: 1.55, def: 0.8 },
+    blurb: 'Silent, because the wings do not touch anything.',
+  },
+  cometmoth: {
+    name: 'Comet Moth', shape: 'MOTH', element: 'sun',
+    palette: palette('#5c4420', '#8a6a30', '#d4b04d', '#fff0a8'),
+    statMod: { hp: 1, atk: 1.7, def: 0.85 },
+    blurb: 'Trails light it did not ask for.',
+  },
+  nullmoth: {
+    name: 'Null Moth', shape: 'MOTH', element: 'moon',
+    palette: palette('#1c1428', '#2e2440', '#54406b', '#9f7cd4'),
+    statMod: { hp: 1.1, atk: 1.9, def: 0.95 },
+    blurb: 'Where it lands, briefly, nothing was.',
+  },
+
+  // --- turtles
+  geodeturtle: {
+    name: 'Geode Turtle', shape: 'TURTLE', element: 'water',
+    palette: palette('#2a5c6b', '#3f87a3', '#6bc2d9', '#d4f7ff'),
+    statMod: { hp: 1.9, atk: 0.85, def: 1.9 },
+    blurb: 'Hollow shell, and something inside is humming along.',
+  },
+  saltturtle: {
+    name: 'Salt Turtle', shape: 'TURTLE', element: 'water',
+    palette: palette('#2a4442', '#3f6d68', '#7ab0a3', '#dff0e4'),
+    statMod: { hp: 2, atk: 0.9, def: 2 },
+    blurb: 'Crusted over so thoroughly it creaks.',
+  },
+  forgeturtle: {
+    name: 'Forge Turtle', shape: 'TURTLE', element: 'sun',
+    palette: palette('#5c3414', '#8a5424', '#d99440', '#ffe0a8'),
+    statMod: { hp: 2.1, atk: 1.1, def: 2.1 },
+    blurb: 'The shell was quenched, once, and remembers it.',
+  },
+  depthturtle: {
+    name: 'Depth Turtle', shape: 'TURTLE', element: 'water',
+    palette: palette('#101c2c', '#1e3448', '#3f6b8a', '#a8ccdd'),
+    statMod: { hp: 2.5, atk: 1.15, def: 2.4 },
+    blurb: 'Built for a pressure you would not survive.',
+  },
+
+  // --- spirits
+  thermalspirit: {
+    name: 'Thermal Spirit', shape: 'SPIRIT', element: 'sun',
+    palette: palette('#5c4a1e', '#8a7030', '#d4b04d', '#fff0a8'),
+    statMod: { hp: 0.85, atk: 1.35, def: 0.7 },
+    blurb: 'A column of warm air with intent.',
+  },
+  cinderspirit: {
+    name: 'Cinder Spirit', shape: 'SPIRIT', element: 'ember',
+    palette: palette('#7a2414', '#b83f24', '#e8734a', '#ffd08a'),
+    statMod: { hp: 0.9, atk: 1.45, def: 0.75 },
+    blurb: 'What is left when the fire finishes and does not stop.',
+  },
+  ashwalker: {
+    name: 'Ashwalker', shape: 'SPIRIT', element: 'ember',
+    palette: palette('#2a1c1c', '#4a3030', '#8a6058', '#d9a08a'),
+    statMod: { hp: 1.1, atk: 1.4, def: 1 },
+    blurb: 'Leaves grey prints. They blow away behind it.',
+  },
+  stillspirit: {
+    name: 'Still Spirit', shape: 'SPIRIT', element: 'moon',
+    palette: palette('#243044', '#3f5470', '#7d9cbc', '#dff0ff'),
+    statMod: { hp: 1.15, atk: 1.5, def: 1.05 },
+    blurb: 'Does not ripple the water it stands on.',
+  },
+  boilspirit: {
+    name: 'Boil Spirit', shape: 'SPIRIT', element: 'ember',
+    palette: palette('#4a2a3a', '#754458', '#b8788c', '#ffc4d4'),
+    statMod: { hp: 1.2, atk: 1.6, def: 1.1 },
+    blurb: 'Rises with the vent and does not settle.',
+  },
+  fallenspirit: {
+    name: 'Fallen Light', shape: 'SPIRIT', element: 'sun',
+    palette: palette('#2c3050', '#474f80', '#8f9cd4', '#fff4c0'),
+    statMod: { hp: 1.25, atk: 1.75, def: 1.1 },
+    blurb: 'Came down with whatever hit the shallows.',
+  },
+  voidspirit: {
+    name: 'Void Spirit', shape: 'SPIRIT', element: 'moon',
+    palette: palette('#1c1428', '#2e2440', '#5c4680', '#a88fd4'),
+    statMod: { hp: 1.4, atk: 2, def: 1.3 },
+    blurb: 'The quiet between two heartbeats, given a shape.',
+  },
+};
+
+// -------------------------------------------------------------- late bosses
+//
+// One boss per terrain; the first twelve are above, these finish the table.
+
+const LATE_BOSSES = {
+  saltMother: {
+    name: 'The Salt Mother', shape: 'TURTLE', element: 'water', boss: true,
+    palette: palette('#1e3330', '#2f544e', '#63a39a', '#dff0e4'),
+    statMod: { hp: 2.2, atk: 1.2, def: 2.2 },
+    blurb: 'The marsh grew around her, not the other way about.',
+  },
+  emberJudge: {
+    name: 'The Ember Judge', shape: 'SPIRIT', element: 'ember', boss: true,
+    palette: palette('#5c1c10', '#8a3020', '#e0704a', '#ffd4a8'),
+    statMod: { hp: 1.6, atk: 1.8, def: 1.3 },
+    blurb: 'Decides what burned fairly. Usually decides it did not.',
+  },
+  theStillLake: {
+    name: 'The Still Lake', shape: 'SPIRIT', element: 'moon', boss: true,
+    palette: palette('#1c2634', '#324458', '#7093b8', '#e0f4ff'),
+    statMod: { hp: 2, atk: 1.6, def: 1.8 },
+    blurb: 'Not a thing in the lake. The lake.',
+  },
+  theBreather: {
+    name: 'The Breather', shape: 'SERPENT', element: 'ember', boss: true,
+    palette: palette('#3a1e2c', '#5c3444', '#b06478', '#ffc4d4'),
+    statMod: { hp: 2.1, atk: 1.9, def: 1.5 },
+    blurb: 'Every vent in the field is one of its mouths.',
+  },
+  theFallen: {
+    name: 'The Fallen', shape: 'GOLEM', element: 'sun', boss: true,
+    palette: palette('#242844', '#3d4470', '#8090c4', '#fff4c0'),
+    statMod: { hp: 2.3, atk: 2, def: 1.9 },
+    blurb: 'Whatever came down is still warm, and still moving.',
+  },
+  theUndertow: {
+    name: 'The Undertow', shape: 'SERPENT', element: 'water', boss: true,
+    palette: palette('#0c1622', '#182c3c', '#356084', '#9fc8e0'),
+    statMod: { hp: 2.7, atk: 2.1, def: 2 },
+    blurb: 'Not a current. A decision the water made about you.',
+  },
+};
+
+Object.assign(ENEMIES, NATIVES, LATE_BOSSES, HOSTILE_CAPYBARAS);
+
 export const ENEMY_IDS = Object.keys(ENEMIES);
 
 export function enemy(id) {
   return ENEMIES[id];
+}
+
+/** Everything that is not a boss — the pool terrains draw from. */
+export function regularEnemyIds() {
+  return ENEMY_IDS.filter((id) => !ENEMIES[id].boss);
+}
+
+export function bossIds() {
+  return ENEMY_IDS.filter((id) => ENEMIES[id].boss);
 }

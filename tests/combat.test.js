@@ -2,20 +2,23 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import * as B from '../src/balance.js';
+import { makeRng } from '../src/balance.js';
 
 import { createState, reconcileState } from '../src/state.js';
-import { Combat, buildEnemy, enemyForStage } from '../src/systems/combat.js';
+import { Combat } from '../src/systems/combat.js';
+import { buildEnemy, buildBoss, depthInfo, toDepth, enemyIdForDepth, terrainForDepth } from '../src/systems/stages.js';
 import { combatStats, equippedItems, equippedBonuses, resolveItem, xpForStage } from '../src/systems/combatStats.js';
 import { rollLoot, shardDrop, addToInventory, equip, scrap, forge, forgePrice, MAX_FORGE, INVENTORY_CAP, rarityCeiling } from '../src/systems/loot.js';
 import { recomputeDerived } from '../src/systems/stats.js';
-import { ZONES, STAGES_PER_ZONE, MAX_STAGE, zoneForStage, stageInZone, isBossStage } from '../src/data/zones.js';
+import { TERRAINS, terrainForStage, enemyPoolForStage, allTerrainEnemyIds } from '../src/data/terrains.js';
 import { ENEMIES } from '../src/data/enemies.js';
 import { GEAR, GEAR_BY_ID, SLOT_IDS, rarityRank, RARITY_ORDER } from '../src/data/gear.js';
 import { SKILLS, SKILLS_BY_ID, SKILL_SLOTS } from '../src/data/skills.js';
 import { ELEMENTS, ELEMENT_IDS } from '../src/data/elements.js';
-import { ENEMY_SHAPES } from '../src/render/enemySprites.js';
+import { SHAPES } from '../src/render/shapes.js';
 import { GEAR_SHAPES } from '../src/render/gearSprites.js';
-import { makeRng } from '../src/balance.js';
+
 
 function combatReady() {
   const s = createState();
@@ -27,27 +30,26 @@ function combatReady() {
 // -------------------------------------------------------------- content
 
 test('the promised RPG content counts are there', () => {
-  assert.equal(ZONES.length, 12, 'zones');
-  assert.equal(MAX_STAGE + 1, 120, 'stages');
+  assert.equal(TERRAINS.length, 18, 'terrains');
   assert.equal(GEAR.length, 42, 'gear pieces');
   assert.equal(SKILLS.length, 18, 'skills');
-  assert.equal(Object.keys(ENEMIES).length, 25, 'enemies + bosses');
-  assert.equal(Object.keys(ENEMY_SHAPES).length, 8, 'enemy shape templates');
+  assert.ok(Object.keys(ENEMIES).length >= 70, `expected 70+ enemies, found ${Object.keys(ENEMIES).length}`);
+  assert.equal(Object.keys(SHAPES).length, 14, 'combatant shape templates');
 });
 
-test('every zone references real enemies, a real boss, and a real element', () => {
-  for (const zone of ZONES) {
-    assert.ok(ELEMENTS[zone.element], `${zone.id}: unknown element`);
-    assert.ok(zone.enemies.length > 0, `${zone.id}: no enemies`);
-    for (const id of zone.enemies) assert.ok(ENEMIES[id], `${zone.id}: unknown enemy "${id}"`);
-    assert.ok(ENEMIES[zone.boss], `${zone.id}: unknown boss "${zone.boss}"`);
-    assert.ok(ENEMIES[zone.boss].boss, `${zone.id}: "${zone.boss}" is not marked as a boss`);
+test('every terrain references real enemies, a real boss, and a real element', () => {
+  for (const t of TERRAINS) {
+    assert.ok(ELEMENTS[t.element], `${t.id}: unknown element`);
+    assert.ok(t.natives.length > 0, `${t.id}: no natives`);
+    for (const id of t.natives) assert.ok(ENEMIES[id], `${t.id}: unknown native "${id}"`);
+    assert.ok(ENEMIES[t.boss]?.boss, `${t.id}: "${t.boss}" is not a flagged boss`);
   }
+  for (const id of allTerrainEnemyIds()) assert.ok(ENEMIES[id], `dangling terrain ref "${id}"`);
 });
 
-test('every enemy has a real shape, a real element and a full palette', () => {
+test('every enemy has a real shape, element and complete palette', () => {
   for (const [id, e] of Object.entries(ENEMIES)) {
-    const shape = ENEMY_SHAPES[e.shape];
+    const shape = SHAPES[e.shape];
     assert.ok(shape, `${id}: unknown shape "${e.shape}"`);
     assert.ok(ELEMENTS[e.element], `${id}: unknown element`);
     assert.ok(e.name && e.blurb, `${id}: missing copy`);
@@ -74,8 +76,7 @@ test('every slot has gear across a spread of rarities', () => {
   for (const slot of SLOT_IDS) {
     const pieces = GEAR.filter((g) => g.slot === slot);
     assert.ok(pieces.length >= 6, `${slot}: only ${pieces.length} pieces`);
-    const rarities = new Set(pieces.map((p) => p.rarity));
-    assert.ok(rarities.size >= 4, `${slot}: only ${rarities.size} distinct rarities`);
+    assert.ok(new Set(pieces.map((p) => p.rarity)).size >= 4, `${slot}: too few rarities`);
   }
 });
 
@@ -85,11 +86,11 @@ test('rarer gear is stronger within a slot', () => {
       .slice()
       .sort((a, b) => rarityRank(a.rarity) - rarityRank(b.rarity));
     const total = (p) => Object.values(p.stats).reduce((a, b) => a + b, 0);
-    assert.ok(total(pieces.at(-1)) > total(pieces[0]), `${slot}: top rarity is not stronger than the bottom`);
+    assert.ok(total(pieces.at(-1)) > total(pieces[0]), `${slot}: top rarity is not stronger`);
   }
 });
 
-test('skills unlock in order and declare what they do', () => {
+test('skills declare what they do and unlock at reachable stages', () => {
   for (const s of SKILLS) {
     assert.ok(s.name && s.blurb, `${s.id}: missing copy`);
     assert.ok(['active', 'passive'].includes(s.kind), `${s.id}: bad kind`);
@@ -99,7 +100,7 @@ test('skills unlock in order and declare what they do', () => {
     } else {
       assert.ok(s.stats || s.bonus, `${s.id}: passive that does nothing`);
     }
-    assert.ok(s.req.stage <= MAX_STAGE, `${s.id}: unlocks past the last stage`);
+    assert.ok(s.req.stage >= 0, `${s.id}: negative unlock stage`);
   }
 });
 
@@ -114,36 +115,91 @@ test('the element chart is symmetric where it claims to be', () => {
 
 // ------------------------------------------------------------ progression
 
-test('stage maths maps onto zones correctly', () => {
-  assert.equal(zoneForStage(0).id, ZONES[0].id);
-  assert.equal(zoneForStage(STAGES_PER_ZONE).id, ZONES[1].id);
-  assert.equal(stageInZone(0), 1);
-  assert.equal(stageInZone(STAGES_PER_ZONE - 1), STAGES_PER_ZONE);
-  assert.equal(isBossStage(STAGES_PER_ZONE - 1), true);
-  assert.equal(isBossStage(0), false);
-  // Past the last zone we clamp rather than reading off the end.
-  assert.equal(zoneForStage(9999).id, ZONES.at(-1).id);
+test('depth splits into a stage and a level', () => {
+  assert.deepEqual(depthInfo(0), { depth: 0, stage: 0, level: 0, isBoss: false });
+  assert.deepEqual(depthInfo(9), { depth: 9, stage: 0, level: 9, isBoss: true });
+  assert.deepEqual(depthInfo(10), { depth: 10, stage: 1, level: 0, isBoss: false });
+  assert.equal(toDepth(3, 4), 34);
 });
 
-test('boss stages hold the zone boss, ordinary stages do not', () => {
-  for (let z = 0; z < ZONES.length; z++) {
-    const bossStage = z * STAGES_PER_ZONE + (STAGES_PER_ZONE - 1);
-    assert.equal(enemyForStage(bossStage).id, ZONES[z].boss);
-    const normal = enemyForStage(z * STAGES_PER_ZONE);
-    assert.ok(!normal.boss, `stage ${z * STAGES_PER_ZONE} should not be a boss`);
+test('the last level of every stage is a boss, and it is the terrain boss', () => {
+  for (let stage = 0; stage < 25; stage++) {
+    const bossDepth = toDepth(stage, 9);
+    assert.equal(depthInfo(bossDepth).isBoss, true, `stage ${stage} level 10 should be a boss`);
+    const terrain = terrainForStage(stage);
+    assert.equal(enemyIdForDepth(bossDepth), terrain.boss);
+    for (let level = 0; level < 9; level++) {
+      assert.equal(depthInfo(toDepth(stage, level)).isBoss, false);
+    }
+  }
+});
+
+test('progression is gentle within a stage and hard between stages', () => {
+  // The whole point of the redesign: the STAGE is the wall, not the level.
+  // Clearing level 8 of a stage should feel like clearing level 1; arriving at
+  // the next stage should not.
+  const withinStage = B.enemyHp(3, 8, false) / B.enemyHp(3, 0, false);
+  const acrossStages = B.enemyHp(4, 0, false) / B.enemyHp(3, 8, false);
+  assert.ok(withinStage < 1.25, `within-stage ramp is ${withinStage.toFixed(2)}, expected under 1.25`);
+  assert.ok(acrossStages > 1.8, `stage jump is ${acrossStages.toFixed(2)}, expected over 1.8`);
+  assert.ok(
+    acrossStages > withinStage * 1.5,
+    `the boundary (${acrossStages.toFixed(2)}) must bite harder than a whole stage of levels (${withinStage.toFixed(2)})`,
+  );
+});
+
+test('there is no last stage', () => {
+  // v1 stopped at 120. Depth is unbounded now.
+  for (const depth of [0, 500, 5000]) {
+    const enemy = buildEnemy(depth);
+    assert.ok(enemy.name, `depth ${depth} produced no enemy`);
+    assert.ok(Number.isFinite(enemy.maxHp), `depth ${depth} produced non-finite HP`);
+    assert.ok(enemy.maxHp > 0);
+  }
+  assert.ok(buildEnemy(400).maxHp > buildEnemy(300).maxHp);
+});
+
+test('terrains cycle with a tier suffix rather than running out', () => {
+  assert.equal(terrainForStage(0).displayName, TERRAINS[0].name);
+  assert.equal(terrainForStage(0).tier, 0);
+
+  const wrapped = terrainForStage(TERRAINS.length);
+  assert.equal(wrapped.id, TERRAINS[0].id, 'the table wraps to the first terrain');
+  assert.equal(wrapped.tier, 1);
+  assert.ok(wrapped.displayName.includes('II'), `expected a tier numeral, got "${wrapped.displayName}"`);
+
+  // Deep stages still name a real place.
+  assert.ok(terrainForStage(999).displayName.length > 0);
+});
+
+test('the enemy pool compounds as terrains stack', () => {
+  const first = enemyPoolForStage(0).length;
+  const middle = enemyPoolForStage(5).length;
+  const last = enemyPoolForStage(TERRAINS.length - 1).length;
+  assert.ok(middle > first, 'later terrains should add enemies, not swap them');
+  assert.ok(last > middle);
+});
+
+test('a depth is a place — the same enemy every time', () => {
+  for (const depth of [3, 17, 88, 431]) {
+    assert.equal(enemyIdForDepth(depth), enemyIdForDepth(depth));
+    assert.equal(buildEnemy(depth).id, buildEnemy(depth).id);
   }
 });
 
 test('enemies get harder every stage and bosses are a spike', () => {
-  const early = buildEnemy(0);
-  const late = buildEnemy(60);
-  assert.ok(late.maxHp > early.maxHp * 100);
-  assert.ok(late.atk > early.atk);
-
-  const before = buildEnemy(STAGES_PER_ZONE - 2);
-  const boss = buildEnemy(STAGES_PER_ZONE - 1);
+  assert.ok(buildEnemy(toDepth(20, 0)).maxHp > buildEnemy(toDepth(0, 0)).maxHp * 100);
+  const before = buildEnemy(toDepth(2, 8));
+  const boss = buildBoss(2);
   assert.ok(boss.boss);
   assert.ok(boss.maxHp > before.maxHp * 4, 'a boss should be a real wall');
+});
+
+test('later cycles of a terrain are meaner than the first', () => {
+  const first = buildEnemy(toDepth(0, 0));
+  const second = buildEnemy(toDepth(TERRAINS.length, 0));
+  assert.ok(second.maxHp > first.maxHp, 'Reedbank II must out-stat Reedbank');
+  assert.ok(second.name !== first.name, 'and carry an epithet');
 });
 
 test('xp rewards grow and bosses pay more', () => {
@@ -357,17 +413,17 @@ test('a fight resolves and clearing a stage advances you', () => {
   const combat = new Combat(s);
 
   let rewarded = null;
-  for (let i = 0; i < 4000 && s.combat.stage === 0; i++) {
+  for (let i = 0; i < 4000 && s.combat.depth === 0; i++) {
     combat.update(0.05, stats, (r) => { rewarded = r; });
   }
 
   assert.ok(rewarded, 'clearing a stage should pay out');
-  assert.equal(s.combat.stage, 1);
+  assert.equal(s.combat.depth, 1);
   assert.equal(s.combat.clears, 1);
   // bestStage must cover the stage you are now standing on, not the one you
   // just cleared — reconcileState clamps stage to bestStage on load, so
   // lagging by one silently rolled the player back on every reload.
-  assert.equal(s.combat.bestStage, 1);
+  assert.equal(s.combat.bestDepth, 1);
 });
 
 test('progress survives a save/load round trip without slipping back', () => {
@@ -376,25 +432,25 @@ test('progress survives a save/load round trip without slipping back', () => {
   const stats = combatStats(s);
   const combat = new Combat(s);
 
-  for (let i = 0; i < 20000 && s.combat.stage < 6; i++) combat.update(0.05, stats, () => {});
-  assert.ok(s.combat.stage >= 6, 'should have made progress to test against');
+  for (let i = 0; i < 20000 && s.combat.depth < 6; i++) combat.update(0.05, stats, () => {});
+  assert.ok(s.combat.depth >= 6, 'should have made progress to test against');
 
   const reloaded = reconcileState(JSON.parse(JSON.stringify(s)));
-  assert.equal(reloaded.combat.stage, s.combat.stage, 'a reload lost a stage of progress');
-  assert.equal(reloaded.combat.bestStage, s.combat.bestStage);
+  assert.equal(reloaded.combat.depth, s.combat.depth, 'a reload lost a stage of progress');
+  assert.equal(reloaded.combat.bestDepth, s.combat.bestDepth);
 });
 
 test('repeated defeats fall back a stage instead of parking on a wall', () => {
   const s = combatReady();
-  s.combat.stage = 40;
-  s.combat.bestStage = 40;
+  s.combat.depth = 40;
+  s.combat.bestDepth = 40;
   const stats = combatStats(s); // level 1 against stage 40: hopeless
   const combat = new Combat(s);
 
-  for (let i = 0; i < 8000 && s.combat.stage === 40; i++) {
+  for (let i = 0; i < 8000 && s.combat.depth === 40; i++) {
     combat.update(0.05, stats, () => {});
   }
-  assert.ok(s.combat.stage < 40, 'should retreat after repeated wipes');
+  assert.ok(s.combat.depth < 40, 'should retreat after repeated wipes');
 });
 
 test('auto-battle off means nothing happens', () => {
@@ -408,13 +464,13 @@ test('auto-battle off means nothing happens', () => {
 
 test('travel is clamped to stages you have actually reached', () => {
   const s = combatReady();
-  s.combat.bestStage = 5;
+  s.combat.bestDepth = 5;
   const combat = new Combat(s);
 
   combat.travelTo(99);
-  assert.equal(s.combat.stage, 5, 'cannot skip ahead');
+  assert.equal(s.combat.depth, 5, 'cannot skip ahead');
   combat.travelTo(-4);
-  assert.equal(s.combat.stage, 0, 'cannot go before the start');
+  assert.equal(s.combat.depth, 0, 'cannot go before the start');
 });
 
 test('elemental stance changes how hard you hit', () => {
@@ -424,7 +480,7 @@ test('elemental stance changes how hard you hit', () => {
   const dealt = (element) => {
     const s = combatReady();
     s.combat.xp = 5000;
-    s.combat.stage = 0; // Reedbank — leaf enemies
+    s.combat.depth = 0; // Reedbank — leaf enemies
     s.combat.element = element;
 
     const combat = new Combat(s);
@@ -465,8 +521,8 @@ test('a save with a broken combat block is repaired, not fatal', () => {
   const s = reconcileState({
     version: 1,
     combat: {
-      stage: 50,
-      bestStage: 3,
+      depth: 50,
+      bestDepth: 3,
       inventory: 'not an array',
       equipped: ['also', 'wrong'],
       skills: { nope: true },
@@ -480,7 +536,7 @@ test('a save with a broken combat block is repaired, not fatal', () => {
   assert.deepEqual(s.combat.skills, []);
   assert.equal(s.combat.xp, 0);
   assert.equal(s.combat.shards, 0);
-  assert.equal(s.combat.stage, 3, 'cannot stand past your best stage');
+  assert.equal(s.combat.depth, 3, 'cannot stand past your best depth');
 });
 
 test('equip references to missing items are dropped on load', () => {

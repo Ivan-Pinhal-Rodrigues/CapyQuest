@@ -104,8 +104,10 @@ export function createState(now = Date.now()) {
     },
 
     combat: {
-      stage: 0,
-      bestStage: 0,
+      // Absolute level index — 0, 1, 2, … with no ceiling. systems/stages.js
+      // splits it into a terrain stage and a level within that stage.
+      depth: 0,
+      bestDepth: 0,
       autoBattle: false, // unlocked by tapping into the first fight
       unlocked: false,
       // Leaf starts neutral against the first zone. Opening the game at a
@@ -234,11 +236,21 @@ export function reconcileState(state, now = Date.now()) {
     }
     out.stats[key] = safeNumber(out.stats[key]);
   }
-  for (const key of ['stage', 'bestStage', 'xp', 'shards', 'clears', 'bossKills']) {
+  // v1 called the absolute level index `stage`. The meaning is identical, so the
+  // migration is a rename — but it has to happen before the numbers are scrubbed
+  // or a v1 save silently restarts at depth 0.
+  if (state.combat && state.combat.depth === undefined && state.combat.stage !== undefined) {
+    out.combat.depth = state.combat.stage;
+    out.combat.bestDepth = state.combat.bestStage ?? state.combat.stage;
+  }
+  delete out.combat.stage;
+  delete out.combat.bestStage;
+
+  for (const key of ['depth', 'bestDepth', 'xp', 'shards', 'clears', 'bossKills']) {
     out.combat[key] = safeNumber(out.combat[key]);
   }
   // You can only be standing somewhere you have actually reached.
-  out.combat.stage = Math.min(out.combat.stage, out.combat.bestStage);
+  out.combat.depth = Math.min(out.combat.depth, out.combat.bestDepth);
 
   out.version = SAVE_VERSION;
   return out;

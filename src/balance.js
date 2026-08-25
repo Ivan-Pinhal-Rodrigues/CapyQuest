@@ -136,14 +136,117 @@ export function yuzuBonus(yuzu, perYuzu = 0.02) {
 
 // -------------------------------------------------------------------- combat
 
-/** Enemy HP scales exponentially with stage; bosses are a hard wall. */
-export function enemyHp(stage, isBoss = false) {
-  return 12 * Math.pow(1.16, Math.max(0, stage)) * (isBoss ? 8 : 1);
+// Progression is deliberately lumpy: the ten levels inside a stage are a gentle
+// ramp, and crossing into the next stage is a jump you feel. That is what makes
+// a *stage* the unit of difficulty rather than a level.
+//
+//   across a stage's 10 levels   LEVEL_GROWTH^9  = ×1.14   (barely felt)
+//   crossing into the next stage STAGE_GROWTH/that = ×1.92   (felt hard)
+//   net per stage                STAGE_GROWTH     = ×2.2
+//
+// Almost all of the difficulty lives in the boundary. Clearing level 7 of a
+// stage should feel like clearing level 6; arriving at the next stage should
+// not. The magnitude is set by where the first rebirth wall has to land —
+// see tests/stages.test.js, which simulates a normal player and asserts it.
+export const LEVELS_PER_STAGE = 10;
+export const STAGE_GROWTH = 2.2;
+export const LEVEL_GROWTH = 1.015;
+export const ATK_STAGE_GROWTH = 1.75;
+export const ATK_LEVEL_GROWTH = 1.012;
+
+/** The last level of every stage is a boss. */
+export const BOSS_LEVEL = LEVELS_PER_STAGE - 1;
+export const BOSS_HP_MULT = 10;
+export const BOSS_ATK_MULT = 1.8;
+export const BOSS_REWARD_MULT = 8;
+
+/** Seconds a boss may take before the run counts as walled. */
+export const WALL_SECONDS = 30;
+
+export function isBossLevel(level) {
+  return level === BOSS_LEVEL;
 }
 
-/** Zen dropped by clearing a stage. */
-export function enemyReward(stage, isBoss = false) {
-  return 8 * Math.pow(1.15, Math.max(0, stage)) * (isBoss ? 12 : 1);
+/** Split an absolute level number into { stage, level }. */
+export function splitLevel(absolute) {
+  const n = Math.max(0, Math.floor(absolute));
+  return { stage: Math.floor(n / LEVELS_PER_STAGE), level: n % LEVELS_PER_STAGE };
+}
+
+export function absoluteLevel(stage, level) {
+  return Math.max(0, stage) * LEVELS_PER_STAGE + Math.max(0, level);
+}
+
+/**
+ * Ceiling for any generated quantity.
+ *
+ * Stages are unbounded, but 64-bit floats are not: 5^441 already exceeds
+ * Number.MAX_VALUE, and past that every stat becomes Infinity and every
+ * downstream calculation becomes NaN. Clamping keeps the game *running* at any
+ * depth — around stage 430 the curve simply becomes an asymptote, which is far
+ * beyond anywhere a player can reach and infinitely better than a broken save.
+ */
+export const VALUE_CEILING = 1e300;
+
+function capped(value) {
+  return Number.isFinite(value) ? Math.min(value, VALUE_CEILING) : VALUE_CEILING;
+}
+
+/** Enemy HP at a stage/level. No last stage — see VALUE_CEILING. */
+export function enemyHp(stage, level = 0, isBoss = isBossLevel(level)) {
+  const s = Math.max(0, stage);
+  const l = Math.max(0, level);
+  return capped(8 * Math.pow(STAGE_GROWTH, s) * Math.pow(LEVEL_GROWTH, l) * (isBoss ? BOSS_HP_MULT : 1));
+}
+
+/** Enemy attack. Grows more slowly than HP so fights get longer, not deadlier. */
+export function enemyAtk(stage, level = 0, isBoss = isBossLevel(level)) {
+  const s = Math.max(0, stage);
+  const l = Math.max(0, level);
+  return capped(4 * Math.pow(ATK_STAGE_GROWTH, s) * Math.pow(ATK_LEVEL_GROWTH, l) * (isBoss ? BOSS_ATK_MULT : 1));
+}
+
+/** Enemy defence. Kept well under HP growth so gear stays the answer, not a wall. */
+export function enemyDef(stage, level = 0) {
+  return capped(2 * Math.pow(1.35, Math.max(0, stage)) * Math.pow(1.04, Math.max(0, level)));
+}
+
+/** Zen dropped by clearing a level. */
+export function enemyReward(stage, level = 0, isBoss = isBossLevel(level)) {
+  const s = Math.max(0, stage);
+  const l = Math.max(0, level);
+  return capped(10 * Math.pow(2.5, s) * Math.pow(1.05, l) * (isBoss ? BOSS_REWARD_MULT : 1));
+}
+
+/**
+ * How long the boss of a stage would take to kill at a given damage-per-second.
+ * Infinity when the player does no damage at all.
+ */
+export function timeToKillBoss(stage, dps) {
+  if (!(dps > 0)) return Infinity;
+  return enemyHp(stage, BOSS_LEVEL, true) / dps;
+}
+
+/**
+ * The rebirth wall: the boss of this stage cannot be finished inside
+ * WALL_SECONDS. This is the signal that the run is over, rather than an
+ * arbitrary currency threshold.
+ */
+export function isWalled(stage, dps, seconds = WALL_SECONDS) {
+  return timeToKillBoss(stage, dps) > seconds;
+}
+
+/** Essence paid by a rebirth, scaling off the deepest stage reached. */
+export function essenceFromStage(deepestStage, bonusMult = 1) {
+  const s = Math.max(0, deepestStage);
+  if (s <= 0) return 0;
+  return Math.floor(12 * Math.pow(s, 1.45) * bonusMult);
+}
+
+/** Deepest stage needed to reach a given essence payout — for the "next at" hint. */
+export function stageForEssence(targetEssence, bonusMult = 1) {
+  if (targetEssence <= 0) return 0;
+  return Math.pow(targetEssence / (12 * bonusMult), 1 / 1.45);
 }
 
 /** Elemental triangle: 1.5x strong, 0.75x weak, 1x neutral. */
@@ -160,16 +263,26 @@ export function damage({ atk, def = 0, crit = false, critMult = 2, element = 1 }
   return Math.max(1, mitigated * (crit ? critMult : 1) * element);
 }
 
-/** Level from accumulated XP: each level costs progressively more. */
+// Levels cost exponentially more, not polynomially more.
+//
+// XP *awarded* grows exponentially with stage (there is no other way to keep a
+// reward meaningful at depth). If XP *required* grew polynomially, levels would
+// run away — a v1 curve produced level 80,000 by stage 19. Matching the two
+// exponentials makes levels advance at a steady handful per stage forever.
+export const XP_BASE = 50;
+export const XP_GROWTH = 1.105;
+
+/** Level from accumulated XP. */
 export function levelFromXp(xp) {
-  if (xp <= 0) return 1;
-  return Math.floor(Math.pow(xp / 50, 1 / 1.6)) + 1;
+  if (!(xp > 0)) return 1;
+  const n = Math.log(1 + (xp * (XP_GROWTH - 1)) / XP_BASE) / Math.log(XP_GROWTH);
+  return Math.floor(n) + 1;
 }
 
 /** Total XP needed to reach a level. */
 export function xpForLevel(level) {
   if (level <= 1) return 0;
-  return Math.ceil(50 * Math.pow(level - 1, 1.6));
+  return Math.ceil((XP_BASE * (Math.pow(XP_GROWTH, level - 1) - 1)) / (XP_GROWTH - 1));
 }
 
 // ---------------------------------------------------------------------- gear

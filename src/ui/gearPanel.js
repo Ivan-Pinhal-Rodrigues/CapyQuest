@@ -361,7 +361,7 @@ export function skillPickerBody(state, onPick) {
   const slotted = new Set(state.combat.skills);
 
   for (const skill of SKILLS) {
-    const unlocked = state.combat.bestStage >= skill.req.stage;
+    const unlocked = Math.floor(state.combat.bestDepth / 10) >= skill.req.stage;
     const row = document.createElement('button');
     row.type = 'button';
     row.className = `picker__row picker__row--skill${unlocked ? '' : ' is-locked'}`;

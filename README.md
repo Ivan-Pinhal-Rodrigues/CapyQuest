@@ -124,9 +124,11 @@ Built in stages. Landed so far:
 
 - [x] **Core** — game loop, saves, pixel renderer, tap juice (crit, combo, particles, squash),
       18 generators, 52 upgrades, offline Nap Report, Golden Capybara, settings
-- [x] **RPG** — stats and levels, auto-battle, 12 zones / 120 stages, 25 enemies and bosses,
-      42 gear pieces across 6 slots, the forge (+0→+15), 18 skills, elemental stances,
-      66 achievements
+- [x] **RPG** — stats and levels, auto-battle, gear across 6 slots, the forge (+0→+15),
+      18 skills, elemental stances, 66 achievements
+- [x] **Infinite stages** — 10 levels per stage with the difficulty in the boundary, 18 cycling
+      terrains, 71 enemies including 18 hostile capybaras, and a wall detector that tells you
+      when the run is over instead of leaving you to grind into a ceiling
 - [x] **Meta** — gacha with a visible pity counter, 24 companions, a party of three, 22 prestige
       relics, 12 ascension constellations, a 27-node talent tree with free respec, and two
       reset layers

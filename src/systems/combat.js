@@ -7,46 +7,14 @@
 import * as B from '../balance.js';
 import { ELEMENT_CHART } from '../data/elements.js';
 import { ENEMIES } from '../data/enemies.js';
-import { ZONES, STAGES_PER_ZONE, zoneForStage, stageInZone, isBossStage, MAX_STAGE } from '../data/zones.js';
 import { SKILLS_BY_ID } from '../data/skills.js';
+import { buildEnemy, depthInfo, terrainForDepth, levelInStage, LEVELS_PER_STAGE } from './stages.js';
 
 const RETREAT_AFTER_LOSSES = 3;
 // Short enough that a clear rolls straight into the next fight, long enough to
 // read what you just killed.
 const RESPAWN_DELAY = 0.8;
 const DEFEAT_DELAY = 1.6;
-
-/** Which enemy stands at a given stage. Deterministic, so a stage is a place. */
-export function enemyForStage(stage) {
-  const zone = zoneForStage(stage);
-  if (isBossStage(stage)) return { id: zone.boss, ...ENEMIES[zone.boss] };
-  const pool = zone.enemies;
-  const id = pool[stage % pool.length];
-  return { id, ...ENEMIES[id] };
-}
-
-/** Full enemy instance for a stage: hp, atk, def, reward. */
-export function buildEnemy(stage) {
-  const def = enemyForStage(stage);
-  const boss = !!def.boss;
-  const mod = def.statMod;
-  const maxHp = B.enemyHp(stage, boss) * mod.hp;
-  return {
-    id: def.id,
-    name: def.name,
-    shape: def.shape,
-    palette: def.palette,
-    element: def.element,
-    blurb: def.blurb,
-    boss,
-    maxHp,
-    hp: maxHp,
-    atk: 4 * Math.pow(1.135, stage) * mod.atk * (boss ? 1.6 : 1),
-    def: 2 * Math.pow(1.12, stage) * mod.def,
-    reward: B.enemyReward(stage, boss),
-    attackEvery: boss ? 1.5 : 2.0,
-  };
-}
 
 export class Combat {
   constructor(state) {
@@ -67,7 +35,7 @@ export class Combat {
 
   /** Start (or restart) the fight at the state's current stage. */
   engage(stats) {
-    this.enemy = buildEnemy(this.state.combat.stage);
+    this.enemy = buildEnemy(this.state.combat.depth);
     this.playerMaxHp = Math.max(1, stats.hp);
     this.playerHp = this.playerMaxHp;
     this.enemyTimer = this.enemy.attackEvery;
@@ -233,39 +201,41 @@ export class Combat {
   settle(onReward) {
     if (this.phase === 'won') {
       this.losses = 0;
-      const stage = this.state.combat.stage;
+      const depth = this.state.combat.depth;
       const cleared = this.enemy;
       this.state.combat.clears = (this.state.combat.clears || 0) + 1;
       if (cleared.boss) this.state.combat.bossKills = (this.state.combat.bossKills || 0) + 1;
 
-      onReward?.({ stage, enemy: cleared });
+      onReward?.({ depth, stage: cleared.stage, enemy: cleared });
 
-      if (stage < MAX_STAGE) this.state.combat.stage = stage + 1;
-      // bestStage is the furthest stage *reached*, not the furthest cleared —
-      // it has to include the one you are standing on, or the load-time clamp
-      // (stage <= bestStage) knocks you back a stage on every reload.
-      this.state.combat.bestStage = Math.max(this.state.combat.bestStage, this.state.combat.stage);
-      this.emit({ kind: 'cleared', stage, enemy: cleared });
+      // There is no last depth. This is the point of the update.
+      this.state.combat.depth = depth + 1;
+      // bestDepth is the furthest *reached*, not the furthest cleared — it has
+      // to include the one you are standing on, or the load-time clamp
+      // (depth <= bestDepth) knocks you back a level on every reload.
+      this.state.combat.bestDepth = Math.max(this.state.combat.bestDepth, this.state.combat.depth);
+      this.emit({ kind: 'cleared', depth, enemy: cleared });
       return;
     }
 
     if (this.phase === 'lost') {
       this.losses++;
-      this.emit({ kind: 'defeat', stage: this.state.combat.stage, losses: this.losses });
-      // Repeated wipes drop you back a stage rather than parking you on a wall
-      // you cannot pass — the grind should always be moving somewhere.
-      if (this.losses >= RETREAT_AFTER_LOSSES && this.state.combat.stage > 0) {
-        this.state.combat.stage--;
+      this.emit({ kind: 'defeat', depth: this.state.combat.depth, losses: this.losses });
+      // Repeated wipes drop you back a level rather than parking you on a wall
+      // you cannot pass — the grind should always be moving somewhere. Rebirth
+      // is the real answer, and systems/wall.js is what says so.
+      if (this.losses >= RETREAT_AFTER_LOSSES && this.state.combat.depth > 0) {
+        this.state.combat.depth--;
         this.losses = 0;
-        this.emit({ kind: 'retreat', stage: this.state.combat.stage });
+        this.emit({ kind: 'retreat', depth: this.state.combat.depth });
       }
     }
   }
 
-  /** Jump to a stage the player has already beaten. */
-  travelTo(stage) {
-    const target = B.clamp(Math.floor(stage), 0, Math.min(MAX_STAGE, this.state.combat.bestStage));
-    this.state.combat.stage = target;
+  /** Jump to a depth the player has already reached. No upper bound but theirs. */
+  travelTo(depth) {
+    const target = B.clamp(Math.floor(depth), 0, this.state.combat.bestDepth);
+    this.state.combat.depth = target;
     this.losses = 0;
     this.phase = 'idle';
     this.enemy = null;
@@ -279,4 +249,4 @@ export class Combat {
   }
 }
 
-export { ZONES, STAGES_PER_ZONE, zoneForStage, stageInZone, isBossStage, MAX_STAGE };
+export { buildEnemy, depthInfo, terrainForDepth, levelInStage, LEVELS_PER_STAGE };

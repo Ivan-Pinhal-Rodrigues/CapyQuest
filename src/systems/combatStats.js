@@ -13,7 +13,7 @@ import { combatModifiers } from './meta.js';
 import { partyMembers } from './gacha.js';
 
 const BASE = { atk: 10, def: 5, hp: 100, spd: 20, crit: 0.05, critDmg: 0, luck: 0 };
-const GROWTH = { atk: 1.085, def: 1.075, hp: 1.095 };
+const GROWTH = { atk: 1.12, def: 1.075, hp: 1.095 };
 
 function emptyBlock() {
   return { atk: 0, def: 0, hp: 0, spd: 0, crit: 0, critDmg: 0, luck: 0 };
@@ -86,5 +86,5 @@ export function combatStats(state) {
 
 /** XP awarded for clearing a stage. */
 export function xpForStage(stage, isBoss) {
-  return Math.ceil(6 * Math.pow(1.09, stage) * (isBoss ? 5 : 1));
+  return Math.ceil(6 * Math.pow(2.2, stage) * (isBoss ? 5 : 1));
 }

@@ -60,9 +60,9 @@ export const ACHIEVEMENTS = [
   { id: 'firstBoss', name: 'Regicide', blurb: 'Beat the Reed King.', req: { bossKills: 1 }, reward: { type: 'clickMult', value: 1.1 } },
   { id: 'boss5', name: 'Serial Deposer', blurb: 'Beat 5 bosses.', req: { bossKills: 5 }, reward: { type: 'zpsMult', value: 1.1 } },
   { id: 'boss12', name: 'The Whole Pond', blurb: 'Beat every boss in the game.', req: { bossKills: 12 }, reward: { type: 'globalMult', value: 1.25 } },
-  { id: 'stage25', name: 'Downstream', blurb: 'Reached stage 25.', req: { stage: 25 }, reward: { type: 'globalMult', value: 1.03 } },
-  { id: 'stage60', name: 'Deep Water', blurb: 'Reached stage 60.', req: { stage: 60 }, reward: { type: 'globalMult', value: 1.06 } },
-  { id: 'stage100', name: 'The Still Point', blurb: 'Reached stage 100.', req: { stage: 100 }, reward: { type: 'globalMult', value: 1.15 } },
+  { id: 'stage25', name: 'Downstream', blurb: 'Reached stage 25.', req: { stage: 3 }, reward: { type: 'globalMult', value: 1.03 } },
+  { id: 'stage60', name: 'Deep Water', blurb: 'Reached stage 60.', req: { stage: 8 }, reward: { type: 'globalMult', value: 1.06 } },
+  { id: 'stage100', name: 'The Still Point', blurb: 'Reached stage 100.', req: { stage: 14 }, reward: { type: 'globalMult', value: 1.15 } },
   { id: 'level10', name: 'Growing Up', blurb: 'Reached level 10.', req: { level: 10 }, reward: { type: 'clickMult', value: 1.08 } },
   { id: 'level30', name: 'Full Grown', blurb: 'Reached level 30.', req: { level: 30 }, reward: { type: 'clickMult', value: 1.15 } },
   { id: 'level60', name: 'Absolute Unit', blurb: 'Reached level 60.', req: { level: 60 }, reward: { type: 'globalMult', value: 1.2 } },
@@ -83,9 +83,9 @@ export const ACHIEVEMENTS = [
   { id: 'fullLoadout', name: 'Full Loadout', blurb: 'Slotted three skills at once.', req: { skillsSlotted: 3 }, reward: { type: 'globalMult', value: 1.05 } },
 
   // ------------------------------------------------------------------ zones
-  { id: 'zone3', name: 'Three Ponds Over', blurb: 'Reached the Scalding Springs.', req: { stage: 20 }, reward: { type: 'zpsMult', value: 1.04 } },
-  { id: 'zone6', name: 'Halfway Down', blurb: 'Reached the Night Market.', req: { stage: 50 }, reward: { type: 'zpsMult', value: 1.08 } },
-  { id: 'zone9', name: 'Above The Clouds', blurb: 'Reached the Sky Terrace.', req: { stage: 80 }, reward: { type: 'zpsMult', value: 1.12 } },
+  { id: 'zone3', name: 'Three Ponds Over', blurb: 'Reached the Scalding Springs.', req: { stage: 2 }, reward: { type: 'zpsMult', value: 1.04 } },
+  { id: 'zone6', name: 'Halfway Down', blurb: 'Reached the Night Market.', req: { stage: 6 }, reward: { type: 'zpsMult', value: 1.08 } },
+  { id: 'zone9', name: 'Above The Clouds', blurb: 'Reached the Sky Terrace.', req: { stage: 11 }, reward: { type: 'zpsMult', value: 1.12 } },
   { id: 'shards10k', name: 'Well Supplied', blurb: 'Banked 10,000 forge shards.', req: { shards: 10e3 }, reward: { type: 'globalMult', value: 1.05 } },
   { id: 'richPaws', name: 'Rich Paws', blurb: 'Held a billion zen at one time.', req: { heldZen: 1e9 }, reward: { type: 'clickMult', value: 1.12 } },
 
@@ -119,7 +119,7 @@ export function achievementMet(ach, state) {
   const c = state.combat || {};
   if (r.clears != null && (c.clears || 0) < r.clears) return false;
   if (r.bossKills != null && (c.bossKills || 0) < r.bossKills) return false;
-  if (r.stage != null && (c.bestStage || 0) < r.stage) return false;
+  if (r.stage != null && Math.floor((c.bestDepth || 0) / 10) < r.stage) return false;
   if (r.level != null && (s.bestLevel || 0) < r.level) return false;
   if (r.drops != null && (s.drops || 0) < r.drops) return false;
   if (r.forges != null && (s.forges || 0) < r.forges) return false;

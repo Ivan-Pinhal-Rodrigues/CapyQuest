@@ -15,6 +15,11 @@
 //   achievements  number of achievements unlocked
 //   upgrade       id of another upgrade that must already be owned
 
+/** Deepest TERRAIN stage reached, derived from the absolute depth. */
+function bestStageReached(state) {
+  return Math.floor((state.combat?.bestDepth ?? 0) / 10);
+}
+
 export function meetsRequirement(req, state) {
   if (!req) return true;
 
@@ -24,7 +29,7 @@ export function meetsRequirement(req, state) {
   if (req.zps != null && (state.derived?.zps ?? 0) < req.zps) return false;
   if (req.prestige != null && state.prestigeCount < req.prestige) return false;
   if (req.yuzu != null && state.yuzu < req.yuzu) return false;
-  if (req.stage != null && (state.combat?.bestStage ?? 0) < req.stage) return false;
+  if (req.stage != null && bestStageReached(state) < req.stage) return false;
 
   if (req.building) {
     if ((state.buildings[req.building.id] || 0) < req.building.count) return false;
