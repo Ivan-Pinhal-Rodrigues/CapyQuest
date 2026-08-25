@@ -40,6 +40,9 @@ export function createState(now = Date.now()) {
     achievements: {}, // id -> unlock timestamp
     constellations: {}, // id -> ranks (survives ascension)
     tree: {}, // rebirth tree node id -> ranks (survives rebirth)
+    // Keystones taken, at most KEYSTONE_MAX of them. Survives a rebirth for
+    // exactly the same reason the tree does: it is the thing the reset buys.
+    keystones: [],
 
     gacha: {
       tickets: 0,
@@ -232,6 +235,9 @@ export function reconcileState(state, now = Date.now()) {
   }
   delete out.relics;
   delete out.talents;
+
+  // A save from before keystones existed simply has none.
+  out.keystones = stringList(state.keystones).slice(0, 8);
 
   out.gacha = { ...base.gacha, ...(state.gacha || {}) };
   out.gacha.pity = {

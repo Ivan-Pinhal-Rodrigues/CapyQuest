@@ -112,6 +112,7 @@ export function rebirth(state, now = Date.now()) {
     // The tree is the whole point of pressing the button. Every rank ever
     // bought, in every branch, survives untouched.
     tree: state.tree,
+    keystones: state.keystones,
     constellations: state.constellations,
     stats: state.stats,
     settings: state.settings,

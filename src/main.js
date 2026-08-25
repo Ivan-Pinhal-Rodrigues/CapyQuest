@@ -30,7 +30,8 @@ import { GachaPanel, pullResultsBody, companionDetailBody, partyPickerBody } fro
 import { summon, buyTicket, ticketPrice, ownedCompanions, TEN_PULL } from './systems/gacha.js';
 import { rebirth, rebirthPreview, noteWall } from './systems/rebirth.js';
 import { ascend, ascendPreview, buyConstellation } from './systems/ascension.js';
-import { buyNode, respec } from './systems/tree.js';
+import { buyNode, respec, hasKeystone, takeKeystone, dropKeystone } from './systems/tree.js';
+import { KEYSTONE_COST, KEYSTONE_GATE } from './data/keystones.js';
 import { openCase } from './systems/cases.js';
 import { buyBoost, buyLeafPack, claimDailyLeafs, dailyLeafsReady, LEAF_PACKS_BY_ID, SIMULATED_NOTICE } from './systems/store.js';
 import { buyCosmetic, checkUnlocks, equipCosmetic, equipped, owns } from './systems/cosmetics.js';
@@ -201,6 +202,7 @@ class Game {
       onBuyStar: (id) => this.purchaseConstellation(id),
       onBuyNode: (id) => this.purchaseNode(id),
       onRespec: () => this.doRespec(),
+      onKeystone: (id) => this.toggleKeystone(id),
     });
 
     this.storePanel = new StorePanel($('storePanel'), {
@@ -1888,6 +1890,51 @@ class Game {
           },
         },
       ],
+    });
+  }
+
+  /**
+   * Take a keystone, or drop one you already have.
+   *
+   * Both directions are one tap and dropping refunds in full, for the same
+   * reason respec is free: a commitment you cannot walk back is not a build,
+   * it is a mistake you have to live in.
+   */
+  toggleKeystone(id) {
+    const state = this.state;
+    if (hasKeystone(state, id)) {
+      const out = dropKeystone(state, id);
+      if (!out.ok) return;
+      audio.buy();
+      this.afterMetaChange();
+      this.toaster.show({
+        title: 'Keystone dropped',
+        body: `${fmtInt(out.refunded)} essence back. Nothing is locked in.`,
+        kind: 'info',
+        icon: '🪨',
+      });
+      return;
+    }
+
+    const out = takeKeystone(state, id);
+    if (!out.ok) {
+      audio.denied();
+      const why = {
+        locked: `Needs ${KEYSTONE_GATE} ranks in that branch first.`,
+        full: 'All three keystone slots are taken. Drop one to swap.',
+        poor: `Costs ${fmtInt(KEYSTONE_COST)} essence.`,
+      }[out.reason];
+      if (why) this.toaster.show({ title: 'Not yet', body: why, kind: 'warn', icon: '🪨' });
+      return;
+    }
+
+    audio.achievement();
+    this.afterMetaChange();
+    this.toaster.show({
+      title: out.keystone.name,
+      body: out.keystone.line,
+      kind: 'buff',
+      icon: '🪨',
     });
   }
 

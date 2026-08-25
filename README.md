@@ -117,7 +117,7 @@ synthesised with WebAudio oscillators, so there are no audio files either.
 
 | | |
 |---|---|
-| Purchasable upgrades | **292** — 16 tap, 18 generators, 36 generator tiers, 210 tree nodes, 12 constellations |
+| Purchasable upgrades | **306** — 16 tap, 18 generators, 36 generator tiers, 210 tree nodes, 14 keystones, 12 constellations |
 | Gear | 42 pieces across 6 slots, on a 20-rung rarity ladder, 1–5 stars, enhanceable +0 → +15 |
 | Companions | 24, summoned, three in the party |
 | Combat skills | 18, three slotted, cast by hand or automatically |
@@ -179,6 +179,13 @@ Built in stages. Landed so far:
       four fixed bands rather than on hand-picked numbers, because two hundred entries each
       paying "just a few percent" compounds to a factor of eight million; a full clear is worth
       x68, which is a number somebody chose.
+- [x] **A tree with a shape** — 210 nodes of "+x% per rank" and a free respec is a shopping
+      list: buy long enough and you own all of it, and nothing you did was a decision. There
+      are now 14 keystones, two per branch, each a large gain and a real cost in one package —
+      and you may hold three. Tier 5 and 6 are limited to three branches of seven, and twenty
+      of the deepest nodes only pay a build that has earned them. Measured on one baseline, the
+      tapping build out-taps the idle build by a factor of millions and loses to it while
+      asleep; neither is a better version of the other.
 - [x] **A fight you can play** — combat used to run itself entirely: skills fired on cooldown,
       every decision was made outside the fight, and the whole RPG half was silent. Enemies now
       wind up their heavy hits and tell you first; reading the tell halves the blow and fills a

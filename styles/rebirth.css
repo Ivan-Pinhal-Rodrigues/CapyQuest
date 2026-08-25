@@ -217,3 +217,95 @@
   .tree-node { min-height: 50px; }
   .tree-node__name { font-size: 0.5rem; }
 }
+
+/* ================================================================ keystones
+   Two per branch, three taken in total. They sit above the grid because they
+   are not the bottom of a branch — they are what the branch is for. */
+
+.keystones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+
+.keystones__head {
+  font-family: var(--font-pixel);
+  font-size: 0.38rem;
+  color: var(--text-faint);
+}
+
+.keystones__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.keystone {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--branch, var(--border));
+  text-align: left;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.keystone:disabled { opacity: 0.45; cursor: default; }
+.keystone:not(:disabled):hover { background: var(--surface-2); }
+
+.keystone.is-taken {
+  background: var(--surface-2);
+  border-color: var(--zen);
+  box-shadow: 0 0 10px var(--zen-glow);
+  opacity: 1;
+}
+
+.keystone__name { font-size: 0.86rem; color: var(--text); }
+.keystone.is-taken .keystone__name { color: var(--zen); }
+
+.keystone__line {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  font-style: italic;
+  line-height: 1.35;
+}
+
+/* The terms, always visible. A keystone whose drawback you have to hover to
+   discover is a keystone that will be taken by accident. */
+.keystone__terms {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  line-height: 1.35;
+}
+
+.keystone__status {
+  font-family: var(--font-pixel);
+  font-size: 0.34rem;
+  color: var(--text-faint);
+}
+
+.keystone.is-taken .keystone__status { color: var(--leaf); }
+
+/* A node blocked by the three-branch limit reads differently from one you
+   simply have not paid for — the first is a choice, the second is a price. */
+.tree-node.is-shallow {
+  border-style: dashed;
+  opacity: 0.4;
+}
+
+/* Conditional nodes get a marker, so "why is this one doing nothing" has an
+   answer visible on the node rather than only in a tooltip. */
+.tree-node.is-conditional .tree-node__name::after {
+  content: ' ◆';
+  color: var(--zen);
+  font-size: 0.7em;
+}
+
+@media (max-width: 480px) {
+  .keystones__row { grid-template-columns: 1fr; }
+}

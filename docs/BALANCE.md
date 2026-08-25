@@ -171,6 +171,56 @@ walled you. The curve is sub-linear per stage and super-linear overall, so going
 deeper is always worth more than going one, but never enough to make a single deep run
 replace several shallow ones.
 
+## The tree, and what makes it a build
+
+210 nodes, 7 branches, 23 effect types, every one a linear "+x% per rank". With free respec
+and Essence arriving forever, that is a shopping list: you eventually buy all of it, and no
+step along the way was a decision. Three things now stop that.
+
+| | |
+|---|---|
+| Keystones | 14, two per branch, **at most 3 taken** |
+| Keystone gate | 70 ranks in that branch (the same point tier 5 opens) |
+| Keystone cost | 24,000 Essence, refunded in full if dropped |
+| Deep branches | tier 5+ in **at most 3 of 7** branches |
+| Conditional nodes | 20, all at tier 6 |
+
+A keystone is one rank, a large gain and a real cost in the same package. The cap is what
+forces the choice — without it you eventually own all fourteen and the drawbacks average out
+into a wash, which is the shopping list again with extra steps.
+
+Measured, on an identical baseline of ranks and generators:
+
+| Build | Effect |
+|---|---|
+| Hands On + Restless | tap ×3.05 |
+| Hermit + The Absentee | idle ×2.60, tap ×0.0000005 |
+| Immovable + Stone Skin | health ×1.74, speed down a third |
+| Glass Cannon | crit ×6.4 → ×8.9, health ×0.77 |
+| Blur + Unbroken | speed 43 → 79, attack ×0.85 |
+
+The tapping build out-taps the idle build by a factor of millions; the idle build out-earns it
+while asleep. Neither is a better version of the other, which is what makes picking one a
+decision rather than a calculation.
+
+### Two keystones that did the opposite of what they said
+
+Both found by measuring builds, not by reading the code. Tap value is
+`(base + flat)·mult + zps·zpsShare`, and with any real pond that second term dwarfs the first.
+
+**The Absentee** was `zpsMult ×2.6` with a drawback of `clickMult ×0.12` — and came out a
+*tapping buff*, because raising zps raised the `zps·zpsShare` term far more than cutting
+`clickMult` lowered the other one. It now cuts `zpsShare` to zero as well, which is what
+"tapping becomes almost ceremonial" was always supposed to mean.
+
+**Hands On** was `clickMult ×3.2` with a drawback of `zpsMult ×0.3`, and left you tapping for
+*less than before* for the same reason in reverse. Its cost moved onto income while away,
+which does not feed back into the tap.
+
+Between them they also exposed a live bug: `zpsShare: -1` was subtracting the whole pond from
+the tap and producing a **negative click value**. The floors added for keystones were on the
+values reported out of `recomputeDerived`, not on the one the formula consumes.
+
 ## The rarity ladder
 
 `RARITY_MULT = 1.45` per rung, twenty rungs, `STAR_STEP` per star, forge +0 → +15.

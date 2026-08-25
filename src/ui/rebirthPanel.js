@@ -10,7 +10,18 @@ import { fmt, fmtInt, fmtTime } from './numbers.js';
 import { CONSTELLATIONS } from '../data/constellations.js';
 import { rankCost, ascendPreview, ASCEND_MIN_ESSENCE, ASCENSION_ROADMAP } from '../systems/ascension.js';
 import { TREE_BRANCHES, TIER_GATES, TIERS, treeLayout } from '../data/rebirthTree.js';
-import { branchSpend, isNodeUnlocked, nextCost, ranksOf, treeSummary } from '../systems/tree.js';
+import { KEYSTONE_COST, KEYSTONE_GATE, keystonesFor } from '../data/keystones.js';
+import { NODE_CONDITIONS, conditionLabel } from '../data/conditions.js';
+import {
+  branchSpend,
+  canBuyNode,
+  canTakeKeystone,
+  hasKeystone,
+  isNodeUnlocked,
+  nextCost,
+  ranksOf,
+  treeSummary,
+} from '../systems/tree.js';
 import { rebirthPreview } from '../systems/rebirth.js';
 
 export class RebirthPanel {
@@ -96,6 +107,9 @@ export class RebirthPanel {
     for (const [, ref] of this.nodeRefs) {
       ref.column.hidden = ref.branch !== id;
     }
+    if (this.keystoneRefs) {
+      for (const [, ref] of this.keystoneRefs) ref.cell.hidden = ref.branch !== id;
+    }
     this.applyBranchChrome();
   }
 
@@ -129,6 +143,30 @@ export class RebirthPanel {
     this.treeWrap.appendChild(picker);
 
     this.branchBlurb = add(this.treeWrap, 'p', 'tree__blurb');
+
+    // Keystones sit above the grid rather than inside it. They are not the
+    // bottom of the branch, they are what the branch is *for*, and burying two
+    // build-defining choices among thirty percentage nodes would lose them.
+    this.keystoneWrap = section('keystones');
+    this.keystoneHead = add(this.keystoneWrap, 'p', 'keystones__head');
+    this.keystoneRow = section('keystones__row');
+    this.keystoneWrap.appendChild(this.keystoneRow);
+    this.keystoneRefs = new Map();
+    for (const branch of TREE_BRANCHES) {
+      for (const k of keystonesFor(branch.id)) {
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'keystone';
+        const name = add(cell, 'strong', 'keystone__name', k.name);
+        const line = add(cell, 'span', 'keystone__line', k.line);
+        const terms = add(cell, 'span', 'keystone__terms');
+        const status = add(cell, 'span', 'keystone__status');
+        cell.addEventListener('click', () => this.h.onKeystone(k.id));
+        this.keystoneRow.appendChild(cell);
+        this.keystoneRefs.set(k.id, { cell, name, line, terms, status, keystone: k, branch: branch.id });
+      }
+    }
+    this.treeWrap.appendChild(this.keystoneWrap);
 
     this.treeGrid = section('tree__grid');
     const layout = treeLayout();
@@ -265,7 +303,9 @@ export class RebirthPanel {
       this.essenceLabel,
       `${fmtInt(state.essence)} essence · ${summary.ranks}/${summary.maxRanks} ranks`,
     );
-    this.respecBtn.disabled = summary.ranks === 0;
+    this.respecBtn.disabled = summary.ranks === 0 && summary.keystones.length === 0;
+
+    this.updateKeystones(state, summary);
 
     for (const [id, ref] of this.branchRefs) {
       const spend = branchSpend(state, id);
@@ -290,6 +330,7 @@ export class RebirthPanel {
       const price = nextCost(state, node.id);
       const maxed = price === null;
       const affordable = !maxed && unlocked && state.essence >= price;
+      const check = canBuyNode(state, node.id);
 
       setText(rank, `${owned}/${node.max}`);
       setText(cost, maxed ? 'MAX' : fmt(price));
@@ -298,9 +339,64 @@ export class RebirthPanel {
       cell.classList.toggle('is-locked', !unlocked);
       cell.classList.toggle('is-ready', affordable);
       cell.disabled = maxed || !unlocked || !affordable;
-      cell.title = unlocked
-        ? `${node.name} — ${node.blurb}`
-        : `${node.name} — needs ${TIER_GATES[node.tier]} ranks in this branch`;
+      // A deep node blocked by the three-branch limit is not the same as one
+      // you have not paid for yet, and the tooltip has to say which.
+      const shallow = check.reason === 'shallow';
+      cell.classList.toggle('is-shallow', shallow);
+
+      const condition = NODE_CONDITIONS[node.id];
+      cell.classList.toggle('is-conditional', !!condition);
+      const conditionText = condition ? ` (${conditionLabel(condition)})` : '';
+
+      cell.title = shallow
+        ? `${node.name} — you are already committed to ${check.deep.length} branches. Respec to change that.`
+        : unlocked
+          ? `${node.name} — ${node.blurb}${conditionText}`
+          : `${node.name} — needs ${TIER_GATES[node.tier]} ranks in this branch`;
+    }
+  }
+
+  /**
+   * The keystones for the open branch. Two per branch, at most three taken in
+   * total, and the header says how many of those three are gone — a cap you
+   * cannot see is a cap you resent.
+   */
+  updateKeystones(state, summary) {
+    setText(
+      this.keystoneHead,
+      `Keystones — ${summary.keystones.length} of ${summary.keystoneMax} taken` +
+        (summary.deep.length
+          ? ` · deep in ${summary.deep.length} of ${summary.deepMax} branches`
+          : ''),
+    );
+
+    for (const [id, ref] of this.keystoneRefs) {
+      const { cell, terms, status, keystone } = ref;
+      const owned = hasKeystone(state, id);
+      const check = canTakeKeystone(state, id);
+
+      setText(terms, describeKeystone(keystone));
+      cell.classList.toggle('is-taken', owned);
+      cell.classList.toggle('is-locked', !owned && check.reason === 'locked');
+
+      if (owned) {
+        setText(status, 'Taken — tap to drop, essence back in full');
+        cell.disabled = false;
+        cell.title = 'Drop this keystone. The essence comes back.';
+        continue;
+      }
+
+      cell.disabled = !check.ok;
+      if (check.reason === 'locked') {
+        setText(status, `Needs ${KEYSTONE_GATE} ranks in this branch`);
+      } else if (check.reason === 'full') {
+        setText(status, `All ${summary.keystoneMax} slots are taken`);
+      } else if (check.reason === 'poor') {
+        setText(status, `${fmt(KEYSTONE_COST)} essence`);
+      } else {
+        setText(status, `Take it — ${fmt(KEYSTONE_COST)} essence`);
+      }
+      cell.title = `${keystone.name} — ${describeKeystone(keystone)}`;
     }
   }
 
@@ -349,3 +445,37 @@ function button(className, label, onClick) {
 function setText(node, value) {
   if (node.textContent !== value) node.textContent = value;
 }
+
+/**
+ * A keystone's terms in one line: what it gives, then what it takes.
+ *
+ * Generated from the effect lists rather than written out, for the same reason
+ * the tree's node blurbs are — a hand-typed description is a description that
+ * can end up disagreeing with the number it describes.
+ */
+function describeKeystone(keystone) {
+  const say = (e) => {
+    const pct = (v) => `${Math.round(Math.abs(v) * 100)}%`;
+    const mult = (v) => `${Math.round(Math.abs(1 - v) * 100)}%`;
+    const up = (label) => `+${label}`;
+    const down = (label) => `−${label}`;
+    const dir = MULT_EFFECTS.has(e.type) ? (e.value >= 1 ? up : down) : (e.value >= 0 ? up : down);
+    const size = MULT_EFFECTS.has(e.type) ? mult(e.value) : FLAT_EFFECTS.has(e.type) ? String(Math.abs(e.value)) : pct(e.value);
+    return `${dir(size)} ${EFFECT_LABELS[e.type] || e.type}`;
+  };
+  return `${keystone.gain.map(say).join(', ')} · ${keystone.cost.map(say).join(', ')}`;
+}
+
+const MULT_EFFECTS = new Set(['clickMult', 'zpsMult', 'globalMult', 'allBuildingMult', 'buffMult']);
+const FLAT_EFFECTS = new Set(['combatLuck', 'comboCap', 'offlineCapHours', 'clickFlat']);
+
+const EFFECT_LABELS = {
+  combatAtk: 'attack', combatDef: 'defence', combatHp: 'health', combatSpd: 'speed',
+  combatLuck: 'luck', critChance: 'crit chance', critDamage: 'crit damage',
+  comboCap: 'max combo', comboStep: 'per combo point', zpsShare: 'tap share of income',
+  goldenChance: 'golden rate', goldenDuration: 'golden length',
+  offlineRate: 'offline rate', offlineCapHours: 'h cache', costDiscount: 'generator prices',
+  clickFlat: 'flat tap', ticketRate: 'ticket rate', essenceGain: 'essence',
+  clickMult: 'tap power', zpsMult: 'idle income', globalMult: 'all income',
+  allBuildingMult: 'every generator', buffMult: 'buff strength',
+};

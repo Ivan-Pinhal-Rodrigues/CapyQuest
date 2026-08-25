@@ -93,3 +93,60 @@ test('no module imports the same name twice', () => {
     }
   }
 });
+
+test('a module never uses an exported constant it forgot to import', () => {
+  // Two bugs of exactly this shape have shipped: a duplicate import that took
+  // the game down at boot, and KEYSTONE_COST used in main.js and never
+  // imported. Neither is catchable by the parse check above, and nothing in the
+  // suite imports main.js because it needs a DOM.
+  //
+  // The check is deliberately narrow rather than a general undefined-identifier
+  // hunt, which would be a linter. It only flags a SCREAMING_CASE name that is
+  // *exported by some module in src/* and used in a file that does not import
+  // it — which is precisely the mistake, and cannot fire on a word that merely
+  // appears in a blurb, because no module exports a constant called LUCK.
+  const exported = new Set();
+  for (const file of MODULES) {
+    const src = readFileSync(file, 'utf8');
+    for (const m of src.matchAll(/export\s+const\s+([A-Z][A-Z0-9_]{2,})\b/g)) exported.add(m[1]);
+  }
+  assert.ok(exported.size > 10, 'found almost no exported constants — the scan is broken');
+
+  const problems = [];
+  for (const file of MODULES) {
+    const src = readFileSync(file, 'utf8');
+    const code = stripCommentsAndStrings(src);
+
+    const available = new Set();
+    for (const m of code.matchAll(/\b(?:const|let|var|function|class)\s+([A-Z][A-Z0-9_]{2,})\b/g)) {
+      available.add(m[1]);
+    }
+    for (const m of code.matchAll(/import\s+\{([^}]*)\}\s+from/g)) {
+      for (const part of m[1].split(',')) {
+        const name = part.trim().split(/\s+as\s+/).pop().trim();
+        if (name) available.add(name);
+      }
+    }
+    // `import * as B from ...` makes B.THING legal for any THING.
+    const namespaced = /import\s+\*\s+as\s+\w+\s+from/.test(code);
+
+    for (const m of code.matchAll(/(?<![.\w$])([A-Z][A-Z0-9_]{2,})\b/g)) {
+      const name = m[1];
+      if (!exported.has(name) || available.has(name)) continue;
+      if (namespaced) continue;
+      problems.push(`${file.split('/src/')[1]}: uses ${name} without importing it`);
+    }
+  }
+
+  assert.deepEqual([...new Set(problems)], []);
+});
+
+/** Comments and string bodies removed, so prose cannot look like code. */
+function stripCommentsAndStrings(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/\/\/[^\n]*/g, ' ')
+    .replace(/'(?:[^'\\\n]|\\.)*'/g, "''")
+    .replace(/"(?:[^"\\\n]|\\.)*"/g, '""')
+    .replace(/`(?:[^`\\]|\\.)*`/g, '``');
+}

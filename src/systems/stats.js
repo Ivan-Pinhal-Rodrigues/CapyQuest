@@ -137,6 +137,13 @@ export function recomputeDerived(state, { comboPoints = 0, now = Date.now() } = 
   const cappedCombo = Math.min(comboPoints, comboCap);
   const comboMult = B.comboMultiplier(cappedCombo, comboStep);
 
+  // Floored here rather than only on the way out. A tap is worth
+  // (base+flat)*mult + zps*zpsShare, so a negative share does not merely
+  // contribute nothing — it subtracts your whole pond from your tap and hands
+  // back a negative click value. The Absentee's `zpsShare: -1` is meant to
+  // remove the term, not to invert it.
+  const zpsShare = Math.max(0, acc.zpsShare);
+
   const clickValue = B.clickPower({
     base: 1,
     flat: acc.clickFlat,
@@ -144,7 +151,7 @@ export function recomputeDerived(state, { comboPoints = 0, now = Date.now() } = 
     comboMult,
     buffMult,
     zps,
-    zpsShare: acc.zpsShare,
+    zpsShare,
   });
 
   return {
@@ -158,7 +165,7 @@ export function recomputeDerived(state, { comboPoints = 0, now = Date.now() } = 
       comboMult: 1,
       buffMult,
       zps,
-      zpsShare: acc.zpsShare,
+      zpsShare,
     }),
     critChance: B.critChance(acc.critChance),
     critMult: B.critMultiplier(acc.critDamage),
@@ -169,11 +176,16 @@ export function recomputeDerived(state, { comboPoints = 0, now = Date.now() } = 
     globalMult,
     essenceMult,
     buffMult,
-    zpsShare: acc.zpsShare,
-    goldenChanceMult: 1 + acc.goldenChance,
-    goldenDurationMult: 1 + acc.goldenDuration,
-    offlineRate: Math.min(1, B.OFFLINE_RATE + acc.offlineRate),
-    offlineCapMs: B.OFFLINE_CAP_MS + acc.offlineCapHours * 3600e3,
+    // Floors, because keystones made negatives possible for the first time.
+    // Everything here had only ever grown, so nothing needed a lower bound. A
+    // Hermit's `goldenChance: -1` is meant to stop goldens spawning; a second
+    // source stacked on top of it must not push the rate below zero and start
+    // meaning something nobody designed.
+    zpsShare,
+    goldenChanceMult: Math.max(0, 1 + acc.goldenChance),
+    goldenDurationMult: Math.max(0, 1 + acc.goldenDuration),
+    offlineRate: B.clamp(B.OFFLINE_RATE + acc.offlineRate, 0, 1),
+    offlineCapMs: Math.max(0, B.OFFLINE_CAP_MS + acc.offlineCapHours * 3600e3),
     costDiscount: 1 - B.clamp(acc.costDiscount, 0, 0.75),
   };
 }
