@@ -108,7 +108,7 @@ export const BUILDINGS = [
   {
     id: 'skyTerrace',
     name: 'Sky Terrace',
-    cost: 170e15,
+    cost: 200e12,
     rate: 430e6,
     sprite: 'terrace',
     blurb: 'A bath above the clouds. Getting up there is somebody else’s problem.',
@@ -116,7 +116,7 @@ export const BUILDINGS = [
   {
     id: 'dreamLagoon',
     name: 'Dream Lagoon',
-    cost: 2.1e18,
+    cost: 2.9e15,
     rate: 2.9e9,
     sprite: 'lagoon',
     blurb: 'Exists mainly while you are asleep. Produces anyway.',
@@ -124,7 +124,7 @@ export const BUILDINGS = [
   {
     id: 'timeOnsen',
     name: 'Time Onsen',
-    cost: 26e21,
+    cost: 43e15,
     rate: 21e9,
     sprite: 'timeonsen',
     blurb: 'One soak here is forty minutes and also nine years.',
@@ -132,7 +132,7 @@ export const BUILDINGS = [
   {
     id: 'astralPond',
     name: 'Astral Pond',
-    cost: 310e24,
+    cost: 620e15,
     rate: 150e9,
     sprite: 'astral',
     blurb: 'Reflects constellations that have not happened yet.',
@@ -140,7 +140,7 @@ export const BUILDINGS = [
   {
     id: 'yuzuDimension',
     name: 'Yuzu Dimension',
-    cost: 71e27,
+    cost: 9e18,
     rate: 1.1e12,
     sprite: 'dimension',
     blurb: 'An entire plane of existence, citrus-scented throughout.',
@@ -148,7 +148,7 @@ export const BUILDINGS = [
   {
     id: 'capySingularity',
     name: 'Capy Singularity',
-    cost: 12e30,
+    cost: 130e18,
     rate: 8.3e12,
     sprite: 'singularity',
     blurb: 'Infinitely dense, infinitely relaxed. Light bends around the chonk.',

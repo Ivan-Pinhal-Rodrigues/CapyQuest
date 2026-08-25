@@ -68,6 +68,61 @@ test('generators get more expensive and more productive down the list', () => {
   }
 });
 
+test('the generator cost ladder climbs at a steady slope', () => {
+  // The test that should have existed. "Costs increase" was true of a ladder
+  // whose thirteenth rung cost twelve thousand times the twelfth — six of the
+  // eighteen generators had paybacks between 12 years and 45 billion years, and
+  // a monotonicity check waved all of it through.
+  //
+  // The first step is deliberately gentle: the second generator should be easy
+  // to reach on minute one. Everything after it stays on one slope.
+  const steps = [];
+  for (let i = 1; i < BUILDINGS.length; i++) {
+    steps.push({ id: BUILDINGS[i].id, ratio: BUILDINGS[i].cost / BUILDINGS[i - 1].cost });
+  }
+
+  assert.ok(steps[0].ratio >= 5, `the opening step is only x${steps[0].ratio.toFixed(1)}`);
+  for (const step of steps.slice(1)) {
+    assert.ok(
+      step.ratio >= 8 && step.ratio <= 20,
+      `${step.id} costs x${step.ratio.toFixed(1)} the one before it — the ladder is x8-20`,
+    );
+  }
+
+  // Belt and braces against a digit-count typo specifically: no single step may
+  // be wildly out of line with the rest, whatever the absolute bounds allow.
+  const sorted = steps.map((s) => s.ratio).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  for (const step of steps.slice(1)) {
+    assert.ok(
+      step.ratio < median * 2,
+      `${step.id} jumps x${step.ratio.toFixed(1)} against a median step of x${median.toFixed(1)}`,
+    );
+  }
+});
+
+test('every generator pays for itself in a length of time a player would accept', () => {
+  // Payback is the number that decides whether a generator is content or
+  // decoration. The last one is a long-term goal bought across rebirths; none
+  // of them may be a goal measured in geological time.
+  for (const b of BUILDINGS) {
+    const days = b.cost / b.rate / 86400;
+    assert.ok(days < 365, `${b.id} takes ${days.toFixed(0)} days to repay itself`);
+  }
+
+  // And payback must rise down the list, so later generators are a bigger
+  // commitment rather than a strictly better deal.
+  //
+  // The Lily Pad is exempt: it repays in 150s against the Yuzu Sapling's 100s,
+  // deliberately. The first purchase is a tutorial rather than a deal, and the
+  // second one being visibly better is what teaches that generators improve.
+  for (let i = 2; i < BUILDINGS.length; i++) {
+    const prev = BUILDINGS[i - 1].cost / BUILDINGS[i - 1].rate;
+    const here = BUILDINGS[i].cost / BUILDINGS[i].rate;
+    assert.ok(here > prev, `${BUILDINGS[i].id} repays faster than the generator before it`);
+  }
+});
+
 test('every generator has complete art and copy', () => {
   for (const b of BUILDINGS) {
     assert.ok(b.name, `${b.id}: missing name`);

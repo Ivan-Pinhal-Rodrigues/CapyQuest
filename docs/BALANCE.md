@@ -8,6 +8,45 @@ Where a figure below is a target rather than an observation it is labelled as on
 
 ---
 
+## The generator ladder
+
+Eighteen generators. Cost climbs on a steady slope and payback lengthens down the list, so a
+later generator is a bigger commitment rather than a strictly better deal.
+
+| | |
+|---|---|
+| Cost step, generator to generator | **×13–16** (the opening step is ×6.7, deliberately) |
+| Rate step | ×5.5–7.5 |
+| Payback, first generator | 150s |
+| Payback, last generator | **181 days** — a goal bought across rebirths |
+| Cost of 100 of everything | 1.09e27 |
+
+`COST_GROWTH = 1.15` per unit owned, the classic idle curve.
+
+The Lily Pad repays in 150s against the Yuzu Sapling's 100s — the only inversion in the table,
+and it is deliberate. The first purchase is a tutorial rather than a deal, and the second one
+being visibly better is what teaches that generators improve.
+
+### The bug this section exists because of
+
+Until the design audit, the last six generators cost this:
+
+| | Cost step | Payback |
+|---|---|---|
+| skyTerrace | ×12,143 | 12.5 years |
+| timeOnsen | ×12,381 | 39,000 years |
+| astralPond | ×11,923 | 65 million years |
+| capySingularity | ×169 | 45 billion years |
+
+A third of the core loop was unreachable. The exponents stepped e15 → e18 → e21 → e24 → e27 →
+e30 while the mantissas never scaled down — six digit-count typos in a row.
+
+It survived six phases and 434 tests because `tests/content.test.js` asserted only that costs
+*increase*, which they did, and because the Phase 6 balance pass measured the combat wall and the
+achievement ceiling and never added up the cost column. Three tests now cover this table: the
+slope stays in ×8–20, no single step exceeds twice the median step, and every generator repays
+inside a year. All three fail if the old values are put back.
+
 ## The difficulty curve
 
 ```
