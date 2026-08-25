@@ -46,7 +46,16 @@ export class Tabs {
     if (!silent) this.onChange?.(tab);
   }
 
-  /** Show a count on a tab. Zero clears it. Ignored for the active tab. */
+  /**
+   * Mark a tab as having something waiting. Zero clears it; the active tab never
+   * shows one, because you are already looking at it.
+   *
+   * It is a dot rather than a number on purpose. Twelve tabs share the width of
+   * one panel, and a "9+" pill eats enough of a 63px tab to truncate the label
+   * under it — "Seaso 9+" tells you less than "Season" plus a dot does. The
+   * count is still available on hover, and the panel itself always shows the
+   * real figure.
+   */
   badge(tab, count) {
     const btn = this.buttons.find((b) => b.dataset.tab === tab);
     if (!btn) return;
@@ -55,11 +64,14 @@ export class Tabs {
       if (!dot) {
         dot = document.createElement('span');
         dot.className = 'tab__badge';
+        dot.setAttribute('aria-hidden', 'true');
         btn.appendChild(dot);
       }
-      dot.textContent = count > 9 ? '9+' : String(count);
-    } else if (dot) {
-      dot.remove();
+      const label = `${count} waiting`;
+      if (btn.title !== label) btn.title = label;
+    } else {
+      if (dot) dot.remove();
+      btn.removeAttribute('title');
     }
   }
 }

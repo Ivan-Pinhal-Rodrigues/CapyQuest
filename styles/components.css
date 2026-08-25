@@ -113,7 +113,7 @@
 
 .tab {
   position: relative;
-  padding: 0.6rem 0.9rem 0.6rem 0.3rem;
+  padding: 0.6rem 0.45rem;
   font-size: 0.52rem;
   color: var(--text-faint);
   background: transparent;
@@ -132,23 +132,19 @@
   background: rgba(247, 201, 72, 0.07);
 }
 
-/* Pinned to the tab's own corner. Anchoring it near the label's centre made it
-   land on top of the text as soon as the label was long enough to wrap. */
+/* A dot in the corner, not a numbered pill. Twelve tabs share one panel's
+   width, and a "9+" pill takes enough of a 63px tab to truncate the label
+   underneath it. The count lives on the tab's title attribute instead, and the
+   panel behind it always shows the real figure. */
 .tab__badge {
   position: absolute;
-  top: 5px;
-  right: 4px;
-  min-width: 15px;
-  height: 15px;
-  padding: 0 3px;
-  display: grid;
-  place-items: center;
+  top: 6px;
+  right: 5px;
+  width: 7px;
+  height: 7px;
   border-radius: 99px;
   background: var(--danger);
-  color: #fff;
-  font-family: var(--font-ui);
-  font-size: 0.6rem;
-  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--bg);
 }
 
 /* ------------------------------------------------------------- buy amount */

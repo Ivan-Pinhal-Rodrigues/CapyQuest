@@ -70,6 +70,9 @@ export function createState(now = Date.now()) {
     cases: {}, // caseId -> { opened, since }
     cosmetics: { owned: [], skin: 'classic', pond: 'dusk', title: 'bather' },
     store: { leafDay: null, packs: {} },
+    // Petals belong to one event occurrence. `key` names it; when the clock
+    // moves past that event, systems/events.js zeroes the lot — see syncEvent.
+    events: { key: null, petals: 0, claimed: {} },
 
     login: { lastDay: null, streak: 0, best: 0, total: 0, pendingDay: 0 },
     chest: { lastAt: now, opened: 0 },
@@ -246,6 +249,11 @@ export function reconcileState(state, now = Date.now()) {
   for (const kind of ['skin', 'pond', 'title']) {
     if (typeof out.cosmetics[kind] !== 'string') out.cosmetics[kind] = base.cosmetics[kind];
   }
+
+  out.events = { ...base.events, ...(state.events || {}) };
+  out.events.key = typeof out.events.key === 'string' ? out.events.key : null;
+  out.events.petals = Math.floor(safeNumber(out.events.petals));
+  out.events.claimed = numberMap(out.events.claimed);
 
   out.store = { ...base.store, ...(state.store || {}) };
   out.store.packs = numberMap(out.store.packs);

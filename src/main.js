@@ -47,6 +47,9 @@ import {
   passXpForClear, addPassXp, unlockPremium,
 } from './systems/season.js';
 import { SeasonPanel } from './ui/seasonPanel.js';
+import { LeaderboardPanel, rivalBody } from './ui/leaderboardPanel.js';
+import { leaderboard, rivalsFor } from './systems/leaderboard.js';
+import { activeEvent, syncEvent, addPetals, petalsForClear, exchange } from './systems/events.js';
 import { PREMIUM_PRICE, PREMIUM_LEAFS } from './data/pass.js';
 import { grantReward, describeGrant } from './systems/rewards.js';
 import { LOGIN_REWARDS } from './data/quests.js';
@@ -184,6 +187,11 @@ class Game {
       onCollectChest: () => this.collectChest(),
     });
 
+    this.leaderboardPanel = new LeaderboardPanel($('leaderboardPanel'), {
+      onInspect: (id) => this.inspectRival(id),
+      onExchange: (id) => this.exchangePetals(id),
+    });
+
     this.seasonPanel = new SeasonPanel($('seasonPanel'), {
       onClaim: (level, track) => this.claimPass(level, track),
       onClaimAll: () => this.claimAllPass(),
@@ -201,6 +209,7 @@ class Game {
       rebirth: $('panel-rebirth'),
       store: $('panel-store'),
       season: $('panel-season'),
+      rivals: $('panel-rivals'),
       achievements: $('panel-achievements'),
       stats: $('panel-stats'),
     }, {
@@ -294,6 +303,17 @@ class Game {
     const rolled = rollQuests(this.state, now);
     const login = checkLogin(this.state, now);
     const rolledSeason = checkRollover(this.state, now);
+    const expired = syncEvent(this.state, now);
+    this.boardCache = null;
+
+    if (expired) {
+      this.toaster.show({
+        title: `${expired.name} is over`,
+        body: `${expired.petals} petals went with it. That is what petals do.`,
+        kind: 'info',
+        icon: '🌸',
+      });
+    }
 
     if (rolledSeason) {
       this.toaster.show({
@@ -698,6 +718,11 @@ class Game {
     if (this.tabs.current === 'season') {
       this.seasonPanel.update(this.state, now);
     }
+    if (this.tabs.current === 'rivals') {
+      // Rebuilding sixty rivals every frame would be wasteful for a board that
+      // moves once a day, so it is cached and refreshed when the day turns.
+      this.leaderboardPanel.update(this.board(now), this.state, now);
+    }
 
     this.tabs.badge('achievements', this.newAchievements);
     this.tabs.badge('kit', this.newGear);
@@ -712,6 +737,7 @@ class Game {
     // of things the player has not looked at.
     this.tabs.badge('store', dailyLeafsReady(this.state, now) ? 1 : 0);
     this.tabs.badge('season', unclaimedPassLevels(this.state));
+    this.tabs.badge('rivals', activeEvent(now) ? 1 : 0);
   }
 
   summonUnlocked() {
@@ -786,6 +812,7 @@ class Game {
 
     // The pass moves while you play, not only while you quest.
     addPassXp(this.state, passXpForClear(enemy.boss));
+    addPetals(this.state, petalsForClear(enemy.boss));
 
     const gainedXp = xpForStage(stage, enemy.boss);
     const beforeLevel = this.cstats.level;
@@ -1502,6 +1529,52 @@ class Game {
     this.storePanel.update(this.state);
     this.gearPanel.update(this.state, this.cstats);
     this.save();
+  }
+
+  // ------------------------------------------------------------------ rivals
+
+  /**
+   * The board. The rivals are cached against the day, because sixty loadouts is
+   * a few hundred resolveItem() calls and they only move when the day turns; the
+   * player's own row is rebuilt and re-ranked every time, because theirs moves
+   * whenever they do.
+   */
+  board(now = Date.now()) {
+    const day = Math.floor(now / 86400e3);
+    if (!this.boardCache || this.boardCache.day !== day) {
+      this.boardCache = { day, rivals: rivalsFor(now) };
+    }
+    return leaderboard(this.state, now, this.boardCache.rivals);
+  }
+
+  inspectRival(id) {
+    const entry = this.board().rows.find((r) => r.id === id);
+    if (!entry) return;
+    openModal({
+      title: entry.name,
+      bodyNode: rivalBody(entry),
+      actions: [{ label: 'Close' }],
+    });
+  }
+
+  exchangePetals(id) {
+    const result = exchange(this.state, id);
+    if (!result.ok) {
+      audio.denied();
+      return;
+    }
+
+    const grant = grantReward(this.state, result.reward, this.derived);
+    audio.golden();
+    this.checkCosmeticUnlocks();
+    this.afterStoreChange();
+    this.leaderboardPanel.update(this.board(), this.state);
+    this.toaster.show({
+      title: result.row.text,
+      body: `${result.spent} petals.`,
+      kind: 'buff',
+      icon: '🌸',
+    });
   }
 
   // ------------------------------------------------------- tree and stars

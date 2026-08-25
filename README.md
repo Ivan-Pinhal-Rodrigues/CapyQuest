@@ -117,7 +117,8 @@ synthesised with WebAudio oscillators, so there are no audio files either.
 | Achievements | 71, every one paying a permanent bonus |
 | Terrains / stages | 18 cycling, unlimited stages, with 71 enemies and bosses |
 | Currencies | Zen, Essence, Leafs, Lotus, tickets, shards |
-| Store | 3 cases with their odds on the card, 5 boosts, 20 cosmetics — all simulated |
+| Store | 3 cases with their odds on the card, 5 boosts, 24 cosmetics — all simulated |
+| Season | 45 days, a 100-level two-track pass, 60 simulated rivals, 3 live events of 10 designed |
 
 **470 collectible or purchasable entries in total**, plus the systems around them: combo chains,
 crits, Golden Capybaras, offline income, auto-battle, elemental stances, a forge, gacha pity,
@@ -148,7 +149,10 @@ Built in stages. Landed so far:
       branches with a free respec. Every rank survives every rebirth. The 49 permanent upgrades
       from the previous version live on inside it, ids and ranks intact.
 - [x] **The store** — three cases with their full drop tables and pity counters printed on the
-      card, five timed boosts, twenty cosmetics that change how things look and not one number,
-      and simulated leaf packs that add leafs and charge nothing
+      card, five timed boosts, twenty-four cosmetics that change how things look and not one
+      number, and simulated leaf packs that add leafs and charge nothing
+- [x] **The season** — 45 days computed from the clock rather than announced by a server, a
+      100-level pass across a free and a premium track, sixty simulated rivals whose gear you can
+      actually open and read, and three live events of ten designed in `docs/EVENTS.md`
 - [x] **Retention** — daily and weekly quests, a seven-day login streak, a 40-level free Zen Pass,
       a chest that fills every 15 minutes, eight secret codes, and a stats page that grows as you do

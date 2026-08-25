@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="styles/rebirth.css">
 <link rel="stylesheet" href="styles/store.css">
 <link rel="stylesheet" href="styles/season.css">
+<link rel="stylesheet" href="styles/leaderboard.css">
 <link rel="stylesheet" href="styles/daily.css">
 <link rel="stylesheet" href="styles/animations.css">
 
@@ -83,6 +84,7 @@
       <button class="tab" data-tab="rebirth" role="tab" type="button" aria-controls="panel-rebirth">Rebirth</button>
       <button class="tab" data-tab="store" role="tab" type="button" aria-controls="panel-store">Store</button>
       <button class="tab" data-tab="season" role="tab" type="button" aria-controls="panel-season">Season</button>
+      <button class="tab" data-tab="rivals" role="tab" type="button" aria-controls="panel-rivals">Rivals</button>
       <button class="tab" data-tab="achievements" role="tab" type="button" aria-controls="panel-achievements">Trophies</button>
       <button class="tab" data-tab="stats" role="tab" type="button" aria-controls="panel-stats">Stats</button>
     </nav>
@@ -145,6 +147,10 @@
 
       <section class="panel__section" id="panel-season" role="tabpanel" aria-label="Season" hidden>
         <div id="seasonPanel" class="season"></div>
+      </section>
+
+      <section class="panel__section" id="panel-rivals" role="tabpanel" aria-label="Rivals" hidden>
+        <div id="leaderboardPanel" class="board-panel"></div>
       </section>
 
       <section class="panel__section" id="panel-achievements" role="tabpanel" aria-label="Trophies" hidden>

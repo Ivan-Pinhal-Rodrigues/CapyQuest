@@ -30,6 +30,8 @@ export const CAPY_SKINS = {
   void: { ...CAPY_PALETTE, d: '#241c33', m: '#3b2f52', l: '#5c4b7d', n: '#160f22' },
   // Season-pass exclusive: steam-flushed, like it has been in the water too long.
   seasonal: { ...CAPY_PALETTE, d: '#a8543f', m: '#d1795c', l: '#f0a88c', n: '#7d3a2b' },
+  // Event exclusive: Yuzu Harvest.
+  harvest: { ...CAPY_PALETTE, d: '#b8902b', m: '#e3c04a', l: '#f7e08a', n: '#8a681a' },
 };
 
 export const PROP_PALETTE = {

@@ -308,7 +308,7 @@ test('every cosmetic is complete, unique, and reachable one way or another', () 
     assert.ok(!seen.has(key), `duplicate cosmetic "${key}"`);
     seen.add(key);
     assert.ok(def.name && def.blurb, `${key}: incomplete`);
-    assert.ok(['start', 'play', 'store', 'pass'].includes(def.source), `${key}: unknown source`);
+    assert.ok(['start', 'play', 'store', 'pass', 'event'].includes(def.source), `${key}: unknown source`);
     if (def.source === 'store') assert.ok(def.cost > 0, `${key}: for sale at no price`);
     if (def.source === 'play') assert.ok(def.need, `${key}: earned, but no condition`);
   }

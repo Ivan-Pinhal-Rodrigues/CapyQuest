@@ -20,6 +20,7 @@ export const SOURCES = {
   play: 'Earned',
   store: 'Store',
   pass: 'Season pass',
+  event: 'Event',
 };
 
 export const SKINS = [
@@ -31,6 +32,7 @@ export const SKINS = [
   { id: 'sakura', name: 'Sakura', source: 'store', cost: 250, blurb: 'Petals in the water, all year.' },
   { id: 'void', name: 'Void', source: 'store', cost: 600, blurb: 'Something looked back.' },
   { id: 'seasonal', name: 'Hot Spring', source: 'pass', blurb: 'Premium pass, level 1. In the water too long.' },
+  { id: 'harvest', name: 'Harvest', source: 'event', blurb: 'Yuzu Harvest exchange. Citrus all the way through.' },
 ];
 
 export const PONDS = [
@@ -41,6 +43,7 @@ export const PONDS = [
   { id: 'deep', name: 'Deep', source: 'store', cost: 300, blurb: 'The water goes further down than it should.' },
   { id: 'aurora', name: 'Aurora', source: 'store', cost: 750, blurb: 'The sky, showing off.' },
   { id: 'lantern', name: 'Lantern', source: 'pass', blurb: 'Free pass, level 40. Somebody hung lights.' },
+  { id: 'bathhouse', name: 'Bathhouse', source: 'event', blurb: 'Moonlit Bathhouse exchange. The night shift.' },
 ];
 
 export const TITLES = [
@@ -53,6 +56,7 @@ export const TITLES = [
   { id: 'stillPoint', name: 'Of The Still Point', source: 'store', cost: 900, blurb: 'The calm centre of an enormous amount of nothing.' },
   { id: 'seasoned', name: 'Seasoned', source: 'pass', blurb: 'Free pass, level 100. You saw it through.' },
   { id: 'patronOfSeasons', name: 'Of Every Season', source: 'pass', blurb: 'Premium pass, level 100.' },
+  { id: 'swift', name: 'Swift', source: 'event', blurb: 'Reed Rush exchange. You did run.' },
 ];
 
 /** kind -> the table, so the panel and the systems agree on what exists. */

@@ -141,3 +141,15 @@ body[data-pond='lantern'] {
   --water: #f7d08a;
   --water-deep: #b8843c;
 }
+
+body[data-pond='bathhouse'] {
+  --bg: #101425;
+  --bg-deep: #0a0d1a;
+  --surface: #1a2038;
+  --surface-2: #232b48;
+  --surface-3: #2e385c;
+  --border: #2f3a5e;
+  --border-bright: #465584;
+  --water: #b8cdf7;
+  --water-deep: #5a72b5;
+}
