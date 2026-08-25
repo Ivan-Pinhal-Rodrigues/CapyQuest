@@ -83,15 +83,23 @@ test('offline earnings are zero without income or elapsed time', () => {
   assert.equal(B.offlineEarnings(100, NaN).zen, 0);
 });
 
-test('prestige yuzu round-trips with the zen requirement', () => {
-  assert.equal(B.yuzuFromZen(0), 0);
-  assert.equal(B.yuzuFromZen(1e12), 150);
-  assert.equal(B.yuzuFromZen(4e12), 300);
+test('the rebirth payout round-trips with the depth that earned it', () => {
+  assert.equal(B.essenceFromStage(0), 0);
+  assert.ok(B.essenceFromStage(9) > B.essenceFromStage(8), 'deeper must always pay more');
 
   for (const target of [1, 25, 400, 9001]) {
-    const zen = B.zenForYuzu(target);
-    assert.ok(B.yuzuFromZen(zen) >= target, `${zen} zen should reach ${target} yuzu`);
+    const stage = Math.ceil(B.stageForEssence(target));
+    assert.ok(
+      B.essenceFromStage(stage) >= target,
+      `stage ${stage} should reach ${target} essence`,
+    );
   }
+});
+
+test('lifetime essence is a permanent global boost that spending cannot undo', () => {
+  assert.equal(B.essenceBonus(0), 1);
+  assert.ok(B.essenceBonus(100) > B.essenceBonus(50));
+  assert.equal(B.essenceBonus(-5), 1, 'a negative balance is never a penalty');
 });
 
 test('damage is mitigated by defence but never fully blocked', () => {

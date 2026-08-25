@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="styles/components.css">
 <link rel="stylesheet" href="styles/rpg.css">
 <link rel="stylesheet" href="styles/meta.css">
+<link rel="stylesheet" href="styles/rebirth.css">
 <link rel="stylesheet" href="styles/daily.css">
 <link rel="stylesheet" href="styles/animations.css">
 
@@ -48,7 +49,7 @@
     </div>
 
     <div class="hud__meta" id="hudMeta">
-      <span class="hud__meta-item hud__meta-item--yuzu" id="yuzuValue" hidden title="Yuzu — prestige currency"></span>
+      <span class="hud__meta-item hud__meta-item--essence" id="essenceValue" hidden title="Essence — rebirth currency"></span>
       <span class="hud__meta-item hud__meta-item--lotus" id="lotusValue" hidden title="Lotus — ascension currency"></span>
       <span class="hud__meta-item hud__meta-item--ticket" id="ticketValue" hidden title="Summon tickets"></span>
     </div>
@@ -76,7 +77,7 @@
       <button class="tab" data-tab="kit" role="tab" type="button" aria-controls="panel-kit">Kit</button>
       <button class="tab" data-tab="daily" role="tab" type="button" aria-controls="panel-daily">Daily</button>
       <button class="tab" data-tab="summon" role="tab" type="button" aria-controls="panel-summon">Summon</button>
-      <button class="tab" data-tab="bath" role="tab" type="button" aria-controls="panel-bath">Bath</button>
+      <button class="tab" data-tab="rebirth" role="tab" type="button" aria-controls="panel-rebirth">Rebirth</button>
       <button class="tab" data-tab="achievements" role="tab" type="button" aria-controls="panel-achievements">Trophies</button>
       <button class="tab" data-tab="stats" role="tab" type="button" aria-controls="panel-stats">Stats</button>
     </nav>
@@ -125,10 +126,10 @@
         <div id="gachaPanel" class="summon" hidden></div>
       </section>
 
-      <section class="panel__section" id="panel-bath" role="tabpanel" aria-label="The Bath" hidden>
+      <section class="panel__section" id="panel-rebirth" role="tabpanel" aria-label="Rebirth" hidden>
         <div class="locked-note" id="bathLocked">
-          <p>The water is not deep enough yet.</p>
-          <p class="locked-note__hint">Earn a trillion zen in one run and the Yuzu Bath opens.</p>
+          <p>There is nothing behind you to start over from.</p>
+          <p class="locked-note__hint">Travel downstream. Rebirth opens the first time a boss will not fall inside thirty seconds.</p>
         </div>
         <div id="metaPanel" class="meta" hidden></div>
       </section>

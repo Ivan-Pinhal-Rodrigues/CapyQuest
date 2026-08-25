@@ -115,23 +115,20 @@ export function offlineEarnings(zps, elapsedMs, { capMs = OFFLINE_CAP_MS, rate =
   };
 }
 
-// ------------------------------------------------------------------ prestige
+// ------------------------------------------------------------------- rebirth
 
-/** Yuzu awarded for a prestige, from lifetime Zen this run. */
-export function yuzuFromZen(lifetimeZen, bonusMult = 1) {
-  if (lifetimeZen <= 0) return 0;
-  return Math.floor(150 * Math.sqrt(lifetimeZen / 1e12) * bonusMult);
-}
+// The payout itself lives further down with the stage maths, because it is
+// measured in stages — see essenceFromStage(). v1's zen-derived prestige payout
+// is gone: paying off currency rewarded the wrong thing, since it is the boss
+// HP curve and not the coin curve that ends a run.
 
-/** Zen needed to reach the next whole yuzu, for the "next at" hint. */
-export function zenForYuzu(targetYuzu, bonusMult = 1) {
-  if (targetYuzu <= 0) return 0;
-  return Math.pow(targetYuzu / (150 * bonusMult), 2) * 1e12;
-}
-
-/** Each yuzu held gives a permanent global boost. */
-export function yuzuBonus(yuzu, perYuzu = 0.02) {
-  return 1 + Math.max(0, yuzu) * perYuzu;
+/**
+ * Lifetime rebirth currency is a permanent global boost. Measured on *lifetime*
+ * essence rather than the balance in hand, so spending it on the tree can never
+ * make you weaker — otherwise the tree would be a trap.
+ */
+export function essenceBonus(lifetime, per = 0.02) {
+  return 1 + Math.max(0, lifetime) * per;
 }
 
 // -------------------------------------------------------------------- combat

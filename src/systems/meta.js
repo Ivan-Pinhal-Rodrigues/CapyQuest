@@ -2,25 +2,19 @@
 //
 // Two consumers read this and each picks out the types it cares about:
 // systems/stats.js takes the income effects, systems/combatStats.js takes the
-// combat ones. Collecting them here means a new relic is wired into both by
+// combat ones. Collecting them here means a new tree node is wired into both by
 // existing in the table, not by being remembered twice.
 
-import { talentEffects } from './talents.js';
+import { treeEffects } from './tree.js';
 import { partyMembers } from './gacha.js';
 import { equippedBonuses } from './equipment.js';
-import { RELICS_BY_ID, CONSTELLATIONS_BY_ID } from '../data/relics.js';
+import { CONSTELLATIONS_BY_ID } from '../data/constellations.js';
 
-/** Effects from talents, relics, constellations, party companions and gear. */
+/** Effects from the rebirth tree, constellations, party companions and gear. */
 export function metaEffects(state) {
   const out = [];
 
-  for (const effect of talentEffects(state)) out.push(effect);
-
-  for (const [id, ranks] of Object.entries(state.relics || {})) {
-    const def = RELICS_BY_ID[id];
-    if (!def) continue;
-    for (let i = 0; i < ranks; i++) out.push(def.effect);
-  }
+  for (const effect of treeEffects(state)) out.push(effect);
 
   for (const [id, ranks] of Object.entries(state.constellations || {})) {
     const def = CONSTELLATIONS_BY_ID[id];

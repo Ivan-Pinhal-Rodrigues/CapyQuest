@@ -16,16 +16,20 @@ Play it at **[ivan-pinhal-rodrigues.github.io/CapyQuest](https://ivan-pinhal-rod
 
 Tap the capybara to earn zen. Spend zen on generators that earn zen while you are not tapping.
 Spend more zen on upgrades that multiply both. Then keep going, because there is a whole RPG
-underneath: stats, gear, auto-battle, gacha companions, a talent tree, and two layers of prestige.
+underneath: stats, gear, auto-battle, gacha companions, a 210-node skill tree, and two reset
+layers.
 
-At 5,000 zen the Quest line opens: twelve zones, 120 stages, a boss every tenth, and 42 pieces of
-gear to find and enhance. Combat runs itself — what you choose is the kit, the three skills, and
-the elemental stance.
+At 5,000 zen the Quest line opens: unlimited stages of ten levels each, a boss on every tenth, 18
+cycling terrains and 42 pieces of gear to find and enhance. Combat runs itself — what you choose is
+the kit, the three skills, and the elemental stance.
 
 Bosses drop summon tickets. Twenty-four capybaras can be summoned, three of them fight alongside
-you, and the pity counter is on screen the whole time. At a trillion zen the Yuzu Bath opens and
-the whole thing starts again, larger — 22 relics, a 27-node talent tree, and a second reset layer
-beyond that.
+you, and the pity counter is on screen the whole time.
+
+Eventually a boss will not fall inside thirty seconds, and the game says so out loud. That is
+Rebirth: start the run again, paid in Essence for how deep you got, and spend it on a tree of 210
+nodes that no reset can take back. Beyond that is the Still Point, which works and is openly
+still being built.
 
 ## Running it
 
@@ -106,17 +110,17 @@ synthesised with WebAudio oscillators, so there are no audio files either.
 
 | | |
 |---|---|
-| Purchasable upgrades | **131** — 16 tap, 18 generators, 36 generator tiers, 27 talents, 22 relics, 12 constellations |
+| Purchasable upgrades | **292** — 16 tap, 18 generators, 36 generator tiers, 210 tree nodes, 12 constellations |
 | Gear | 42 pieces across 6 slots, each enhanceable +0 → +15 |
 | Companions | 24, summoned, three in the party |
 | Combat skills | 18, three slotted |
 | Achievements | 66, every one paying a permanent bonus |
-| Zones / stages | 12 / 120, with 25 enemies and bosses |
-| Currencies | Zen, Yuzu, Lotus, tickets, shards |
+| Terrains / stages | 18 cycling, unlimited stages, with 71 enemies and bosses |
+| Currencies | Zen, Essence, Lotus, tickets, shards |
 
-**281 collectible or purchasable entries in total**, plus the systems around them: combo chains,
+**442 collectible or purchasable entries in total**, plus the systems around them: combo chains,
 crits, Golden Capybaras, offline income, auto-battle, elemental stances, a forge, gacha pity,
-two prestige layers, quests, a login streak, a battle pass, timed chests and secret codes.
+two reset layers, quests, a login streak, a battle pass, timed chests and secret codes.
 
 ## Status
 
@@ -129,8 +133,11 @@ Built in stages. Landed so far:
 - [x] **Infinite stages** — 10 levels per stage with the difficulty in the boundary, 18 cycling
       terrains, 71 enemies including 18 hostile capybaras, and a wall detector that tells you
       when the run is over instead of leaving you to grind into a ceiling
-- [x] **Meta** — gacha with a visible pity counter, 24 companions, a party of three, 22 prestige
-      relics, 12 ascension constellations, a 27-node talent tree with free respec, and two
-      reset layers
+- [x] **Meta** — gacha with a visible pity counter, 24 companions, a party of three, and 12
+      ascension constellations
+- [x] **Rebirth** — a reset that unlocks when the maths says you are stuck rather than at a round
+      currency number, paying Essence for depth reached, spent on a 210-node tree across seven
+      branches with a free respec. Every rank survives every rebirth. The 49 permanent upgrades
+      from the previous version live on inside it, ids and ranks intact.
 - [x] **Retention** — daily and weekly quests, a seven-day login streak, a 40-level free Zen Pass,
       a chest that fills every 15 minutes, eight secret codes, and a stats page that grows as you do

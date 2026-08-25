@@ -21,11 +21,12 @@ import { GearPanel, itemDetailBody, slotPickerBody, skillPickerBody } from './ui
 import { SKILL_SLOTS } from './data/skills.js';
 import { RARITY } from './render/palettes.js';
 import { openModal, el } from './ui/modal.js';
-import { MetaPanel } from './ui/metaPanel.js';
+import { RebirthPanel } from './ui/rebirthPanel.js';
 import { GachaPanel, pullResultsBody, companionDetailBody, partyPickerBody } from './ui/gachaPanel.js';
 import { summon, buyTicket, ticketPrice, ownedCompanions, TEN_PULL } from './systems/gacha.js';
-import { prestige, ascend, prestigePreview, ascendPreview, buyRelic, buyConstellation, PRESTIGE_MIN_ZEN } from './systems/prestige.js';
-import { buyTalent, respec, availablePoints } from './systems/talents.js';
+import { rebirth, rebirthPreview, noteWall } from './systems/rebirth.js';
+import { ascend, ascendPreview, buyConstellation } from './systems/ascension.js';
+import { buyNode, respec } from './systems/tree.js';
 import { ticketsPerBoss } from './systems/meta.js';
 import { COMPANIONS_BY_ID, PARTY_SIZE } from './data/companions.js';
 import { DailyPanel } from './ui/dailyPanel.js';
@@ -47,8 +48,8 @@ import { isModalOpen, closeModal } from './ui/modal.js';
 
 /** Zen earned before the quest line opens up. */
 const QUEST_UNLOCK_ZEN = 5000;
-/** The Bath tab appears a little before it is usable, so the goal is visible. */
-const BATH_TEASE_ZEN = PRESTIGE_MIN_ZEN * 0.1;
+/** The Rebirth tab appears once there is a run deep enough to be worth resetting. */
+const REBIRTH_TEASE_DEPTH = 20;
 
 const SIM_STEP_MS = 100; // ten income ticks a second is plenty
 const UI_INTERVAL_MS = 66;
@@ -99,7 +100,7 @@ class Game {
       comboFill: $('comboFill'),
       comboLabel: $('comboLabel'),
       buffList: $('buffList'),
-      yuzuValue: $('yuzuValue'),
+      essenceValue: $('essenceValue'),
       lotusValue: $('lotusValue'),
       ticketValue: $('ticketValue'),
     };
@@ -147,12 +148,11 @@ class Game {
       onInspect: (id, slot) => this.inspectCompanion(id, slot),
     });
 
-    this.metaPanel = new MetaPanel(this.metaRoot, {
-      onPrestige: () => this.confirmPrestige(),
+    this.metaPanel = new RebirthPanel(this.metaRoot, {
+      onRebirth: () => this.confirmRebirth(),
       onAscend: () => this.confirmAscend(),
-      onBuyRelic: (id) => this.purchaseRelic(id),
       onBuyStar: (id) => this.purchaseConstellation(id),
-      onBuyTalent: (id) => this.purchaseTalent(id),
+      onBuyNode: (id) => this.purchaseNode(id),
       onRespec: () => this.doRespec(),
     });
 
@@ -169,7 +169,7 @@ class Game {
       kit: $('panel-kit'),
       daily: $('panel-daily'),
       summon: $('panel-summon'),
-      bath: $('panel-bath'),
+      rebirth: $('panel-rebirth'),
       achievements: $('panel-achievements'),
       stats: $('panel-stats'),
     }, {
@@ -543,6 +543,9 @@ class Game {
     this.upgradeGrid.update(this.state);
     this.updateQuestVisibility();
     this.updateMetaVisibility();
+    // Cheap once it has fired: noteWall() returns immediately on a state that
+    // has already seen the wall, so this costs nothing for the rest of the run.
+    if (!this.state.rebirthUnlocked) this.checkWall();
 
     // Only the visible panel needs refreshing.
     if (this.tabs.current === 'achievements') this.achievementPanel.update(this.state);
@@ -556,8 +559,8 @@ class Game {
     if (this.tabs.current === 'summon' && this.summonUnlocked()) {
       this.gachaPanel.update(this.state);
     }
-    if (this.tabs.current === 'bath' && this.bathUnlocked()) {
-      this.metaPanel.update(this.state, this.cstats.level);
+    if (this.tabs.current === 'rebirth' && this.rebirthVisible()) {
+      this.metaPanel.update(this.state, this.cstats);
     }
     if (this.tabs.current === 'daily') {
       this.dailyPanel.update(this.state, now);
@@ -579,8 +582,13 @@ class Game {
     return g.tickets > 0 || g.pulls > 0 || Object.keys(g.companions).length > 0;
   }
 
-  bathUnlocked() {
-    return this.state.lifetimeZen >= BATH_TEASE_ZEN || this.state.prestigeCount > 0;
+  /** Whether the Rebirth tab has anything to show yet. */
+  rebirthVisible() {
+    return (
+      this.state.rebirthUnlocked ||
+      this.state.rebirthCount > 0 ||
+      this.state.combat.bestDepth >= REBIRTH_TEASE_DEPTH
+    );
   }
 
   updateMetaVisibility() {
@@ -588,9 +596,9 @@ class Game {
     this.summonLocked.hidden = summon;
     this.gachaRoot.hidden = !summon;
 
-    const bath = this.bathUnlocked();
-    this.bathLocked.hidden = bath;
-    this.metaRoot.hidden = !bath;
+    const rebirthReady = this.rebirthVisible();
+    this.bathLocked.hidden = rebirthReady;
+    this.metaRoot.hidden = !rebirthReady;
   }
 
   updateQuestVisibility() {
@@ -646,7 +654,7 @@ class Game {
     s.combat.shards += shardDrop(stage, enemy.boss);
 
     // Bosses are the tap for summon tickets — one guaranteed, plus whatever
-    // relics and constellations have added on top.
+    // the tree and constellations have added on top.
     if (enemy.boss) {
       const tickets = 1 + ticketsPerBoss(s);
       s.gacha.tickets += tickets;
@@ -867,12 +875,12 @@ class Game {
     this.save();
   }
 
-  /** Anything meta — a pull, a relic, a talent — moves both stat blocks too. */
+  /** Anything meta — a pull, a tree node, a star — moves both stat blocks too. */
   afterMetaChange() {
     this.cstats = combatStats(this.state);
     this.derived = recomputeDerived(this.state, { comboPoints: this.combo.points });
     if (this.summonUnlocked()) this.gachaPanel.update(this.state);
-    if (this.bathUnlocked()) this.metaPanel.update(this.state, this.cstats.level);
+    if (this.rebirthVisible()) this.metaPanel.update(this.state, this.cstats);
     this.save();
   }
 
@@ -989,57 +997,77 @@ class Game {
     openModal({ title: 'Choose a capybara', bodyNode: body, actions: [{ label: 'Close' }] });
   }
 
-  // --------------------------------------------------------------- prestige
+  // ---------------------------------------------------------------- rebirth
 
-  confirmPrestige() {
-    const preview = prestigePreview(this.state);
-    if (!preview.canPrestige) {
+  confirmRebirth() {
+    const preview = rebirthPreview(this.state, this.cstats);
+    if (!preview.canRebirth) {
       audio.denied();
       return;
     }
 
     const body = el('div', 'confirm');
-    body.appendChild(el('p', 'confirm__gain', `+${fmtInt(preview.yuzu)} yuzu`));
+    body.appendChild(el('p', 'confirm__gain', `+${fmtInt(preview.essence)} essence`));
     body.appendChild(el('p', 'confirm__lead', 'You lose:'));
-    body.appendChild(list(['zen in hand', 'every generator', 'every tap and generator upgrade']));
+    body.appendChild(
+      list(['zen in hand', 'every generator', 'every tap and generator upgrade', 'your place downstream, back to stage 0']),
+    );
     body.appendChild(el('p', 'confirm__lead', 'You keep:'));
     body.appendChild(
       list([
-        'all relics, and the yuzu you are about to earn',
-        'your whole quest run — stage, level, gear and skills',
-        'every companion, trophy and talent point',
+        'every rank in the tree, and the essence you are about to earn',
+        'all your gear, forge levels, skills and shards',
+        'every companion and trophy',
       ]),
     );
 
     openModal({
-      title: 'Take the Yuzu Bath?',
+      title: 'Begin again?',
       bodyNode: body,
       actions: [
         { label: 'Not yet' },
-        { label: `Take the bath`, variant: 'gold', onClick: () => this.doPrestige() },
+        { label: 'Begin again', variant: 'gold', onClick: () => this.doRebirth() },
       ],
     });
   }
 
-  doPrestige() {
-    const result = prestige(this.state);
+  doRebirth() {
+    const result = rebirth(this.state);
     if (!result.ok) return;
 
     this.combo.reset();
     this.scene.particles.clear();
     this.scene.clearGolden();
     this.golden.start(Date.now(), 1);
+    this.combat = new Combat(this.state);
     this.afterMetaChange();
     this.buildingList.update(this.state, this.derived);
     this.upgradeGrid.update(this.state);
 
     audio.levelUp();
     this.toaster.show({
-      title: 'A very long soak',
-      body: `+${fmtInt(result.gained)} yuzu. The pond is quiet again.`,
+      title: 'The water starts again',
+      body: `+${fmtInt(result.gained)} essence, for stage ${result.stage}. Spend it on something permanent.`,
       kind: 'achievement',
-      icon: '🍋',
+      icon: '🌱',
     });
+  }
+
+  /**
+   * Announce the wall the moment it arrives. Being stuck without being told is
+   * the failure mode v1 had, and it reads as the game being broken rather than
+   * as a system opening up.
+   */
+  checkWall() {
+    if (!noteWall(this.state, this.cstats)) return;
+    audio.achievement();
+    this.toaster.show({
+      title: 'You are stuck here',
+      body: 'That boss will not fall inside thirty seconds. Rebirth is open.',
+      kind: 'achievement',
+      icon: '🌱',
+    });
+    this.save();
   }
 
   confirmAscend() {
@@ -1051,12 +1079,12 @@ class Game {
 
     const body = el('div', 'confirm');
     body.appendChild(el('p', 'confirm__gain', `+${fmtInt(preview.lotus)} lotus`));
-    body.appendChild(el('p', 'confirm__lead', 'Ascending takes more than a bath. You lose:'));
-    body.appendChild(list(['everything prestige takes', 'all your yuzu', 'every relic you bought']));
+    body.appendChild(el('p', 'confirm__lead', 'Ascending takes more than a rebirth. You lose:'));
+    body.appendChild(list(['everything rebirth takes', 'all your essence', 'every rank in the tree']));
     body.appendChild(el('p', 'confirm__lead', 'You keep:'));
     body.appendChild(list(['all constellations, and the lotus you are about to earn', 'every companion and trophy']));
     body.appendChild(
-      el('p', 'confirm__warn', 'This is not reversible. Constellations are strong enough to be worth it.'),
+      el('p', 'confirm__warn', 'This layer is still being built. Constellations are strong enough to be worth it.'),
     );
 
     openModal({
@@ -1091,10 +1119,10 @@ class Game {
     });
   }
 
-  // ----------------------------------------------------- relics and talents
+  // ------------------------------------------------------- tree and stars
 
-  purchaseRelic(id) {
-    const result = buyRelic(this.state, id);
+  purchaseNode(id) {
+    const result = buyNode(this.state, id);
     if (!result.ok) {
       audio.denied();
       return;
@@ -1113,21 +1141,10 @@ class Game {
     this.afterMetaChange();
   }
 
-  purchaseTalent(id) {
-    const result = buyTalent(this.state, id, this.cstats.level);
-    if (!result.ok) {
-      audio.denied();
-      return;
-    }
-    audio.buy();
-    this.afterMetaChange();
-  }
-
   doRespec() {
-    const points = availablePoints(this.state, this.cstats.level);
     const body = el('div', 'confirm');
     body.appendChild(
-      el('p', 'confirm__lead', 'Every talent point comes back and the tree resets. Costs nothing.'),
+      el('p', 'confirm__lead', 'Every point of essence comes back and the tree empties. Costs nothing.'),
     );
     openModal({
       title: 'Respec the tree?',
@@ -1143,7 +1160,7 @@ class Game {
             this.afterMetaChange();
             this.toaster.show({
               title: 'Tree reset',
-              body: `${result.refunded + points} points to spend.`,
+              body: `${fmtInt(result.refunded)} essence back to spend.`,
               kind: 'info',
               icon: '🌱',
             });

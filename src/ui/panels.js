@@ -138,9 +138,9 @@ export class StatsPanel {
       this.row('Five stars', fmtInt(state.gacha.fiveStars));
       this.row('Roster', `${collection.owned}/${collection.total} · ${fmtPct(collection.ratio, 0)}`);
     }
-    if (state.prestigeCount > 0 || state.lifetimeYuzu > 0) {
-      this.row('Prestiges', fmtInt(state.prestigeCount));
-      this.row('Yuzu all time', fmt(state.lifetimeYuzu));
+    if (state.rebirthCount > 0 || state.lifetimeEssence > 0) {
+      this.row('Rebirths', fmtInt(state.rebirthCount));
+      this.row('Essence all time', fmt(state.lifetimeEssence));
     }
     if (state.ascendCount > 0) {
       this.row('Ascensions', fmtInt(state.ascendCount));
@@ -339,7 +339,7 @@ function confirmReset(onReset) {
     el(
       'p',
       'settings__note',
-      'This erases every generator, upgrade, achievement and trophy. There is no undo and no prestige credit.',
+      'This erases every generator, upgrade, achievement and trophy. There is no undo and no rebirth credit.',
     ),
   );
   openModal({

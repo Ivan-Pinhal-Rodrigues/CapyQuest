@@ -6,7 +6,7 @@
 
 import { BUILDINGS } from './data/buildings.js';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export function createState(now = Date.now()) {
   return {
@@ -16,12 +16,15 @@ export function createState(now = Date.now()) {
 
     // --- currencies
     zen: 0,
-    lifetimeZen: 0, // reset by prestige — drives the yuzu payout
+    lifetimeZen: 0, // reset by rebirth
     totalZen: 0, // never reset — drives achievements
     lifetimeClicks: 0,
-    yuzu: 0,
-    lifetimeYuzu: 0,
-    prestigeCount: 0,
+    essence: 0,
+    lifetimeEssence: 0,
+    rebirthCount: 0,
+    // Sticky: set the first time the 30-second boss wall is detected, and never
+    // cleared. Being walled once is knowledge, and knowledge does not expire.
+    rebirthUnlocked: false,
     lotus: 0,
     lifetimeLotus: 0,
     ascendCount: 0,
@@ -31,9 +34,8 @@ export function createState(now = Date.now()) {
     clickUpgrades: {}, // id -> true
     tierUpgrades: {}, // id -> true
     achievements: {}, // id -> unlock timestamp
-    relics: {}, // id -> ranks (survives prestige)
     constellations: {}, // id -> ranks (survives ascension)
-    talents: {}, // id -> ranks
+    tree: {}, // rebirth tree node id -> ranks (survives rebirth)
 
     gacha: {
       tickets: 0,
@@ -90,7 +92,7 @@ export function createState(now = Date.now()) {
       upgradesBought: 0,
       questsDone: 0,
       chestsOpened: 0,
-      prestiges: 0,
+      rebirths: 0,
       ascensions: 0,
     },
 
@@ -160,9 +162,21 @@ export function reconcileState(state, now = Date.now()) {
   out.clickUpgrades = { ...(state.clickUpgrades || {}) };
   out.tierUpgrades = { ...(state.tierUpgrades || {}) };
   out.achievements = { ...(state.achievements || {}) };
-  out.relics = countMap(state.relics);
   out.constellations = countMap(state.constellations);
-  out.talents = countMap(state.talents);
+
+  // v1 kept two parallel permanent-upgrade bags: `relics` (bought with yuzu)
+  // and `talents` (bought with level-derived points). v2 has one tree, and the
+  // 49 v1 ids kept their names — which is exactly why this is a merge and not a
+  // translation table. Ranks carry across one for one; a v2 save has neither of
+  // the old keys, so this is a no-op on every load after the first.
+  out.tree = countMap(state.tree);
+  for (const legacy of [state.relics, state.talents]) {
+    for (const [id, ranks] of Object.entries(countMap(legacy))) {
+      out.tree[id] = (out.tree[id] || 0) + ranks;
+    }
+  }
+  delete out.relics;
+  delete out.talents;
 
   out.gacha = { ...base.gacha, ...(state.gacha || {}) };
   out.gacha.pity = {
@@ -215,11 +229,33 @@ export function reconcileState(state, now = Date.now()) {
   out.codes = isPlainObject(state.codes) ? { ...state.codes } : {};
   out.buffs = Array.isArray(state.buffs) ? state.buffs.filter((b) => b && b.until > now) : [];
 
+  // v1 called the rebirth currency `yuzu` and its counter `prestigeCount`. The
+  // meaning is unchanged, so the migration is a rename — and it has to happen
+  // before the scrub below, or a v1 save quietly loses everything it earned.
+  if (state.essence === undefined && state.yuzu !== undefined) out.essence = state.yuzu;
+  if (state.lifetimeEssence === undefined && state.lifetimeYuzu !== undefined) {
+    out.lifetimeEssence = state.lifetimeYuzu;
+  }
+  if (state.rebirthCount === undefined && state.prestigeCount !== undefined) {
+    out.rebirthCount = state.prestigeCount;
+  }
+  if (state.stats?.rebirths === undefined && state.stats?.prestiges !== undefined) {
+    out.stats.rebirths = state.stats.prestiges;
+  }
+  delete out.stats.prestiges;
+  delete out.yuzu;
+  delete out.lifetimeYuzu;
+  delete out.prestigeCount;
+
+  // Anyone who prestiged in v1 has already met a wall of some kind, and making
+  // them prove it again would read as the feature being broken.
+  out.rebirthUnlocked = !!out.rebirthUnlocked || out.rebirthCount > 0;
+
   // Numeric fields get scrubbed — a single NaN in a save poisons every formula
   // downstream and the symptom shows up somewhere unrelated.
   for (const key of [
     'zen', 'lifetimeZen', 'totalZen', 'lifetimeClicks',
-    'yuzu', 'lifetimeYuzu', 'prestigeCount',
+    'essence', 'lifetimeEssence', 'rebirthCount',
     'lotus', 'lifetimeLotus', 'ascendCount',
   ]) {
     out[key] = safeNumber(out[key]);

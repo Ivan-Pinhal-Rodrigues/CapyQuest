@@ -1,6 +1,6 @@
 // Achievements are not badges — every one of them pays. That is what makes the
 // list worth grinding instead of worth ignoring.
-// This table grows as later systems land (combat, gacha, prestige).
+// This table grows as later systems land (combat, gacha, rebirth).
 
 export const ACHIEVEMENTS = [
   // ------------------------------------------------------------------ taps

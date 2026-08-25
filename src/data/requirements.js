@@ -9,8 +9,8 @@
 //   zps           current zen per second
 //   building      { id, count } — own at least `count` of that generator
 //   buildings     total generators owned across all lines
-//   prestige      prestige count
-//   yuzu          yuzu currently held
+//   rebirth       rebirth count
+//   essence       essence currently held
 //   stage         highest stage reached
 //   achievements  number of achievements unlocked
 //   upgrade       id of another upgrade that must already be owned
@@ -27,8 +27,8 @@ export function meetsRequirement(req, state) {
   if (req.lifetimeZen != null && state.lifetimeZen < req.lifetimeZen) return false;
   if (req.totalZen != null && state.totalZen < req.totalZen) return false;
   if (req.zps != null && (state.derived?.zps ?? 0) < req.zps) return false;
-  if (req.prestige != null && state.prestigeCount < req.prestige) return false;
-  if (req.yuzu != null && state.yuzu < req.yuzu) return false;
+  if (req.rebirth != null && state.rebirthCount < req.rebirth) return false;
+  if (req.essence != null && state.essence < req.essence) return false;
   if (req.stage != null && bestStageReached(state) < req.stage) return false;
 
   if (req.building) {
@@ -61,8 +61,8 @@ export function describeRequirement(req, fmt) {
   if (req.zps != null) parts.push(`${fmt(req.zps)} zen/sec`);
   if (req.building) parts.push(`${req.building.count}× that generator`);
   if (req.buildings != null) parts.push(`${req.buildings} generators owned`);
-  if (req.prestige != null) parts.push(`${req.prestige} prestige`);
-  if (req.yuzu != null) parts.push(`${fmt(req.yuzu)} yuzu`);
+  if (req.rebirth != null) parts.push(`${req.rebirth} rebirth`);
+  if (req.essence != null) parts.push(`${fmt(req.essence)} essence`);
   if (req.stage != null) parts.push(`stage ${req.stage}`);
   if (req.achievements != null) parts.push(`${req.achievements} achievements`);
   return parts.join(' · ');

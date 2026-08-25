@@ -1,5 +1,6 @@
-/* The Summon and Bath panels: gacha, pity meter, roster, prestige, relics,
-   the talent tree, and the confirmation dialogs. */
+/* The Summon and Rebirth panels: gacha, pity meter, roster, the reset cards,
+   the constellation list, and the confirmation dialogs. The rebirth tree
+   itself lives in rebirth.css. */
 
 /* --------------------------------------------------------------- hud extras */
 
@@ -22,7 +23,7 @@
   white-space: nowrap;
 }
 
-.hud__meta-item--yuzu { color: var(--zen); border-color: rgba(247, 201, 72, 0.4); }
+.hud__meta-item--essence { color: var(--zen); border-color: rgba(247, 201, 72, 0.4); }
 .hud__meta-item--lotus { color: #c9a0ff; border-color: rgba(201, 160, 255, 0.4); }
 .hud__meta-item--ticket { color: var(--water); border-color: rgba(127, 208, 230, 0.4); }
 
@@ -238,7 +239,7 @@
   border: 1px solid var(--border);
 }
 
-.meta-card--prestige.is-ready {
+.meta-card--rebirth.is-ready {
   border-color: var(--zen);
   background: linear-gradient(180deg, rgba(247, 201, 72, 0.1), var(--surface));
   box-shadow: 0 0 16px rgba(247, 201, 72, 0.12);
@@ -289,7 +290,7 @@
   border-color: var(--zen);
 }
 
-/* ------------------------------------------------------------------ relics */
+/* ----------------------------------------------------- constellation rows */
 
 .relic-list { display: flex; flex-direction: column; gap: 0.35rem; }
 
@@ -313,7 +314,6 @@
 .relic__side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.12rem; }
 
 .relic__cost { font-family: var(--font-pixel); font-size: 0.5rem; }
-.relic__cost--yuzu { color: var(--zen); }
 .relic__cost--lotus { color: #c9a0ff; }
 .relic__ranks { font-size: 0.66rem; color: var(--text-faint); }
 
@@ -323,90 +323,6 @@
 .relic.is-maxed { opacity: 0.6; }
 .relic.is-maxed .relic__cost { color: var(--leaf); }
 .relic:disabled:not(.is-maxed) { opacity: 0.55; }
-
-/* ------------------------------------------------------------ talent tree */
-
-.talent-tree { display: flex; flex-direction: column; gap: 0.5rem; }
-
-.talent-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-}
-
-.talent-header__points {
-  font-family: var(--font-pixel);
-  font-size: 0.5rem;
-  color: var(--zen);
-}
-
-.talent-branch {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.5rem;
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--branch, var(--border-bright));
-}
-
-.talent-branch__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.talent-branch__name { font-size: 0.85rem; color: var(--branch, var(--text)); }
-.talent-branch__spend { font-size: 0.66rem; color: var(--text-faint); }
-
-.talent-tier {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.3rem;
-}
-
-.talent {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.15rem;
-  min-height: 52px;
-  padding: 0.35rem 0.25rem;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  transition: all 140ms ease;
-}
-
-.talent__name {
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-align: center;
-  line-height: 1.15;
-  color: var(--text-dim);
-}
-
-.talent__rank { font-family: var(--font-pixel); font-size: 0.38rem; color: var(--text-faint); }
-
-.talent.is-owned {
-  border-color: var(--branch, var(--border-bright));
-  background: var(--surface-3);
-}
-
-.talent.is-owned .talent__name { color: var(--text); }
-.talent.is-owned .talent__rank { color: var(--branch, var(--zen)); }
-
-.talent.is-ready {
-  box-shadow: 0 0 0 1px var(--branch, var(--zen)), 0 0 10px rgba(247, 201, 72, 0.16);
-}
-
-.talent.is-maxed .talent__rank { color: var(--leaf); }
-.talent.is-locked { opacity: 0.3; }
-.talent:disabled:not(.is-locked):not(.is-maxed) { opacity: 0.6; }
 
 /* ----------------------------------------------------------- confirmations */
 

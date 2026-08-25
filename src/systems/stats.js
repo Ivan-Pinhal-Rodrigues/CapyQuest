@@ -93,15 +93,15 @@ export function recomputeDerived(state, { comboPoints = 0, now = Date.now() } = 
     applyEffect(acc, ACHIEVEMENTS_BY_ID[id]?.reward);
   }
 
-  // Gear, talents, relics, constellations and party companions all speak the
-  // same effect vocabulary; metaEffects() gathers them so a new relic is wired
-  // in by existing in its table rather than by being remembered here.
+  // Gear, tree nodes, constellations and party companions all speak the same
+  // effect vocabulary; metaEffects() gathers them so a new node is wired in by
+  // existing in its table rather than by being remembered here.
   for (const effect of metaEffects(state)) applyEffect(acc, effect);
 
-  // Prestige currency is a permanent global boost, measured on LIFETIME yuzu
-  // rather than yuzu in hand. Paying the bonus on held currency would mean
-  // buying a relic makes you weaker, which turns the relic shop into a trap.
-  const yuzuMult = B.yuzuBonus(state.lifetimeYuzu) * B.yuzuBonus(state.lifetimeLotus, 0.5);
+  // Rebirth currency is a permanent global boost, measured on LIFETIME essence
+  // rather than essence in hand. Paying the bonus on held currency would mean
+  // buying a tree node makes you weaker, which turns the tree into a trap.
+  const essenceMult = B.essenceBonus(state.lifetimeEssence) * B.essenceBonus(state.lifetimeLotus, 0.5);
 
   // Active buffs (golden capybara frenzies, event bonuses) stack on last.
   let buffMult = 1;
@@ -113,7 +113,7 @@ export function recomputeDerived(state, { comboPoints = 0, now = Date.now() } = 
     });
   }
 
-  const globalMult = acc.globalMult * yuzuMult;
+  const globalMult = acc.globalMult * essenceMult;
 
   // --- idle income
   let zps = 0;
@@ -167,7 +167,7 @@ export function recomputeDerived(state, { comboPoints = 0, now = Date.now() } = 
     comboMult,
     cappedCombo,
     globalMult,
-    yuzuMult,
+    essenceMult,
     buffMult,
     zpsShare: acc.zpsShare,
     goldenChanceMult: 1 + acc.goldenChance,

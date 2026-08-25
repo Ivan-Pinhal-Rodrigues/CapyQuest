@@ -1,0 +1,219 @@
+/* The Rebirth panel: the wall meter, the branch picker, the 6×5 tier grid and
+   the Ascension roadmap card. */
+
+/* ----------------------------------------------------------- the wall meter */
+
+.meta-card__wall {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.wall-meter {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.wall-meter__fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--leaf), var(--zen));
+  transition: width 240ms ease;
+}
+
+.meta-card--rebirth.is-walled {
+  border-color: #d9614f;
+  background: linear-gradient(180deg, rgba(217, 97, 79, 0.12), var(--surface));
+}
+
+.meta-card--rebirth.is-walled .wall-meter__fill {
+  background: #d9614f;
+}
+
+.meta-card--rebirth.is-walled .meta-card__wall { color: #f0947f; }
+
+/* -------------------------------------------------------- ascension roadmap */
+
+.meta-card__wip {
+  align-self: flex-start;
+  padding: 0.14rem 0.4rem;
+  border-radius: var(--radius-sm);
+  background: rgba(201, 160, 255, 0.14);
+  border: 1px solid rgba(201, 160, 255, 0.4);
+  font-size: 0.68rem;
+  color: #c9a0ff;
+}
+
+.roadmap {
+  margin-top: 0.35rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px dashed var(--border-bright);
+}
+
+.roadmap__title {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.roadmap__list {
+  margin: 0;
+  padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  line-height: 1.35;
+  /* The reset strips list markers; this list wants them back, otherwise four
+     wrapped sentences read as one paragraph. */
+  list-style: disc outside;
+}
+
+/* ------------------------------------------------------------------- header */
+
+.tree { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.tree__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.tree__essence {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: var(--zen);
+}
+
+.tree__blurb {
+  font-size: 0.74rem;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* --------------------------------------------------------- branch selector */
+
+/* Seven branches will not fit side by side on a phone, so one is open at a
+   time. Four columns keeps the row a tidy 2×4 with one spare at 390px. */
+.tree__branches {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.3rem;
+}
+
+.tree-branch-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.35rem 0.2rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  transition: all 140ms ease;
+}
+
+.tree-branch-btn__spend {
+  font-family: var(--font-pixel);
+  font-size: 0.38rem;
+  color: var(--text-faint);
+}
+
+.tree-branch-btn.is-invested { color: var(--text); }
+.tree-branch-btn.is-invested .tree-branch-btn__spend { color: var(--branch); }
+
+.tree-branch-btn.is-active {
+  color: var(--bg-deep);
+  background: var(--branch);
+  border-color: var(--branch);
+}
+
+.tree-branch-btn.is-active .tree-branch-btn__spend { color: var(--bg-deep); }
+
+/* ------------------------------------------------------------- the 6×5 grid */
+
+.tree__column { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.tree-tier {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tree-tier__gate {
+  font-family: var(--font-pixel);
+  font-size: 0.38rem;
+  text-align: center;
+  color: var(--branch, var(--text-faint));
+}
+
+.tree-tier__gate.is-locked { color: var(--text-faint); opacity: 0.8; }
+
+.tree-tier__cells {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.25rem;
+}
+
+.tree-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  min-height: 56px;
+  padding: 0.3rem 0.15rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: all 140ms ease;
+}
+
+.tree-node__name {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.1;
+  color: var(--text-dim);
+  /* Thirty names per branch include some long ones; clamp rather than let a
+     single node stretch the whole row. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tree-node__rank { font-family: var(--font-pixel); font-size: 0.34rem; color: var(--text-faint); }
+.tree-node__cost { font-family: var(--font-pixel); font-size: 0.34rem; color: var(--zen); opacity: 0.75; }
+
+.tree-node.is-owned {
+  border-color: var(--branch, var(--border-bright));
+  background: var(--surface-3);
+}
+
+.tree-node.is-owned .tree-node__name { color: var(--text); }
+.tree-node.is-owned .tree-node__rank { color: var(--branch, var(--zen)); }
+
+.tree-node.is-ready {
+  box-shadow: 0 0 0 1px var(--branch, var(--zen)), 0 0 10px rgba(247, 201, 72, 0.16);
+}
+
+.tree-node.is-maxed .tree-node__rank { color: var(--leaf); }
+.tree-node.is-maxed .tree-node__cost { color: var(--leaf); }
+.tree-node.is-locked { opacity: 0.3; }
+.tree-node:disabled:not(.is-locked):not(.is-maxed) { opacity: 0.62; }
+
+@media (max-width: 460px) {
+  .tree-node { min-height: 50px; }
+  .tree-node__name { font-size: 0.5rem; }
+}

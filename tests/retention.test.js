@@ -9,7 +9,8 @@ import assert from 'node:assert/strict';
 
 import { createState, reconcileState } from '../src/state.js';
 import { recomputeDerived } from '../src/systems/stats.js';
-import { prestige, ascend } from '../src/systems/prestige.js';
+import { rebirth } from '../src/systems/rebirth.js';
+import { ascend } from '../src/systems/ascension.js';
 import {
   dayKey, weekKey, daysBetween, msUntilTomorrow,
   rollQuests, activeQuests, claimQuest, questSummary, counters,
@@ -422,7 +423,7 @@ test('reward bundles pay into the right currencies', () => {
 
   assert.ok(grant.zen > 0);
   assert.equal(s.zen, grant.zen);
-  assert.equal(s.lifetimeZen, grant.zen, 'reward zen counts toward prestige');
+  assert.equal(s.lifetimeZen, grant.zen, 'reward zen counts toward the run total');
   assert.equal(s.totalZen, grant.zen);
   assert.equal(s.gacha.tickets, 2);
   assert.equal(s.combat.shards, 50);
@@ -457,10 +458,13 @@ test('a pass level-up during a grant is reported', () => {
 
 // ------------------------------------------------------- resets and saves
 
-test('prestige keeps the streak, quests, chest and pass', () => {
+test('rebirth keeps the streak, quests, chest and pass', () => {
   const s = createState();
   s.lifetimeZen = 5e12;
   s.zen = 5e12;
+  s.combat.depth = 95;
+  s.combat.bestDepth = 95;
+  s.rebirthUnlocked = true;
   rollQuests(s, TUESDAY);
   checkLogin(s, TUESDAY);
   s.pass.xp = 640;
@@ -469,7 +473,7 @@ test('prestige keeps the streak, quests, chest and pass', () => {
   s.chest.lastAt = 12345;
   const dailyBefore = [...s.quests.daily];
 
-  assert.equal(prestige(s).ok, true);
+  assert.equal(rebirth(s).ok, true);
 
   // Retention is keyed to the calendar, not to progression — resetting the
   // pond must not cost the player a streak they earned by showing up.
@@ -483,7 +487,7 @@ test('prestige keeps the streak, quests, chest and pass', () => {
 
 test('ascension keeps them too', () => {
   const s = createState();
-  s.lifetimeYuzu = 500000;
+  s.lifetimeEssence = 500000;
   checkLogin(s, TUESDAY);
   s.pass.xp = 900;
   s.codes.yuzu = 1;

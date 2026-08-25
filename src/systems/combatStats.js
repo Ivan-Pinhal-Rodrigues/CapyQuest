@@ -57,7 +57,7 @@ export function combatStats(state) {
     addStats(block, member.stats, companionMultiplier(member.level));
   }
 
-  // Talents, relics and constellations multiply what everything else built.
+  // The rebirth tree and constellations multiply what everything else built.
   const mods = combatModifiers(state);
   block.atk *= mods.atk;
   block.def *= mods.def;
