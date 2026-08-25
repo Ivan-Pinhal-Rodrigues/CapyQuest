@@ -9,11 +9,12 @@ import { createState, reconcileState } from '../src/state.js';
 import { Combat } from '../src/systems/combat.js';
 import { buildEnemy, buildBoss, depthInfo, toDepth, enemyIdForDepth, terrainForDepth } from '../src/systems/stages.js';
 import { combatStats, equippedItems, equippedBonuses, resolveItem, xpForStage } from '../src/systems/combatStats.js';
-import { rollLoot, shardDrop, addToInventory, equip, scrap, forge, forgePrice, MAX_FORGE, INVENTORY_CAP, rarityCeiling } from '../src/systems/loot.js';
+import { rollLoot, shardDrop, addToInventory, equip, scrap, forge, forgePrice, MAX_FORGE, INVENTORY_CAP, tierCeiling } from '../src/systems/loot.js';
 import { recomputeDerived } from '../src/systems/stats.js';
 import { TERRAINS, terrainForStage, enemyPoolForStage, allTerrainEnemyIds } from '../src/data/terrains.js';
 import { ENEMIES } from '../src/data/enemies.js';
-import { GEAR, GEAR_BY_ID, SLOT_IDS, rarityRank, RARITY_ORDER } from '../src/data/gear.js';
+import { GEAR, GEAR_BY_ID, SLOT_IDS, statsFor, gearScore } from '../src/data/gear.js';
+import { MAX_TIER, RARITIES, budget } from '../src/data/rarities.js';
 import { SKILLS, SKILLS_BY_ID, SKILL_SLOTS } from '../src/data/skills.js';
 import { ELEMENTS, ELEMENT_IDS } from '../src/data/elements.js';
 import { SHAPES } from '../src/render/shapes.js';
@@ -59,34 +60,44 @@ test('every enemy has a real shape, element and complete palette', () => {
   }
 });
 
-test('every gear piece has a real slot, rarity, shape and complete palette', () => {
+test('every gear piece has a real slot, rung, shape and complete palette', () => {
   const seen = new Set();
   for (const g of GEAR) {
     assert.ok(!seen.has(g.id), `duplicate gear id "${g.id}"`);
     seen.add(g.id);
     assert.ok(SLOT_IDS.includes(g.slot), `${g.id}: unknown slot`);
-    assert.ok(RARITY_ORDER.includes(g.rarity), `${g.id}: unknown rarity`);
+    assert.ok(g.tier >= 0 && g.tier <= MAX_TIER, `${g.id}: rung out of range`);
     assert.ok(GEAR_SHAPES[g.slot], `${g.id}: no shape for slot`);
     assert.ok(g.name && g.blurb, `${g.id}: missing copy`);
     assert.ok(Object.keys(g.stats).length > 0, `${g.id}: no stats`);
+    // Every piece needs at least one stat that scales with the rung, or its
+    // budget has nowhere to go and it stops improving as it climbs.
+    const linear = ['atk', 'def', 'hp', 'spd', 'luck'].some((k) => g.stats[k]);
+    assert.ok(linear, `${g.id}: nothing but rate stats — it would never scale`);
   }
 });
 
-test('every slot has gear across a spread of rarities', () => {
+test('every slot has gear spread across the ladder', () => {
   for (const slot of SLOT_IDS) {
     const pieces = GEAR.filter((g) => g.slot === slot);
     assert.ok(pieces.length >= 6, `${slot}: only ${pieces.length} pieces`);
-    assert.ok(new Set(pieces.map((p) => p.rarity)).size >= 4, `${slot}: too few rarities`);
+    assert.ok(new Set(pieces.map((p) => p.tier)).size >= 4, `${slot}: too few rungs`);
   }
 });
 
-test('rarer gear is stronger within a slot', () => {
-  for (const slot of SLOT_IDS) {
-    const pieces = GEAR.filter((g) => g.slot === slot)
-      .slice()
-      .sort((a, b) => rarityRank(a.rarity) - rarityRank(b.rarity));
-    const total = (p) => Object.values(p.stats).reduce((a, b) => a + b, 0);
-    assert.ok(total(pieces.at(-1)) > total(pieces[0]), `${slot}: top rarity is not stronger`);
+test('a piece is worth its rung, whichever piece it is', () => {
+  // The whole point of the ladder: at a shared rung two pieces are worth the
+  // same and differ in shape. A hand-authored stat block that happened to be
+  // generous would otherwise quietly become the only viable piece at the top.
+  for (const tier of [0, 7, 19]) {
+    for (const g of GEAR) {
+      const stats = statsFor(g, { tier, stars: 1, forge: 0 });
+      const linear = gearScore({ ...stats, crit: 0, critDmg: 0 });
+      assert.ok(
+        Math.abs(linear - budget(tier)) < 1e-6,
+        `${g.id} at rung ${tier}: worth ${linear.toFixed(1)}, the rung is ${budget(tier).toFixed(1)}`,
+      );
+    }
   }
 });
 
@@ -283,17 +294,16 @@ test('equipping only ever fills that piece\'s own slot', () => {
 
 // ------------------------------------------------------------------ loot
 
-test('loot never exceeds the rarity ceiling for its stage', () => {
+test('loot never exceeds the rung ceiling for its stage', () => {
   const rng = makeRng(7);
   for (const stage of [0, 5, 20, 40, 60, 90, 119]) {
-    const ceiling = rarityRank(rarityCeiling(stage));
+    const ceiling = tierCeiling(stage);
     for (let i = 0; i < 300; i++) {
       const drop = rollLoot(stage, { isBoss: true, luck: 500, rng });
       if (!drop) continue;
-      assert.ok(
-        rarityRank(drop.rarity) <= ceiling,
-        `stage ${stage} dropped ${drop.rarity}, ceiling is ${rarityCeiling(stage)}`,
-      );
+      assert.ok(drop.tier <= ceiling, `stage ${stage} dropped rung ${drop.tier}, ceiling is ${ceiling}`);
+      assert.ok(drop.def.tier <= drop.tier, `${drop.id} cannot appear on rung ${drop.tier}`);
+      assert.ok(drop.stars >= 1 && drop.stars <= 5, `bad star roll ${drop.stars}`);
     }
   }
 });
@@ -376,11 +386,11 @@ test('forging is refused without the shards, and costs nothing', () => {
   assert.equal(s.combat.shards, 0);
 });
 
-test('forge prices climb with level and with rarity', () => {
+test('forge prices climb with level and with rung', () => {
   assert.ok(forgePrice({ id: 'bambooRod', forge: 5 }) > forgePrice({ id: 'bambooRod', forge: 0 }));
   assert.ok(
-    forgePrice({ id: 'theLongNap', forge: 0 }) > forgePrice({ id: 'stickRod', forge: 0 }),
-    'a capybaric piece should cost more to enhance than a common one',
+    forgePrice({ id: 'bambooRod', forge: 0, tier: 12 }) > forgePrice({ id: 'bambooRod', forge: 0, tier: 2 }),
+    'a piece high on the ladder should cost more to enhance',
   );
 });
 

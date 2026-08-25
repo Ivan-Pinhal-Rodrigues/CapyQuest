@@ -21,6 +21,10 @@ export function createState(now = Date.now()) {
     lifetimeClicks: 0,
     essence: 0,
     lifetimeEssence: 0,
+    // Leafs are the simulated premium currency. Nothing here takes real money;
+    // see systems/store.js for the whole of what that means.
+    leafs: 0,
+    lifetimeLeafs: 0,
     rebirthCount: 0,
     // Sticky: set the first time the 30-second boss wall is detected, and never
     // cleared. Being walled once is knowledge, and knowledge does not expire.
@@ -86,6 +90,9 @@ export function createState(now = Date.now()) {
       maxForges: 0,
       raritiesFound: [],
       stancesUsed: [],
+      bestStars: 1,
+      fuses: 0,
+      refines: 0,
 
       // lifetime purchase counters, read by quests
       buildingsBought: 0,
@@ -142,7 +149,9 @@ export function reconcileState(state, now = Date.now()) {
   // Combat collections must be the right shape even if a save was truncated or
   // hand-edited — the panels index into them every frame.
   out.combat.inventory = Array.isArray(out.combat.inventory)
-    ? out.combat.inventory.filter((i) => i && typeof i.uid === 'string' && typeof i.id === 'string')
+    ? out.combat.inventory
+        .filter((i) => i && typeof i.uid === 'string' && typeof i.id === 'string')
+        .map((i) => normaliseItem(i))
     : [];
   out.combat.equipped = isPlainObject(out.combat.equipped) ? { ...out.combat.equipped } : {};
   out.combat.skills = Array.isArray(out.combat.skills) ? out.combat.skills.filter((s) => typeof s === 'string') : [];
@@ -256,6 +265,7 @@ export function reconcileState(state, now = Date.now()) {
   for (const key of [
     'zen', 'lifetimeZen', 'totalZen', 'lifetimeClicks',
     'essence', 'lifetimeEssence', 'rebirthCount',
+    'leafs', 'lifetimeLeafs',
     'lotus', 'lifetimeLotus', 'ascendCount',
   ]) {
     out[key] = safeNumber(out[key]);
@@ -290,6 +300,29 @@ export function reconcileState(state, now = Date.now()) {
 
   out.version = SAVE_VERSION;
   return out;
+}
+
+/**
+ * An inventory entry, repaired. A save written before the rarity ladder existed
+ * has no tier or stars, and leaving those undefined would let a piece resolve
+ * differently depending on which code path read it — so they are filled in here,
+ * once, at the boundary. GEAR_BY_ID is not consulted: an entry for an item that
+ * no longer exists keeps its numbers and is simply ignored downstream, rather
+ * than being silently deleted.
+ */
+function normaliseItem(entry) {
+  const out = { uid: entry.uid, id: entry.id, forge: safeNumber(entry.forge) };
+  out.forge = Math.min(15, Math.floor(out.forge));
+  if (entry.tier !== undefined) out.tier = clampInt(entry.tier, 0, 19);
+  out.stars = entry.stars === undefined ? 1 : clampInt(entry.stars, 1, 5);
+  out.refineFails = Math.floor(safeNumber(entry.refineFails));
+  return out;
+}
+
+function clampInt(value, min, max) {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, n));
 }
 
 function safeNumber(value) {

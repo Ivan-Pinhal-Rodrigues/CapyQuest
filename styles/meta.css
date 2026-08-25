@@ -24,6 +24,7 @@
 }
 
 .hud__meta-item--essence { color: var(--zen); border-color: rgba(247, 201, 72, 0.4); }
+.hud__meta-item--leaf { color: var(--leaf); border-color: rgba(95, 163, 72, 0.45); }
 .hud__meta-item--lotus { color: #c9a0ff; border-color: rgba(201, 160, 255, 0.4); }
 .hud__meta-item--ticket { color: var(--water); border-color: rgba(127, 208, 230, 0.4); }
 

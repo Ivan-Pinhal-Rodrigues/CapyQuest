@@ -111,12 +111,12 @@ synthesised with WebAudio oscillators, so there are no audio files either.
 | | |
 |---|---|
 | Purchasable upgrades | **292** — 16 tap, 18 generators, 36 generator tiers, 210 tree nodes, 12 constellations |
-| Gear | 42 pieces across 6 slots, each enhanceable +0 → +15 |
+| Gear | 42 pieces across 6 slots, on a 20-rung rarity ladder, 1–5 stars, enhanceable +0 → +15 |
 | Companions | 24, summoned, three in the party |
 | Combat skills | 18, three slotted |
-| Achievements | 66, every one paying a permanent bonus |
+| Achievements | 71, every one paying a permanent bonus |
 | Terrains / stages | 18 cycling, unlimited stages, with 71 enemies and bosses |
-| Currencies | Zen, Essence, Lotus, tickets, shards |
+| Currencies | Zen, Essence, Leafs, Lotus, tickets, shards |
 
 **442 collectible or purchasable entries in total**, plus the systems around them: combo chains,
 crits, Golden Capybaras, offline income, auto-battle, elemental stances, a forge, gacha pity,
@@ -129,12 +129,15 @@ Built in stages. Landed so far:
 - [x] **Core** — game loop, saves, pixel renderer, tap juice (crit, combo, particles, squash),
       18 generators, 52 upgrades, offline Nap Report, Golden Capybara, settings
 - [x] **RPG** — stats and levels, auto-battle, gear across 6 slots, the forge (+0→+15),
-      18 skills, elemental stances, 66 achievements
+      18 skills, elemental stances, 71 achievements
 - [x] **Infinite stages** — 10 levels per stage with the difficulty in the boundary, 18 cycling
       terrains, 71 enemies including 18 hostile capybaras, and a wall detector that tells you
       when the run is over instead of leaving you to grind into a ceiling
 - [x] **Meta** — gacha with a visible pity counter, 24 companions, a party of three, and 12
       ascension constellations
+- [x] **The ladder** — rarity moved off the definition and onto the piece: 20 rungs, 1–5 stars,
+      and three ways up. Enhance is the grind, refine is a stated roll with a pity counter, and
+      fuse eats three matching pieces to promote one rung. Any piece can be carried to the top.
 - [x] **Rebirth** — a reset that unlocks when the maths says you are stuck rather than at a round
       currency number, paying Essence for depth reached, spent on a 210-node tree across seven
       branches with a free respec. Every rank survives every rebirth. The 49 permanent upgrades

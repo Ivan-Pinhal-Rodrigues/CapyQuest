@@ -43,8 +43,9 @@ export function combatStats(state) {
   block.luck = BASE.luck;
 
   for (const item of equippedItems(state)) {
-    // Enhancement scales the piece's own stats; it does not touch its bonus.
-    addStats(block, item.stats, item.forgeMult);
+    // Rarity, stars and enhancement are already folded into item.stats by
+    // equipment.js — see resolveItem(). The bonus is untouched by all three.
+    addStats(block, item.stats);
   }
 
   for (const id of state.combat.skills || []) {

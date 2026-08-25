@@ -1,18 +1,18 @@
 // The Kit panel: six equipment slots, the bag, the forge, and the skill bar.
 
 import { fmtInt, fmtPct, fmtMult } from './numbers.js';
-import { SLOTS, rarityRank } from '../data/gear.js';
+import { SLOTS } from '../data/gear.js';
+import { MAX_STARS, MAX_TIER, refineChance, FUSE_COST } from '../data/rarities.js';
 import { SKILLS, SKILLS_BY_ID, SKILL_SLOTS } from '../data/skills.js';
-import { RARITY } from '../render/palettes.js';
 import { GEAR_SHAPES } from '../render/gearSprites.js';
 import { resolveItem, equippedItem } from '../systems/combatStats.js';
-import { forgePrice, MAX_FORGE } from '../systems/loot.js';
+import { forgePrice, refinePrice, MAX_FORGE } from '../systems/loot.js';
 import { spriteDataUrl } from './icons.js';
 import { openModal, el } from './modal.js';
 
-/** Rarity supplies the palette, so all 42 pieces look distinct. */
+/** The rung supplies the palette, so a piece visibly changes as it climbs. */
 function gearPalette(rarity) {
-  const base = RARITY[rarity]?.color || '#9aa5b1';
+  const base = rarity?.color || '#9aa5b1';
   return {
     '.': null,
     o: '#1c1420',
@@ -37,21 +37,33 @@ function shade(hex, amount) {
 }
 
 export function gearIconUrl(item) {
-  return spriteDataUrl(GEAR_SHAPES[item.slot], gearPalette(item.rarity), `gear:${item.slot}:${item.rarity}`);
+  return spriteDataUrl(GEAR_SHAPES[item.slot], gearPalette(item.rarity), `gear:${item.slot}:${item.tier}`);
 }
 
-/** Human-readable stat line for a piece at its current forge level. */
+/** "+7 ★★★" — the two things about a piece that are not its name. */
+export function itemMarks(item) {
+  const parts = [];
+  if (item.forge > 0) parts.push(`+${item.forge}`);
+  if (item.stars > 1) parts.push('★'.repeat(item.stars));
+  return parts.join(' ');
+}
+
+function itemTitle(item) {
+  const marks = itemMarks(item);
+  return marks ? `${item.name} ${marks}` : item.name;
+}
+
+/** Human-readable stat line. resolveItem has already applied every multiplier. */
 function statLine(item) {
-  const mult = item.forgeMult ?? 1;
   const parts = [];
   const s = item.stats;
-  if (s.atk) parts.push(`ATK ${fmtInt(s.atk * mult)}`);
-  if (s.def) parts.push(`DEF ${fmtInt(s.def * mult)}`);
-  if (s.hp) parts.push(`HP ${fmtInt(s.hp * mult)}`);
-  if (s.spd) parts.push(`SPD ${fmtInt(s.spd * mult)}`);
-  if (s.luck) parts.push(`LUK ${fmtInt(s.luck * mult)}`);
-  if (s.crit) parts.push(`CRIT ${fmtPct(s.crit * mult)}`);
-  if (s.critDmg) parts.push(`CDMG +${(s.critDmg * mult).toFixed(2)}×`);
+  if (s.atk) parts.push(`ATK ${fmtInt(s.atk)}`);
+  if (s.def) parts.push(`DEF ${fmtInt(s.def)}`);
+  if (s.hp) parts.push(`HP ${fmtInt(s.hp)}`);
+  if (s.spd) parts.push(`SPD ${fmtInt(s.spd)}`);
+  if (s.luck) parts.push(`LUK ${fmtInt(s.luck)}`);
+  if (s.crit) parts.push(`CRIT ${fmtPct(s.crit)}`);
+  if (s.critDmg) parts.push(`CDMG +${s.critDmg.toFixed(2)}×`);
   return parts.join(' · ');
 }
 
@@ -192,8 +204,8 @@ export class GearPanel {
         node.img.src = gearIconUrl(item);
         node.img.hidden = false;
         node.name.textContent = item.name;
-        node.forge.textContent = item.forge > 0 ? `+${item.forge}` : '';
-        node.btn.style.setProperty('--rarity', RARITY[item.rarity].color);
+        node.forge.textContent = itemMarks(item);
+        node.btn.style.setProperty('--rarity', item.rarity.color);
         node.btn.classList.add('is-filled');
       } else {
         node.img.hidden = true;
@@ -225,7 +237,7 @@ export class GearPanel {
     const items = state.combat.inventory
       .map(resolveItem)
       .filter(Boolean)
-      .sort((a, b) => rarityRank(b.rarity) - rarityRank(a.rarity) || b.forge - a.forge);
+      .sort((a, b) => b.score - a.score);
 
     this.bagEmpty.hidden = items.length > 0;
     const seen = new Set();
@@ -249,10 +261,10 @@ export class GearPanel {
         this.bagCards.set(item.uid, entry);
       }
       entry.img.src = gearIconUrl(item);
-      entry.badge.textContent = item.forge > 0 ? `+${item.forge}` : '';
-      entry.card.style.setProperty('--rarity', RARITY[item.rarity].color);
+      entry.badge.textContent = itemMarks(item);
+      entry.card.style.setProperty('--rarity', item.rarity.color);
       entry.card.classList.toggle('is-equipped', equipped.has(item.uid));
-      entry.card.title = `${item.name}${item.forge ? ` +${item.forge}` : ''} — ${RARITY[item.rarity].name}`;
+      entry.card.title = `${itemTitle(item)} — ${item.rarity.name}`;
     }
 
     for (const [uid, entry] of this.bagCards) {
@@ -281,7 +293,7 @@ export class GearPanel {
 
 // The modal bodies live here so the panel and main.js share one presentation.
 
-export function itemDetailBody(item, { equipped, shards }) {
+export function itemDetailBody(item, { equipped, shards, leafs = 0, fodder = 0 }) {
   const body = el('div', 'item-detail');
 
   const head = el('div', 'item-detail__head');
@@ -290,9 +302,9 @@ export function itemDetailBody(item, { equipped, shards }) {
   img.src = gearIconUrl(item);
   img.alt = '';
   const titles = el('div', 'item-detail__titles');
-  const name = el('strong', 'item-detail__name', `${item.name}${item.forge ? ` +${item.forge}` : ''}`);
-  const rarity = el('span', 'item-detail__rarity', RARITY[item.rarity].name);
-  rarity.style.color = RARITY[item.rarity].color;
+  const name = el('strong', 'item-detail__name', itemTitle(item));
+  const rarity = el('span', 'item-detail__rarity', `${item.rarity.name} · ${'★'.repeat(item.stars)}`);
+  rarity.style.color = item.rarity.color;
   titles.append(name, rarity);
   head.append(img, titles);
   body.append(head);
@@ -304,16 +316,53 @@ export function itemDetailBody(item, { equipped, shards }) {
 
   body.appendChild(el('p', 'item-detail__blurb', item.blurb));
 
+  const entry = { id: item.id, forge: item.forge, tier: item.tier, stars: item.stars };
+
   if (item.forge >= MAX_FORGE) {
     body.appendChild(el('p', 'item-detail__forge', 'Fully enhanced. +15 is the ceiling.'));
   } else {
-    const price = forgePrice({ id: item.id, forge: item.forge });
+    const price = forgePrice(entry);
     const line = el(
       'p',
       'item-detail__forge',
       `Enhance to +${item.forge + 1}: ${fmtInt(price)} shards (you have ${fmtInt(shards)})`,
     );
     if (shards < price) line.classList.add('is-short');
+    body.appendChild(line);
+  }
+
+  // --- refine. The odds go on screen every time, not just in a wiki somewhere.
+  if (item.stars >= MAX_STARS) {
+    body.appendChild(el('p', 'item-detail__forge', `${MAX_STARS} stars. Nothing left to add.`));
+  } else if (item.forge < MAX_FORGE) {
+    body.appendChild(el('p', 'item-detail__note', `Refine for a ${item.stars + 1}${nth(item.stars + 1)} star opens at +${MAX_FORGE}.`));
+  } else {
+    const price = refinePrice(entry);
+    const odds = Math.round(refineChance(item.stars) * 100);
+    const line = el(
+      'p',
+      'item-detail__forge',
+      `Refine to ${item.stars + 1}★: ${fmtInt(price.shards)} shards + ${price.leafs} 🍃 · ${odds}% chance`,
+    );
+    if (shards < price.shards || leafs < price.leafs) line.classList.add('is-short');
+    body.appendChild(line);
+    if (item.refineFails > 0) {
+      body.appendChild(
+        el('p', 'item-detail__note', `${item.refineFails} failed. Guaranteed on the 5th attempt.`),
+      );
+    }
+  }
+
+  // --- fuse
+  if (item.tier >= MAX_TIER) {
+    body.appendChild(el('p', 'item-detail__forge', 'Capybaric. The top of the ladder.'));
+  } else {
+    const line = el(
+      'p',
+      'item-detail__forge',
+      `Fuse to the next rung: ${FUSE_COST} spare ${item.slot} pieces at ${item.rarity.name} (you have ${fodder})`,
+    );
+    if (fodder < FUSE_COST) line.classList.add('is-short');
     body.appendChild(line);
   }
 
@@ -326,7 +375,7 @@ export function slotPickerBody(state, slotId, onPick) {
   const items = state.combat.inventory
     .map(resolveItem)
     .filter((i) => i && i.slot === slotId)
-    .sort((a, b) => rarityRank(b.rarity) - rarityRank(a.rarity) || b.forge - a.forge);
+    .sort((a, b) => b.score - a.score);
 
   if (!items.length) {
     body.appendChild(el('p', 'shop__hint', 'Nothing for this slot yet. Keep fighting.'));
@@ -338,7 +387,7 @@ export function slotPickerBody(state, slotId, onPick) {
     const row = document.createElement('button');
     row.type = 'button';
     row.className = `picker__row${item.uid === current ? ' is-current' : ''}`;
-    row.style.setProperty('--rarity', RARITY[item.rarity].color);
+    row.style.setProperty('--rarity', item.rarity.color);
 
     const img = document.createElement('img');
     img.className = 'picker__icon pixel-icon';
@@ -346,7 +395,7 @@ export function slotPickerBody(state, slotId, onPick) {
     img.alt = '';
 
     const text = el('span', 'picker__text');
-    text.appendChild(el('strong', 'picker__name', `${item.name}${item.forge ? ` +${item.forge}` : ''}`));
+    text.appendChild(el('strong', 'picker__name', itemTitle(item)));
     text.appendChild(el('span', 'picker__stats', statLine(item)));
 
     row.append(img, text);
@@ -401,3 +450,7 @@ function heading(text) {
 }
 
 export { statLine, bonusLine };
+
+function nth(n) {
+  return n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
+}

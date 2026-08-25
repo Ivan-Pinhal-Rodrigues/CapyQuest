@@ -15,11 +15,14 @@ import { audio } from './systems/audio.js';
 import { offlineEarnings } from './balance.js';
 import { Combat } from './systems/combat.js';
 import { combatStats, xpForStage, resolveItem } from './systems/combatStats.js';
-import { rollLoot, shardDrop, addToInventory, equip, scrap, forge, forgePrice, MAX_FORGE } from './systems/loot.js';
+import {
+  rollLoot, shardDrop, addToInventory, equip, scrap, forge, forgePrice,
+  refine, fuse, canRefine, canFuse, fuseFodder, leafDrop, MAX_FORGE,
+} from './systems/loot.js';
 import { BattlePanel } from './ui/battlePanel.js';
 import { GearPanel, itemDetailBody, slotPickerBody, skillPickerBody } from './ui/gearPanel.js';
 import { SKILL_SLOTS } from './data/skills.js';
-import { RARITY } from './render/palettes.js';
+import { rarityFor, MAX_TIER, MAX_STARS } from './data/rarities.js';
 import { openModal, el } from './ui/modal.js';
 import { RebirthPanel } from './ui/rebirthPanel.js';
 import { GachaPanel, pullResultsBody, companionDetailBody, partyPickerBody } from './ui/gachaPanel.js';
@@ -101,6 +104,7 @@ class Game {
       comboLabel: $('comboLabel'),
       buffList: $('buffList'),
       essenceValue: $('essenceValue'),
+      leafValue: $('leafValue'),
       lotusValue: $('lotusValue'),
       ticketValue: $('ticketValue'),
     };
@@ -656,6 +660,10 @@ class Game {
     // Bosses are the tap for summon tickets — one guaranteed, plus whatever
     // the tree and constellations have added on top.
     if (enemy.boss) {
+      const leafs = leafDrop(stage, true);
+      s.leafs += leafs;
+      s.lifetimeLeafs += leafs;
+
       const tickets = 1 + ticketsPerBoss(s);
       s.gacha.tickets += tickets;
       this.newTickets += tickets;
@@ -684,31 +692,36 @@ class Game {
     }
   }
 
-  awardGear(itemDef) {
+  /** `drop` is what rollLoot returned: a definition plus the rung and stars. */
+  awardGear(drop) {
     const s = this.state;
-    const entry = addToInventory(s, itemDef.id);
+    const { def, tier, stars } = drop;
+    const entry = addToInventory(s, def.id, { tier, stars });
     if (!entry) return;
 
+    const rarity = rarityFor(tier);
     s.stats.drops++;
-    if (!s.stats.raritiesFound.includes(itemDef.rarity)) {
-      s.stats.raritiesFound.push(itemDef.rarity);
+    // Recorded by rung name so the trophies read as language rather than as an
+    // index, and so a save survives the ladder being renumbered.
+    if (!s.stats.raritiesFound.includes(rarity.name)) {
+      s.stats.raritiesFound.push(rarity.name);
     }
     this.newGear++;
 
     // Auto-equip into an empty slot so the first hour never requires a trip to
     // the menu to feel the reward.
-    if (!s.combat.equipped[itemDef.slot]) {
+    if (!s.combat.equipped[def.slot]) {
       equip(s, entry.uid);
       this.cstats = combatStats(s);
     }
 
-    // Only interrupt for something genuinely good — a toast per common drop
-    // would be constant noise.
-    if (['legendary', 'mythic', 'capybaric'].includes(itemDef.rarity)) {
+    // Only interrupt for something genuinely good — a toast per drop would be
+    // constant noise, so it is the top rungs or a multi-star piece.
+    if (tier >= 9 || stars >= 3) {
       audio.golden();
       this.toaster.show({
-        title: itemDef.name,
-        body: `${RARITY[itemDef.rarity].name} — check your Kit.`,
+        title: stars > 1 ? `${def.name} ${'★'.repeat(stars)}` : def.name,
+        body: `${rarity.name} — check your Kit.`,
         kind: 'buff',
         icon: '✨',
       });
@@ -778,7 +791,12 @@ class Game {
     const equipped = Object.values(this.state.combat.equipped).includes(uid);
 
     const render = () =>
-      itemDetailBody(resolveItem(entry), { equipped, shards: this.state.combat.shards });
+      itemDetailBody(resolveItem(entry), {
+        equipped,
+        shards: this.state.combat.shards,
+        leafs: this.state.leafs,
+        fodder: fuseFodder(this.state, uid).length,
+      });
 
     const actions = [];
 
@@ -802,6 +820,72 @@ class Game {
           audio.levelUp();
           this.afterGearChange();
           this.openItemDetail(uid); // reopen with the new numbers
+          return true;
+        },
+      });
+    }
+
+    if (canRefine(this.state, uid).ok) {
+      actions.push({
+        label: `Refine ${'★'.repeat(item.stars + 1)}`,
+        variant: 'primary',
+        onClick: () => {
+          const result = refine(this.state, uid);
+          if (!result.ok) {
+            audio.denied();
+            return true;
+          }
+          this.state.stats.refines++;
+          this.afterGearChange();
+          if (result.success) {
+            this.state.stats.bestStars = Math.max(this.state.stats.bestStars || 1, result.stars);
+            audio.golden();
+            this.toaster.show({
+              title: `${item.name} is now ${result.stars}★`,
+              body: result.pitied ? 'The pity counter came through.' : 'It took.',
+              kind: 'buff',
+              icon: '★',
+            });
+          } else {
+            audio.denied();
+            this.toaster.show({
+              title: 'It did not take',
+              body: `${result.fails} failed. Guaranteed on the ${MAX_STARS}th attempt.`,
+              kind: 'warn',
+              icon: '★',
+            });
+          }
+          this.openItemDetail(uid);
+          return true;
+        },
+      });
+    }
+
+    if (canFuse(this.state, uid).ok) {
+      actions.push({
+        label: 'Fuse',
+        variant: 'primary',
+        onClick: () => {
+          const before = resolveItem(entry).rarity.name;
+          const result = fuse(this.state, uid);
+          if (!result.ok) {
+            audio.denied();
+            return true;
+          }
+          this.state.stats.fuses++;
+          const gained = rarityFor(result.tier).name;
+          if (!this.state.stats.raritiesFound.includes(gained)) {
+            this.state.stats.raritiesFound.push(gained);
+          }
+          audio.levelUp();
+          this.afterGearChange();
+          this.toaster.show({
+            title: `${item.name}: ${before} → ${gained}`,
+            body: `Three pieces went in. ${result.tier >= MAX_TIER ? 'Top of the ladder.' : ''}`.trim(),
+            kind: 'achievement',
+            icon: '🔥',
+          });
+          this.openItemDetail(uid);
           return true;
         },
       });

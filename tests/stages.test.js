@@ -12,8 +12,8 @@ import assert from 'node:assert/strict';
 import * as B from '../src/balance.js';
 import { createState } from '../src/state.js';
 import { combatStats, xpForStage } from '../src/systems/combatStats.js';
-import { addToInventory, equip } from '../src/systems/loot.js';
-import { GEAR, rarityRank, SLOT_IDS } from '../src/data/gear.js';
+import { addToInventory, equip, tierCeiling } from '../src/systems/loot.js';
+import { GEAR, SLOT_IDS } from '../src/data/gear.js';
 import { assess, playerDps, reachableStage, shouldSuggestRebirth } from '../src/systems/wall.js';
 import { buildEnemy, buildBoss, toDepth, depthInfo, enemyIdForDepth, levelInStage, stageProgress } from '../src/systems/stages.js';
 import { TERRAINS, terrainForStage, enemyPoolForStage } from '../src/data/terrains.js';
@@ -185,12 +185,16 @@ function simulateNormalPlayer(maxStage = 40) {
       s.combat.xp += xpForStage(stage, level === B.BOSS_LEVEL);
     }
 
-    const targetRank = Math.min(6, Math.floor(stage / 3));
+    // Wears whatever the depth has plausibly dropped: a piece on the rung the
+    // ceiling allows, 1 star, enhanced as far as the shard flow would reach.
+    const tier = tierCeiling(stage);
     for (const slot of SLOT_IDS) {
-      const best = GEAR.filter((g) => g.slot === slot && rarityRank(g.rarity) <= targetRank)
-        .sort((a, b) => rarityRank(b.rarity) - rarityRank(a.rarity))[0];
+      const best = GEAR.filter((g) => g.slot === slot && g.tier <= tier)
+        .sort((a, b) => b.tier - a.tier)[0];
       if (!best) continue;
       const entry = s.combat.inventory.find((i) => i.id === best.id) || addToInventory(s, best.id);
+      entry.tier = tier;
+      entry.stars = 1;
       entry.forge = Math.min(15, Math.floor(stage * 0.8));
       equip(s, entry.uid);
     }

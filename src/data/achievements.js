@@ -74,9 +74,14 @@ export const ACHIEVEMENTS = [
   { id: 'firstForge', name: 'Sparks', blurb: 'Enhanced a piece of gear.', req: { forges: 1 }, reward: { type: 'globalMult', value: 1.02 } },
   { id: 'forge100', name: 'Smith', blurb: 'Enhanced gear 100 times.', req: { forges: 100 }, reward: { type: 'globalMult', value: 1.06 } },
   { id: 'maxForge', name: 'Plus Fifteen', blurb: 'Took a piece to +15.', req: { maxForge: 1 }, reward: { type: 'globalMult', value: 1.1 } },
-  { id: 'legendary', name: 'It Glows', blurb: 'Found a legendary piece.', req: { rarityFound: 'legendary' }, reward: { type: 'globalMult', value: 1.08 } },
-  { id: 'mythic', name: 'Genuinely Rare', blurb: 'Found a mythic piece.', req: { rarityFound: 'mythic' }, reward: { type: 'globalMult', value: 1.12 } },
-  { id: 'capybaric', name: 'Capybaric', blurb: 'Found a Capybaric piece. There are two.', req: { rarityFound: 'capybaric' }, reward: { type: 'globalMult', value: 1.2 } },
+  { id: 'legendary', name: 'It Glows', blurb: 'Found a Legendary piece.', req: { rarityFound: 'Legendary' }, reward: { type: 'globalMult', value: 1.08 } },
+  { id: 'mythic', name: 'Genuinely Rare', blurb: 'Found a Mythic piece.', req: { rarityFound: 'Mythic' }, reward: { type: 'globalMult', value: 1.12 } },
+  { id: 'celestial', name: 'Above The Weather', blurb: 'Found a Celestial piece.', req: { rarityFound: 'Celestial' }, reward: { type: 'globalMult', value: 1.16 } },
+  { id: 'capybaric', name: 'Capybaric', blurb: 'Reached the top rung of the ladder.', req: { rarityFound: 'Capybaric' }, reward: { type: 'globalMult', value: 1.2 } },
+  { id: 'twoStar', name: 'Second Star', blurb: 'Refined a piece to two stars.', req: { stars: 2 }, reward: { type: 'globalMult', value: 1.04 } },
+  { id: 'fiveStar', name: 'The Full Five', blurb: 'Refined a piece to five stars.', req: { stars: 5 }, reward: { type: 'globalMult', value: 1.18 } },
+  { id: 'firstFuse', name: 'Three Into One', blurb: 'Fused a piece up a rung.', req: { fuses: 1 }, reward: { type: 'globalMult', value: 1.05 } },
+  { id: 'fuse25', name: 'The Furnace', blurb: 'Fused 25 times.', req: { fuses: 25 }, reward: { type: 'globalMult', value: 1.12 } },
 
   // ----------------------------------------------------------------- skills
   { id: 'firstSkill', name: 'A Move', blurb: 'Slotted your first skill.', req: { skillsSlotted: 1 }, reward: { type: 'globalMult', value: 1.02 } },
@@ -130,6 +135,8 @@ export function achievementMet(ach, state) {
   if (r.shards != null && (c.shards || 0) < r.shards) return false;
   if (r.heldZen != null && state.zen < r.heldZen) return false;
   if (r.rarityFound != null && !(s.raritiesFound || []).includes(r.rarityFound)) return false;
+  if (r.stars != null && (s.bestStars || 0) < r.stars) return false;
+  if (r.fuses != null && (s.fuses || 0) < r.fuses) return false;
   // Reaching a million zen while still 0-for-0 in the arena.
   if (r.pacifist && !(state.totalZen >= 1e6 && (c.clears || 0) === 0)) return false;
 

@@ -37,6 +37,7 @@ export class Hud {
   updateMeta(state) {
     const { refs } = this;
     show(refs.essenceValue, state.essence > 0 || state.rebirthCount > 0, `🍋 ${fmtShort(state.essence)}`);
+    show(refs.leafValue, state.leafs > 0 || state.lifetimeLeafs > 0, `🍃 ${fmtShort(state.leafs)}`);
     show(refs.lotusValue, state.lotus > 0 || state.ascendCount > 0, `🪷 ${fmtShort(state.lotus)}`);
     show(refs.ticketValue, state.gacha.tickets > 0 || state.gacha.pulls > 0, `🎟 ${fmtShort(state.gacha.tickets)}`);
   }
