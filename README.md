@@ -53,7 +53,9 @@ save/migration path, purchase logic, and the integrity of the content tables —
 that every hand-drawn sprite grid is rectangular and that every character it uses has a colour in
 the palette it gets drawn with. One suite parses every module in `src/` — `main.js` included, which
 nothing else imports because it needs a DOM — so a syntax error in the file that boots the game
-cannot hide behind a green suite again.
+cannot hide behind a green suite again. Another checks the documentation against the code it
+describes — four rows of the beat table in `docs/STORY.md` were wrong on the first draft, written
+from memory and entirely plausible-looking, so the tables that can be verified mechanically are.
 
 ## How it is put together
 
@@ -68,6 +70,7 @@ src/
   systems/          game logic: clicking, income, shop, goldens, audio
   render/           sprites, palettes, canvas rasteriser, particles, scene
   ui/               HUD, shop panels, modals, toasts, tabs
+docs/             EVENTS.md, STORY.md, BALANCE.md
 tests/
 ```
 
@@ -176,5 +179,12 @@ Built in stages. Landed so far:
       four fixed bands rather than on hand-picked numbers, because two hundred entries each
       paying "just a few percent" compounds to a factor of eight million; a full clear is worth
       x68, which is a number somebody chose.
+- [x] **The balance pass** — every number in `docs/BALANCE.md` was measured rather than asserted,
+      and `tests/economy-balance.test.js` holds each one, so a constant cannot move without the
+      document failing with it. Some of what it records is unflattering: the first rebirth wall
+      lands at stage 7 rather than the 8–11 that was planned, and difficulty sawtooths by up to
+      ×2.3 between neighbouring stages because gear unlocks a rung every two stages while boss
+      HP grows every stage. Both are written down as what happens, with the reasoning for
+      leaving them alone.
 - [x] **Retention** — daily and weekly quests, a seven-day login streak, a 40-level free Zen Pass,
       a chest that fills every 15 minutes, eight secret codes, and a stats page that grows as you do

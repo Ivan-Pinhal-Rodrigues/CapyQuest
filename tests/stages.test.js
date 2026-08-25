@@ -216,10 +216,11 @@ test('a normal player does hit a wall, and it is neither immediate nor never', (
   const firstWall = rows.find((r) => r.walled && r.stage >= 1);
 
   assert.ok(firstWall, 'a normal player must eventually be walled — that is the design');
-  // Target band is 8-11. It currently lands at 7 because gear stops growing at
-  // the 7th and last v1 rarity; the 20-tier ladder in the rarity phase removes
-  // that ceiling and moves this deeper. Asserting the honest range keeps the
-  // test truthful rather than aspirational.
+  // Target band was 8-11; it lands at 7, and the 20-rung ladder did not move it
+  // — the earlier note here predicted that it would. Stars do help, they just do
+  // not help the last two seconds: the stage-7 boss goes 44s at 1* to 32s at 5*,
+  // both over the thirty-second line. Asserting the honest range keeps the test
+  // truthful rather than aspirational. See docs/BALANCE.md.
   assert.ok(
     firstWall.stage >= 5 && firstWall.stage <= 13,
     `first wall at stage ${firstWall.stage}, expected between 5 and 13`,
