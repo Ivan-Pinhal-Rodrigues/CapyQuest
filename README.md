@@ -133,7 +133,8 @@ never sold. `docs/BALANCE.md` has what a full set is actually worth, measured.
 
 ### The art is text
 
-There are no image files in this repository. Sprites are character grids with a palette map:
+Every character, prop, wearable and backdrop in the game is a grid of characters resolved
+through a palette map — not one of them is an image file. Sprites look like this:
 
 ```js
 export const YUZU = sprite([
@@ -146,9 +147,30 @@ export const YUZU = sprite([
 ```
 
 They rasterise to an offscreen canvas once and blit with smoothing off. Ten hand-drawn 16×16
-shapes cover all eighteen generators by swapping the palette underneath them. Sound effects and
-all three music loops are synthesised with WebAudio oscillators, so there are no audio files
-either.
+shapes cover all eighteen generators by swapping the palette underneath them; nineteen more
+cover fifty-two wearables. Sound effects and all three music loops are synthesised with WebAudio
+oscillators, so there are no audio files either.
+
+The advantage is not smallness, it is that **art reviews as a diff**. A pull request that shifts
+a hat two pixels reads as two changed lines. A pull request that replaces a PNG reads as nothing
+at all.
+
+**The one exception is `assets/`,** which holds two things and only two: a picture an admin
+wants behind the loading screen for a seasonal event, and the app icons a phone needs to put
+CapyQuest on a home screen. Neither can be a character grid — a home-screen icon has to be a
+real file — and neither ships populated. The nine loading-screen backdrops the game comes with
+are drawn as 16×16 tiles like everything else.
+
+### The loading screen
+
+`#boot` is inline in `index.html`, markup and CSS both, because it is the one thing on the page
+that has to be up before a stylesheet has landed — a loading screen that waits on a download is
+not a loading screen. `src/ui/bootScreen.js` takes it over once modules parse and swaps the CSS
+bob for a canvas capybara that splashes and blinks.
+
+The bar is wired to steps that actually happened — pack fetched, save read, game constructed —
+and nothing but the last one reaches 100%. On a warm cache you will see it for a few frames.
+That is the point: it is there for the cold load and the slow connection, not to pad the opening.
 
 ### Design notes
 

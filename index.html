@@ -41,6 +41,120 @@
 </head>
 <body>
 
+<!--
+  The boot screen.
+  ================
+  Markup and styles are inline, and deliberately so: this is the one thing on
+  the page that has to be visible before any stylesheet has finished loading or
+  any module has been parsed. A loading screen that itself waits on a download
+  is not a loading screen.
+
+  Everything here is plain CSS and stays useful if the module never arrives —
+  the capybara breathes, the bar creeps, and the noscript message below still
+  applies. src/ui/bootScreen.js takes it over once modules load, swaps the CSS
+  capybara for a canvas one that actually splashes, and drives the bar off real
+  progress instead of a guess.
+-->
+<div id="boot" class="boot" role="status" aria-live="polite">
+  <div class="boot__bg" id="bootBg" aria-hidden="true"></div>
+  <div class="boot__inner">
+    <canvas id="bootCanvas" class="boot__canvas" width="96" height="72" aria-hidden="true"></canvas>
+    <p class="boot__title">CapyQuest</p>
+    <div class="boot__track" aria-hidden="true"><div class="boot__fill" id="bootFill"></div></div>
+    <p class="boot__status" id="bootStatus">Warming the water…</p>
+  </div>
+</div>
+
+<style>
+  .boot {
+    position: fixed;
+    inset: 0;
+    /* Above everything, including the modal layer (100) and the story cutscene
+       (120). It was 90, and the cutscene opens while this is still fading out —
+       so the first half-second of the game painted the opening frames on top of
+       a loading screen. Phase 20's mid-session "Updating…" has the same problem
+       against any open panel. */
+    z-index: 200;
+    display: grid;
+    place-items: center;
+    background: #150f1c;
+    /* Painted with a literal colour rather than a token: theme.css may not have
+       arrived yet, and a transparent boot screen shows the half-built game. */
+    transition: opacity 420ms ease;
+  }
+  .boot.is-done { opacity: 0; pointer-events: none; }
+
+  .boot__bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.35;
+    /* An event backdrop is decoration behind text; blurring it keeps the
+       capybara and the status line readable whatever the picture is. */
+    filter: blur(1px) saturate(0.9);
+  }
+
+  .boot__inner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .boot__canvas {
+    width: 192px;
+    height: 144px;
+    image-rendering: pixelated;
+    animation: boot-bob 2.6s ease-in-out infinite;
+  }
+
+  .boot__title {
+    margin: 0;
+    font-family: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
+    font-size: 18px;
+    color: #f7c948;
+    text-shadow: 0 0 18px rgba(247, 201, 72, 0.35);
+  }
+
+  .boot__track {
+    width: 220px;
+    height: 8px;
+    border-radius: 4px;
+    background: #2b2035;
+    overflow: hidden;
+  }
+
+  .boot__fill {
+    height: 100%;
+    width: 8%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #f7c948, #f0a63d);
+    transition: width 280ms ease;
+  }
+
+  .boot__status {
+    margin: 0;
+    min-height: 1.2em;
+    font-family: 'Nunito', ui-rounded, system-ui, sans-serif;
+    font-size: 13px;
+    color: #b3a3c0;
+  }
+
+  @keyframes boot-bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .boot__canvas { animation: none; }
+    .boot, .boot__fill { transition: none; }
+  }
+</style>
+
 <div id="app" class="app">
 
   <header class="hud" id="hud">

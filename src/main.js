@@ -40,6 +40,7 @@ import { buyBoost, buyLeafPack, claimDailyLeafs, dailyLeafsReady, SIMULATED_NOTI
 import { buyCosmetic, checkUnlocks, equipCosmetic, equipped, owns } from './systems/cosmetics.js';
 import { boostById, cosmeticById, leafPackById } from './content/registry.js';
 import { loadContent } from './content/load.js';
+import { BootScreen } from './ui/bootScreen.js';
 import { adminRequested, openAdminPanel } from './ui/adminPanel.js';
 import { ticketsPerBoss } from './systems/meta.js';
 import { COMPANIONS_BY_ID, PARTY_SIZE } from './data/companions.js';
@@ -2489,6 +2490,41 @@ function list(items) {
 // only after the second repaint is a shelf that flickers. loadContent() never
 // rejects — a missing or broken pack resolves to the built-in defaults — so
 // there is nothing here that can stop the game starting.
-loadContent().then(() => {
-  window.capyquest = new Game();
-});
+//
+// The boot screen is driven off steps that actually happened rather than a
+// timer. On a warm cache the whole sequence is a few frames — which is the
+// point: it exists for the cold load, the slow connection and the update, not
+// to pad the opening.
+const boot = new BootScreen();
+
+// The backdrop is whatever the running event asks for, and it has to be painted
+// before the pack is applied — the event tables in data/ are what the boot
+// screen has to go on until the registry has merged anything over them. A pack
+// that changes it repaints below.
+boot.setBackground(activeEvent()?.background);
+boot.step('content');
+
+loadContent()
+  .then(() => {
+    // Now the pack is in, ask again: an admin may have scheduled a different
+    // event, or given this one a picture.
+    boot.setBackground(activeEvent()?.background);
+    boot.step('save');
+    return new Promise((resolve) => requestAnimationFrame(resolve));
+  })
+  .then(() => {
+    boot.step('game');
+    window.capyquest = new Game();
+    window.capyquest.boot = boot;
+    // One frame of the real game behind the overlay before it lifts, so the
+    // fade reveals the pond rather than an empty canvas.
+    requestAnimationFrame(() => boot.finish());
+  })
+  .catch((err) => {
+    // Nothing in the boot path is allowed to leave a player staring at a
+    // loading screen forever. If the game genuinely cannot start, say so.
+    console.error('[capyquest] the game failed to start', err);
+    boot.step('ready');
+    boot.finish();
+    throw err;
+  });

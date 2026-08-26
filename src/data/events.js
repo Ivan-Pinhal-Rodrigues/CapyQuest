@@ -5,6 +5,11 @@
 // what is coming rather than quietly omitted — a roadmap you can read beats a
 // roadmap you have to infer.
 //
+// Every event names a `background`, which is what the boot screen paints behind
+// the capybara while the game loads. The ids here are procedural backdrops from
+// render/backdrops.js; a content pack can replace any of them with a path to a
+// real picture in assets/ without touching this file.
+//
 // The currency is **Petals**. It is earned only while an event is running and it
 // is gone when the event closes. That is the whole point of it: a currency you
 // can bank forever is just a slower coin, and the thing that makes an event feel
@@ -27,7 +32,7 @@ export const PETALS_PER_BOSS = 25;
 
 export const EVENTS = [
   {
-    id: 'yuzuHarvest',
+    id: 'yuzuHarvest', background: 'citrus',
     name: 'Yuzu Harvest',
     live: true,
     color: '#f7c948',
@@ -42,7 +47,7 @@ export const EVENTS = [
     ],
   },
   {
-    id: 'moonlitBathhouse',
+    id: 'moonlitBathhouse', background: 'stars',
     name: 'Moonlit Bathhouse',
     live: true,
     color: '#a9c6f5',
@@ -57,7 +62,7 @@ export const EVENTS = [
     ],
   },
   {
-    id: 'reedRush',
+    id: 'reedRush', background: 'reeds',
     name: 'Reed Rush',
     live: true,
     color: '#7cc255',
@@ -74,19 +79,19 @@ export const EVENTS = [
   },
 
   // ------------------------------------------------ designed, not yet built
-  { id: 'greatNap', name: 'The Great Nap', live: false, color: '#c79ae8', icon: '😴',
+  { id: 'greatNap', background: 'steam', name: 'The Great Nap', live: false, color: '#c79ae8', icon: '😴',
     blurb: 'Offline income doubled for a week, and sleep cosmetics to match.', exchange: [] },
-  { id: 'steamFestival', name: 'Steam Festival', live: false, color: '#e0653f', icon: '🔥',
+  { id: 'steamFestival', background: 'embers', name: 'Steam Festival', live: false, color: '#e0653f', icon: '🔥',
     blurb: 'Ember enemies everywhere, and fire skins to take off them.', exchange: [] },
-  { id: 'crystalTide', name: 'Crystal Tide', live: false, color: '#7fd0e6', icon: '💠',
+  { id: 'crystalTide', background: 'ripples', name: 'Crystal Tide', live: false, color: '#7fd0e6', icon: '💠',
     blurb: 'A flood of shards. The forge runs hot and refines get cheaper.', exchange: [] },
-  { id: 'capybaraCup', name: 'Capybara Cup', live: false, color: '#f0a63d', icon: '🏆',
+  { id: 'capybaraCup', background: 'petals', name: 'Capybara Cup', live: false, color: '#f0a63d', icon: '🏆',
     blurb: 'A bracket against the rivals on the board, run over three days.', exchange: [] },
-  { id: 'longWinter', name: 'The Long Winter', live: false, color: '#c9e2ed', icon: '❄️',
+  { id: 'longWinter', background: 'snow', name: 'The Long Winter', live: false, color: '#c9e2ed', icon: '❄️',
     blurb: 'A survival ladder with no healing between floors.', exchange: [] },
-  { id: 'foundersWeek', name: "Founders' Week", live: false, color: '#e8556d', icon: '🎂',
+  { id: 'foundersWeek', background: 'petals', name: "Founders' Week", live: false, color: '#e8556d', icon: '🎂',
     blurb: 'The anniversary. Retro cosmetics and the original pond.', exchange: [] },
-  { id: 'stillPointRift', name: 'The Still Point Rift', live: false, color: '#4de0c0', icon: '🌀',
+  { id: 'stillPointRift', background: 'rift', name: 'The Still Point Rift', live: false, color: '#4de0c0', icon: '🌀',
     blurb: 'The endgame event, and the one that finally opens Ascension properly.', exchange: [] },
 ];
 

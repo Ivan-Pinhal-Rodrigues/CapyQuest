@@ -145,6 +145,27 @@ ISO strings or millisecond numbers. If two dated events overlap, the one closing
 
 Clearing both dates puts the event back in the rotation.
 
+#### An event's loading screen
+
+An event also carries a `background`, painted behind the capybara on the boot screen for as long
+as the event is live. It takes either the id of one of the nine backdrops drawn in
+`src/render/backdrops.js` —
+
+`petals` · `steam` · `embers` · `citrus` · `stars` · `reeds` · `ripples` · `snow` · `rift`
+
+— or a path to a picture you have put in `assets/events/`:
+
+```json
+"events": { "patch": { "steamFestival": { "background": "assets/events/steam-festival.png" } } }
+```
+
+An absolute URL or a data URI works too. The image is loaded before it is applied, so a path that
+404s leaves the plain background rather than flashing a broken image, and a `background` that is
+neither a known id nor a loadable file costs you the decoration and nothing else.
+
+It is drawn at 35% opacity under a slight blur, behind the title and the status line — treat it
+as texture, not as a poster. `assets/README.md` has the sizing.
+
 ### Pass levels
 
 The hundred levels of each track are generated from the level number (`src/data/pass.js`). An
@@ -181,4 +202,7 @@ Nothing dramatic, which is the point.
 | `src/content/registry.js` | Holds defaults + pack, and is what the systems read. Pure — no fetch, no storage. |
 | `src/content/load.js` | Fetches the file, reads the draft, merges the two. The only part that touches the browser. |
 | `src/ui/adminPanel.js` | The editor. |
+| `src/render/backdrops.js` | The nine drawn loading-screen backdrops. |
+| `src/ui/bootScreen.js` | The loading screen that paints them. |
 | `tests/pack.test.js` | The merge rules, the refusals, and the garbage. |
+| `tests/boot.test.js` | That every event names a backdrop something can draw. |
