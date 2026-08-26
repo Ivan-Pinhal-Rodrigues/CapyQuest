@@ -76,22 +76,20 @@
 
   <aside class="panel">
     <nav class="tabs" id="tabs" role="tablist" aria-label="Game panels">
-      <button class="tab" data-tab="generators" role="tab" type="button" aria-controls="panel-generators">Onsen</button>
-      <button class="tab" data-tab="upgrades" role="tab" type="button" aria-controls="panel-upgrades">Upgrades</button>
-      <button class="tab" data-tab="quest" role="tab" type="button" aria-controls="panel-quest">Quest</button>
-      <button class="tab" data-tab="kit" role="tab" type="button" aria-controls="panel-kit">Kit</button>
-      <button class="tab" data-tab="daily" role="tab" type="button" aria-controls="panel-daily">Daily</button>
-      <button class="tab" data-tab="summon" role="tab" type="button" aria-controls="panel-summon">Summon</button>
-      <button class="tab" data-tab="rebirth" role="tab" type="button" aria-controls="panel-rebirth">Rebirth</button>
-      <button class="tab" data-tab="store" role="tab" type="button" aria-controls="panel-store">Store</button>
-      <button class="tab" data-tab="season" role="tab" type="button" aria-controls="panel-season">Season</button>
-      <button class="tab" data-tab="rivals" role="tab" type="button" aria-controls="panel-rivals">Rivals</button>
-      <button class="tab" data-tab="achievements" role="tab" type="button" aria-controls="panel-achievements">Trophies</button>
-      <button class="tab" data-tab="stats" role="tab" type="button" aria-controls="panel-stats">You</button>
+      <button class="tab" data-tab="pond" data-sections="generators upgrades" role="tab" type="button">Pond</button>
+      <button class="tab" data-tab="quest" data-sections="quest" role="tab" type="button">Quest</button>
+      <button class="tab" data-tab="kit" data-sections="kit" role="tab" type="button">Kit</button>
+      <button class="tab" data-tab="summon" data-sections="summon" role="tab" type="button">Summon</button>
+      <button class="tab" data-tab="live" data-sections="daily season rivals" role="tab" type="button">Live</button>
+      <button class="tab" data-tab="rebirth" data-sections="rebirth" role="tab" type="button">Rebirth</button>
+      <button class="tab" data-tab="store" data-sections="store" role="tab" type="button">Store</button>
+      <button class="tab" data-tab="you" data-sections="stats achievements" role="tab" type="button">You</button>
     </nav>
 
     <div class="panel__body">
-      <section class="panel__section" id="panel-generators" role="tabpanel" aria-label="Generators">
+      <div class="subtabs" id="subtabs" role="tablist" aria-label="Section"></div>
+
+      <section class="panel__section" id="panel-generators" data-label="Generators" role="tabpanel" aria-label="Generators">
         <div class="buy-amount" id="buyAmount" role="group" aria-label="Buy amount">
           <span class="buy-amount__label">Buy</span>
           <button class="buy-amount__btn" type="button" data-amount="1">×1</button>
@@ -102,19 +100,19 @@
         <div class="building-list" id="buildingList"></div>
       </section>
 
-      <section class="panel__section" id="panel-upgrades" role="tabpanel" aria-label="Upgrades" hidden>
+      <section class="panel__section" id="panel-upgrades" data-label="Upgrades" role="tabpanel" aria-label="Upgrades" hidden>
         <div class="upgrade-grid" id="upgradeGrid"></div>
       </section>
 
-      <section class="panel__section" id="panel-quest" role="tabpanel" aria-label="Quest" hidden>
+      <section class="panel__section" id="panel-quest" data-label="Quest" role="tabpanel" aria-label="Quest" hidden>
         <div class="locked-note" id="questLocked">
           <p>The pond is not the whole world.</p>
-          <p class="locked-note__hint">Earn 5,000 zen to open the way downstream.</p>
+          <p class="locked-note__hint">Earn 1,000 zen to open the way downstream.</p>
         </div>
         <div id="battlePanel" class="battle" hidden></div>
       </section>
 
-      <section class="panel__section" id="panel-kit" role="tabpanel" aria-label="Kit" hidden>
+      <section class="panel__section" id="panel-kit" data-label="Kit" role="tabpanel" aria-label="Kit" hidden>
         <div class="locked-note" id="kitLocked">
           <p>Nothing to equip yet.</p>
           <p class="locked-note__hint">Head downstream and win something.</p>
@@ -122,11 +120,11 @@
         <div id="gearPanel" class="kit" hidden></div>
       </section>
 
-      <section class="panel__section" id="panel-daily" role="tabpanel" aria-label="Daily" hidden>
+      <section class="panel__section" id="panel-daily" data-label="Daily" role="tabpanel" aria-label="Daily" hidden>
         <div id="dailyPanel" class="daily"></div>
       </section>
 
-      <section class="panel__section" id="panel-summon" role="tabpanel" aria-label="Summon" hidden>
+      <section class="panel__section" id="panel-summon" data-label="Summon" role="tabpanel" aria-label="Summon" hidden>
         <div class="locked-note" id="summonLocked">
           <p>Nobody to call on yet.</p>
           <p class="locked-note__hint">Beat a boss downstream — they carry summon tickets.</p>
@@ -134,7 +132,7 @@
         <div id="gachaPanel" class="summon" hidden></div>
       </section>
 
-      <section class="panel__section" id="panel-rebirth" role="tabpanel" aria-label="Rebirth" hidden>
+      <section class="panel__section" id="panel-rebirth" data-label="Rebirth" role="tabpanel" aria-label="Rebirth" hidden>
         <div class="locked-note" id="bathLocked">
           <p>There is nothing behind you to start over from.</p>
           <p class="locked-note__hint">Travel downstream. Rebirth opens the first time a boss will not fall inside thirty seconds.</p>
@@ -142,23 +140,23 @@
         <div id="metaPanel" class="meta" hidden></div>
       </section>
 
-      <section class="panel__section" id="panel-store" role="tabpanel" aria-label="Store" hidden>
+      <section class="panel__section" id="panel-store" data-label="Store" role="tabpanel" aria-label="Store" hidden>
         <div id="storePanel" class="store"></div>
       </section>
 
-      <section class="panel__section" id="panel-season" role="tabpanel" aria-label="Season" hidden>
+      <section class="panel__section" id="panel-season" data-label="Season" role="tabpanel" aria-label="Season" hidden>
         <div id="seasonPanel" class="season"></div>
       </section>
 
-      <section class="panel__section" id="panel-rivals" role="tabpanel" aria-label="Rivals" hidden>
+      <section class="panel__section" id="panel-rivals" data-label="Rivals" role="tabpanel" aria-label="Rivals" hidden>
         <div id="leaderboardPanel" class="board-panel"></div>
       </section>
 
-      <section class="panel__section" id="panel-achievements" role="tabpanel" aria-label="Trophies" hidden>
+      <section class="panel__section" id="panel-achievements" data-label="Trophies" role="tabpanel" aria-label="Trophies" hidden>
         <div id="achievementPanel"></div>
       </section>
 
-      <section class="panel__section" id="panel-stats" role="tabpanel" aria-label="You" hidden>
+      <section class="panel__section" id="panel-stats" data-label="You" role="tabpanel" aria-label="You" hidden>
         <div id="profilePanel"></div>
         <h3 class="kit__heading">While you are away</h3>
         <div id="cachePanel"></div>

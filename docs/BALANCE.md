@@ -15,17 +15,18 @@ later generator is a bigger commitment rather than a strictly better deal.
 
 | | |
 |---|---|
-| Cost step, generator to generator | **×13–16** (the opening step is ×6.7, deliberately) |
+| Cost step, generator to generator | **×13–16** (the opening step is ×10) |
 | Rate step | ×5.5–7.5 |
-| Payback, first generator | 150s |
+| Payback, first generator | 100s |
 | Payback, last generator | **181 days** — a goal bought across rebirths |
 | Cost of 100 of everything | 1.09e27 |
 
 `COST_GROWTH = 1.15` per unit owned, the classic idle curve.
 
-The Lily Pad repays in 150s against the Yuzu Sapling's 100s — the only inversion in the table,
-and it is deliberate. The first purchase is a tutorial rather than a deal, and the second one
-being visibly better is what teaches that generators improve.
+The Lily Pad and the Yuzu Sapling both repay in 100s, the only place in the table where payback
+does not rise. That is deliberate and it is why the monotonic-payback test exempts the first
+rung: the opening purchase is a tutorial rather than a deal, and the second one not being *worse*
+is what teaches that generators are worth buying.
 
 ### The bug this section exists because of
 
@@ -46,6 +47,34 @@ It survived six phases and 434 tests because `tests/content.test.js` asserted on
 achievement ceiling and never added up the cost column. Three tests now cover this table: the
 slope stays in ×8–20, no single step exceeds twice the median step, and every generator repays
 inside a year. All three fail if the old values are put back.
+
+## The first ten minutes
+
+Measured with a simulated player tapping three times a second who saves for the next new thing
+rather than spending every coin the instant it lands.
+
+| | Was | Now |
+|---|---|---|
+| First generator | 15 zen, ~5s | **10 zen, ~3s** |
+| Second generator | 3m 2s | **36s** |
+| First upgrade | 3m 20s | **60s** |
+| Combat opens | **7m 12s** | **3m 17s** |
+
+The gate was 5,000 lifetime zen. Six of those seven minutes contained one generator and one
+upgrade — the clicker is the doorway to the game, not the game, and a doorway that takes seven
+minutes is a wall. At 1,000 it opens around the second time a new player looks up.
+
+### The model matters more than the numbers
+
+The first version of this measurement said there was a **400-second dead patch** and that combat
+never opened at all inside ten minutes. Both were artefacts of the simulated player, which bought
+the cheapest affordable thing on every tick — so it stacked Lily Pads forever and could never
+save the 100 zen for the second generator.
+
+A shopper that never saves cannot reach any tier costing more than one copy of what it already
+owns. Fixing the model moved the second generator from 3m 2s to 36s without a single line of game
+code changing. The retune above is against the corrected model; the numbers the broken one
+produced would have justified gutting a curve that was mostly fine.
 
 ## The difficulty curve
 

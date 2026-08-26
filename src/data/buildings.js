@@ -12,7 +12,7 @@ export const BUILDINGS = [
   {
     id: 'lilypad',
     name: 'Lily Pad',
-    cost: 15,
+    cost: 10,
     rate: 0.1,
     sprite: 'lilypad',
     blurb: 'A good capybara needs somewhere to float. This is that somewhere.',

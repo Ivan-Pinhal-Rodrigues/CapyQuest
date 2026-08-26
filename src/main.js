@@ -78,7 +78,16 @@ import { fmt, fmtInt } from './ui/numbers.js';
 import { isModalOpen, closeModal } from './ui/modal.js';
 
 /** Zen earned before the quest line opens up. */
-const QUEST_UNLOCK_ZEN = 5000;
+/**
+ * Lifetime zen before the way downstream opens.
+ *
+ * Was 5,000, which a simulated player reached at seven and a half minutes —
+ * and the six minutes before it contained one upgrade and one generator. The
+ * clicker is not the game, it is the doorway to the game, and a doorway that
+ * takes seven minutes is a wall. At 1,000 it opens around three minutes, which
+ * is roughly the second time a new player looks up.
+ */
+const QUEST_UNLOCK_ZEN = 1000;
 /** The Rebirth tab appears once there is a run deep enough to be worth resetting. */
 const REBIRTH_TEASE_DEPTH = 20;
 
@@ -251,6 +260,7 @@ class Game {
       achievements: $('panel-achievements'),
       stats: $('panel-stats'),
     }, {
+      subnav: $('subtabs'),
       onChange: (tab) => {
         if (tab === 'achievements') this.newAchievements = 0;
         if (tab === 'kit') this.newGear = 0;
@@ -295,9 +305,11 @@ class Game {
       if (document.visibilityState === 'hidden') {
         this.hiddenAt = Date.now();
         this.save();
+        audio.stopMusic();
       } else {
         this.handleWake();
       }
+      this.updateMusic();
     });
     window.addEventListener('pagehide', () => this.save());
   }
@@ -346,10 +358,32 @@ class Game {
     const s = this.state.settings;
     audio.setEnabled(s.sound);
     audio.setVolume(s.volume);
+    audio.setMusicEnabled(s.music);
+    this.updateMusic();
     // Respect the OS preference unless the player has explicitly opted in.
     const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     this.scene.setReducedMotion(s.reducedMotion || prefersReduced);
     document.documentElement.dataset.motion = s.reducedMotion || prefersReduced ? 'reduced' : 'full';
+  }
+
+  /**
+   * Which of the three loops belongs to what is happening.
+   *
+   * Driven from state rather than fired at transitions, because a transition
+   * can be missed — reloading mid-boss, or coming back to a tab — and then the
+   * pond theme plays over a boss fight until the next one happens to fire.
+   * playMusic() is idempotent, so calling it every tick costs nothing.
+   */
+  updateMusic() {
+    if (!this.state.settings.music || document.visibilityState === 'hidden') {
+      audio.stopMusic();
+      return;
+    }
+    const fighting = this.state.combat.unlocked
+      && this.state.combat.autoBattle
+      && this.tabs.current === 'quest';
+    const boss = fighting && !!this.combat.enemy?.boss;
+    audio.playMusic(boss ? 'boss' : fighting ? 'descent' : 'pond');
   }
 
   // -------------------------------------------------------------- retention
@@ -868,6 +902,7 @@ class Game {
     if (!this.state.rebirthUnlocked) this.checkWall();
     this.checkStory();
     this.checkTutorial();
+    this.updateMusic();
 
     // Only the visible panel needs refreshing.
     if (this.tabs.current === 'achievements') this.achievementPanel.update(this.state);

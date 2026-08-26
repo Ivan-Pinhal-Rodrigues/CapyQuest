@@ -13,6 +13,15 @@ export class Audio {
     this.volume = 0.5;
     this.lastPlay = 0;
     this.voices = 0;
+
+    // --- music, which is a separate opt-in from the effects
+    this.musicEnabled = false;
+    this.musicTimer = null;
+    this.musicGain = null;
+    this.track = null;
+    this.wantedTrack = null;
+    this.step = 0;
+    this.nextNoteAt = 0;
   }
 
   setEnabled(on) {
@@ -187,6 +196,139 @@ export class Audio {
       this.tone(f, { type: 'triangle', duration: 0.18, gain: 0.26, delay: i * 0.09 });
     });
   }
+
+  // ------------------------------------------------------------------- music
+  //
+  // Three loops, synthesised from the same oscillators as the sound effects —
+  // still no audio files anywhere in the repository.
+  //
+  // An idle game runs for hours in a background tab, which makes music a
+  // liability as much as an asset. Three things follow from that: it has its
+  // own toggle separate from the sound effects, it is mixed well under them,
+  // and it stops entirely while the tab is hidden rather than playing to an
+  // empty room.
+  //
+  // The scheduler is the standard WebAudio lookahead: a timer wakes a few times
+  // a second and schedules any note falling inside the next window. Scheduling
+  // note-by-note off setTimeout would drift audibly within a bar.
+
+  setMusicEnabled(on) {
+    this.musicEnabled = !!on;
+    if (!on) this.stopMusic();
+    else if (this.wantedTrack) this.playMusic(this.wantedTrack);
+  }
+
+  /**
+   * Ask for a track. Idempotent: asking for the one already playing does
+   * nothing, so callers can drive this straight from game state every frame.
+   */
+  playMusic(track) {
+    this.wantedTrack = track;
+    if (!this.musicEnabled || !track) return this.stopMusic();
+    if (this.track === track && this.musicTimer) return;
+
+    this.stopMusic();
+    const ctx = this.ensure();
+    if (!ctx) return;
+
+    this.track = track;
+    this.musicGain = ctx.createGain();
+    // Well under the effects, which sit at master * 0.25. Music that competes
+    // with the feedback layer is music that gets switched off.
+    this.musicGain.gain.value = 0.16;
+    this.musicGain.connect(this.master);
+
+    this.step = 0;
+    this.nextNoteAt = ctx.currentTime + 0.1;
+    this.musicTimer = setInterval(() => this.scheduleMusic(), 60);
+  }
+
+  stopMusic() {
+    if (this.musicTimer) clearInterval(this.musicTimer);
+    this.musicTimer = null;
+    this.track = null;
+    if (this.musicGain) {
+      try { this.musicGain.disconnect(); } catch { /* already gone */ }
+      this.musicGain = null;
+    }
+  }
+
+  scheduleMusic() {
+    const ctx = this.ctx;
+    const def = TRACKS[this.track];
+    if (!ctx || !def || !this.musicGain) return this.stopMusic();
+
+    const beat = 60 / def.bpm;
+    // Schedule anything starting inside the next fifth of a second.
+    while (this.nextNoteAt < ctx.currentTime + 0.2) {
+      const index = this.step % def.notes.length;
+      const note = def.notes[index];
+      if (note) this.musicNote(note, this.nextNoteAt, beat * def.hold, def.wave);
+
+      // The bass moves at a quarter of the melody, which is what stops a
+      // sixteen-note loop from sounding like a sixteen-note loop.
+      if (def.bass && index % 4 === 0) {
+        const bass = def.bass[(index / 4) % def.bass.length];
+        if (bass) this.musicNote(bass / 2, this.nextNoteAt, beat * 3.4, 'sine', 0.5);
+      }
+
+      this.nextNoteAt += beat;
+      this.step++;
+    }
+  }
+
+  musicNote(freq, at, duration, wave, level = 1) {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicGain) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = wave;
+      osc.frequency.value = freq;
+      // A soft envelope: a square wave with a hard edge is a sound effect, and
+      // a hundred of those in a row is not music.
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.34 * level, at + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+      osc.connect(gain);
+      gain.connect(this.musicGain);
+      osc.start(at);
+      osc.stop(at + duration + 0.05);
+    } catch { /* the context went away mid-schedule */ }
+  }
 }
+
+// Pentatonic throughout, so nothing can land on a sour interval however the
+// bass and melody line up — the cheapest way to make a generated loop pleasant.
+const S = {
+  C3: 130.81, D3: 146.83, F3: 174.61, G3: 196.0, A3: 220.0,
+  C4: 261.63, D4: 293.66, F4: 349.23, G4: 392.0, A4: 440.0,
+  C5: 523.25, D5: 587.33, F5: 698.46, G5: 783.99, A5: 880.0,
+};
+
+/**
+ * `notes` is one loop; a null is a rest. `hold` is how much of a beat a note
+ * sustains, which is most of what separates the three tracks from each other.
+ */
+const TRACKS = {
+  // The pond. Slow, mostly rests, meant to be forgettable in the good way.
+  pond: {
+    bpm: 68, hold: 2.6, wave: 'sine',
+    notes: [S.C4, null, S.G4, null, S.A4, null, S.G4, null, S.F4, null, S.D4, null, S.C4, null, null, null],
+    bass: [S.C3, S.F3, S.A3, S.G3],
+  },
+  // Downstream. Faster, fuller, moving somewhere.
+  descent: {
+    bpm: 104, hold: 1.1, wave: 'triangle',
+    notes: [S.A4, S.C5, S.D5, S.C5, S.A4, S.G4, S.A4, null, S.F4, S.A4, S.C5, S.A4, S.G4, S.F4, S.D4, null],
+    bass: [S.A3, S.F3, S.D3, S.G3],
+  },
+  // A boss. Low, insistent, and it does not resolve.
+  boss: {
+    bpm: 132, hold: 0.85, wave: 'square',
+    notes: [S.D4, S.D4, S.F4, S.D4, S.G4, S.F4, S.D4, S.C4, S.D4, S.D4, S.A4, S.G4, S.F4, S.D4, S.C4, S.D4],
+    bass: [S.D3, S.D3, S.F3, S.C3],
+  },
+};
 
 export const audio = new Audio();

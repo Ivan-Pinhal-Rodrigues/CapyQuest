@@ -237,6 +237,15 @@ export function openSettings(state, { onChange, onReset, onCode, toaster }) {
     onChange();
   }));
 
+  // Its own switch rather than riding on Sound effects. An idle game runs for
+  // hours in a background tab, and someone who wants the feedback blips does
+  // not necessarily want a loop under them all afternoon. Off by default for
+  // the same reason.
+  body.appendChild(toggle('Music', state.settings.music, (v) => {
+    state.settings.music = v;
+    onChange();
+  }));
+
   body.appendChild(slider('Volume', state.settings.volume, (v) => {
     state.settings.volume = v;
     onChange();

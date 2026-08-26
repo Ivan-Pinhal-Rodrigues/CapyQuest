@@ -8,6 +8,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createState, reconcileState } from '../src/state.js';
 import { recomputeDerived } from '../src/systems/stats.js';
@@ -28,6 +29,20 @@ import {
   DAILY_OFFER, WEEKLY_OFFER, REROLL_COST, LOGIN_REWARDS,
 } from '../src/data/quests.js';
 import { CODES, normaliseCode, lookupCode } from '../src/data/codes.js';
+import { BUILDINGS } from '../src/data/buildings.js';
+
+/**
+ * main.js cannot be imported here — it needs a DOM — so the threshold is read
+ * out of its source rather than copied. A copy is a number that drifts the
+ * first time someone edits the real one, which is exactly the kind of silent
+ * disagreement this suite exists to prevent.
+ */
+const QUEST_UNLOCK_ZEN = (() => {
+  const src = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const match = src.match(/const QUEST_UNLOCK_ZEN = (\d+);/);
+  if (!match) throw new Error('QUEST_UNLOCK_ZEN is no longer declared in main.js');
+  return Number(match[1]);
+})();
 
 /** Midday on a given date, to keep away from midnight boundaries. */
 function at(y, m, d, h = 12) {
@@ -543,4 +558,25 @@ test('retention state round-trips through a save', () => {
   assert.equal(reloaded.pass.xp, 350);
   assert.equal(reloaded.pass.claimed.free[2], true);
   assert.equal(reloaded.codes.onsen, 999);
+});
+
+// ------------------------------------------------------ the opening minutes
+
+test('the way downstream opens in minutes, not in a quarter of an hour', () => {
+  // Combat used to be gated at 5,000 lifetime zen, which a simulated player
+  // reached at seven and a half minutes — and the six minutes before it held
+  // one generator and one upgrade. The clicker is the doorway to the game, not
+  // the game; a doorway that takes seven minutes is a wall.
+  //
+  // 1,000 puts it around three minutes. The bound is generous in both
+  // directions because the exact number is a judgement, but an order of
+  // magnitude in either direction is a design change that should fail here.
+  assert.ok(QUEST_UNLOCK_ZEN >= 400, 'combat opens before the player has done anything');
+  assert.ok(QUEST_UNLOCK_ZEN <= 2000, 'combat is gated behind a grind again');
+});
+
+test('the first purchase is within a few seconds of the first tap', () => {
+  const first = BUILDINGS[0];
+  assert.ok(first.cost <= 12, `the first generator costs ${first.cost} — too long to wait`);
+  assert.ok(first.cost >= 5, 'free is not a purchase');
 });

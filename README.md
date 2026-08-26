@@ -19,7 +19,7 @@ Spend more zen on upgrades that multiply both. Then keep going, because there is
 underneath: stats, gear, auto-battle, gacha companions, a 210-node skill tree, and two reset
 layers.
 
-At 5,000 zen the Quest line opens: unlimited stages of ten levels each, a boss on every tenth, 18
+At 1,000 zen — about three minutes in — the Quest line opens: unlimited stages of ten levels each, a boss on every tenth, 18
 cycling terrains and 42 pieces of gear to find and enhance. Combat runs itself — what you choose is
 the kit, the three skills, and the elemental stance.
 
@@ -89,8 +89,9 @@ export const YUZU = sprite([
 ```
 
 They rasterise to an offscreen canvas once and blit with smoothing off. Ten hand-drawn 16×16
-shapes cover all eighteen generators by swapping the palette underneath them. Sound effects are
-synthesised with WebAudio oscillators, so there are no audio files either.
+shapes cover all eighteen generators by swapping the palette underneath them. Sound effects and
+all three music loops are synthesised with WebAudio oscillators, so there are no audio files
+either.
 
 ### Design notes
 
@@ -179,6 +180,14 @@ Built in stages. Landed so far:
       four fixed bands rather than on hand-picked numbers, because two hundred entries each
       paying "just a few percent" compounds to a factor of eight million; a full clear is worth
       x68, which is a number somebody chose.
+- [x] **A way in** — twelve tabs met a new player before they had done anything, several of them
+      near-duplicates. Eight now, with the pairs that always belonged together sharing a tab and a
+      small strip of sub-navigation. The opening was measured rather than guessed: a simulated
+      player reached combat at seven and a half minutes, having bought one generator and one
+      upgrade in the six before it. Combat now opens at three minutes and the first real choice
+      lands inside sixty seconds. There is also music — three loops out of the same oscillators as
+      the sound effects, still no audio files, off by default and on its own switch, because an
+      idle game runs for hours in a background tab.
 - [x] **Retention that asks something** — nine surfaces all ended in a button marked Claim.
       The day now offers seven quests for four slots and the week five for three, so a session
       starts with a decision about the session; the picker closes once you have chosen, and a

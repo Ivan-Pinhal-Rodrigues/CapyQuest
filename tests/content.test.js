@@ -113,9 +113,10 @@ test('every generator pays for itself in a length of time a player would accept'
   // And payback must rise down the list, so later generators are a bigger
   // commitment rather than a strictly better deal.
   //
-  // The Lily Pad is exempt: it repays in 150s against the Yuzu Sapling's 100s,
-  // deliberately. The first purchase is a tutorial rather than a deal, and the
-  // second one being visibly better is what teaches that generators improve.
+  // The Lily Pad is exempt. It and the Yuzu Sapling both repay in 100s, which
+  // is the one place payback does not rise: the opening purchase is a tutorial
+  // rather than a deal, and the second one not being *worse* is what teaches
+  // that generators are worth buying.
   for (let i = 2; i < BUILDINGS.length; i++) {
     const prev = BUILDINGS[i - 1].cost / BUILDINGS[i - 1].rate;
     const here = BUILDINGS[i].cost / BUILDINGS[i].rate;

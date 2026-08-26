@@ -157,6 +157,8 @@ export function createState(now = Date.now()) {
 
     settings: {
       sound: true,
+      // Off until asked for. See the note in ui/panels.js.
+      music: false,
       volume: 0.5,
       reducedMotion: false,
       theme: 'dusk',

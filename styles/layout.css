@@ -140,9 +140,14 @@
 /* Six columns by two rows. Eleven tabs leave one gap, which the Profile screen
    fills next; six fits at 390px because the labels are short and the pixel font
    is tiny — measured, not assumed. */
+/* Eight tabs in two rows of four, down from twelve in two rows of six.
+   Squeezing all eight onto one row was tried and truncated "Rebirth" — and a
+   label you cannot read is worse than a second row. The win was never the row
+   count, it was halving how many nouns a new player meets before they have
+   done anything. */
 .tabs {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -231,4 +236,48 @@
 @media (max-width: 560px) {
   .hud__rates { display: none; }
   .hud__brand { display: none; }
+}
+
+/* ------------------------------------------------------------- sub-navigation
+   Shown only inside a tab that groups more than one section. Eight of the
+   eleven tabs hold a single section and show nothing here, so most of the game
+   looks exactly as it did before the merge. */
+
+.subtabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.6rem;
+}
+
+.subtab {
+  position: relative;
+  flex: 1;
+  padding: 0.35rem 0.4rem;
+  font-family: var(--font-pixel);
+  font-size: 0.36rem;
+  color: var(--text-faint);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--border);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.subtab:hover { color: var(--text-dim); }
+
+.subtab.is-active {
+  color: var(--zen);
+  border-bottom-color: var(--zen);
+}
+
+/* A dot on the strip says which of the group had the thing waiting. */
+.subtab.has-badge::after {
+  content: '';
+  position: absolute;
+  top: 0.25rem;
+  right: 0.35rem;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--danger);
 }
