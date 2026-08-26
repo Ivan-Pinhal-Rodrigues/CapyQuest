@@ -153,6 +153,13 @@ export function createState(now = Date.now()) {
       chestsOpened: 0,
       rebirths: 0,
       ascensions: 0,
+
+      // Depth across every run there has ever been. `combat.bestDepth` resets
+      // with each rebirth, so without these there is no record of how far the
+      // player has actually travelled — which is exactly what Ascension pays
+      // for. Both survive every reset in the game.
+      totalDepth: 0,
+      deepestEver: 0,
     },
 
     settings: {

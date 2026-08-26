@@ -7,8 +7,8 @@
 // kill — and turns red when that crosses thirty seconds.
 
 import { fmt, fmtInt, fmtTime } from './numbers.js';
-import { CONSTELLATIONS } from '../data/constellations.js';
-import { rankCost, ascendPreview, ASCEND_MIN_ESSENCE, ASCENSION_ROADMAP } from '../systems/ascension.js';
+import { CONSTELLATIONS, FIGURES, figureOf } from '../data/constellations.js';
+import { rankCost, ascendPreview, ASCEND_MIN_ESSENCE, figureStatus } from '../systems/ascension.js';
 import { TREE_BRANCHES, TIER_GATES, TIERS, treeLayout } from '../data/rebirthTree.js';
 import { KEYSTONE_COST, KEYSTONE_GATE, keystonesFor } from '../data/keystones.js';
 import { NODE_CONDITIONS, conditionLabel } from '../data/conditions.js';
@@ -54,25 +54,17 @@ export class RebirthPanel {
     this.rebirthCard.appendChild(this.rebirthBtn);
     r.appendChild(this.rebirthCard);
 
-    // --- ascension, kept working and openly unfinished
+    // --- ascension
     this.ascendCard = section('meta-card meta-card--ascend');
     add(this.ascendCard, 'h3', 'meta-card__title', 'The Still Point');
-    this.ascendBanner = add(this.ascendCard, 'p', 'meta-card__wip', 'Still being built — what is here works, but it is not finished.');
     this.ascendLead = add(this.ascendCard, 'p', 'meta-card__lead');
     this.ascendGain = add(this.ascendCard, 'p', 'meta-card__gain');
+    // Where the next run starts. This is the line that says an ascension is
+    // not the last one over again, so it gets its own row rather than being
+    // buried in the payout sentence.
+    this.ascendFloor = add(this.ascendCard, 'p', 'meta-card__floor');
     this.ascendBtn = button('btn btn--primary', 'Ascend', () => this.h.onAscend());
     this.ascendCard.appendChild(this.ascendBtn);
-    const roadmap = section('roadmap');
-    add(roadmap, 'strong', 'roadmap__title', 'Coming to this layer');
-    const items = document.createElement('ul');
-    items.className = 'roadmap__list';
-    for (const line of ASCENSION_ROADMAP) {
-      const li = document.createElement('li');
-      li.textContent = line;
-      items.appendChild(li);
-    }
-    roadmap.appendChild(items);
-    this.ascendCard.appendChild(roadmap);
     r.appendChild(this.ascendCard);
 
     // --- sub-tabs
@@ -209,6 +201,23 @@ export class RebirthPanel {
   }
 
   buildStars() {
+    // The figures come first. They are the reason the twelve are a board rather
+    // than a price list, and a player who never sees them will buy in cost
+    // order and never notice there was a shape to complete.
+    this.figureWrap = section('figures');
+    add(this.figureWrap, 'p', 'figures__head', 'Figures — light all three stars for a bonus');
+    this.figureRefs = new Map();
+    for (const figure of FIGURES) {
+      const card = section('figure');
+      const name = add(card, 'strong', 'figure__name', figure.name);
+      const line = add(card, 'span', 'figure__line', figure.line);
+      const pay = add(card, 'span', 'figure__pay', figure.blurb);
+      const progress = add(card, 'span', 'figure__progress');
+      this.figureWrap.appendChild(card);
+      this.figureRefs.set(figure.id, { card, progress });
+    }
+    this.starList.appendChild(this.figureWrap);
+
     for (const star of CONSTELLATIONS) {
       const row = document.createElement('button');
       row.type = 'button';
@@ -231,6 +240,17 @@ export class RebirthPanel {
       const ranks = document.createElement('span');
       ranks.className = 'relic__ranks';
       side.append(cost, ranks);
+
+      // Which figure this star belongs to, on the star itself. Otherwise the
+      // only way to work out what completes a shape is to read four lists and
+      // hold them in your head.
+      const figure = figureOf(star.id);
+      if (figure) {
+        const tag = document.createElement('span');
+        tag.className = 'relic__figure';
+        tag.textContent = figure.name;
+        main.appendChild(tag);
+      }
 
       row.append(main, side);
       row.addEventListener('click', () => this.h.onBuyStar(star.id));
@@ -289,10 +309,22 @@ export class RebirthPanel {
       this.ascendLead,
       'Ascending takes the essence and the whole tree, and pays Lotus. Constellations, gear, companions and trophies survive.',
     );
+    // Split the payout, because the two halves reward different things and a
+    // player deciding whether to go now should be able to see which of them
+    // another hour would move.
     setText(
       this.ascendGain,
-      a.canAscend ? `+${fmtInt(a.lotus)} lotus` : `Needs ${fmtInt(ASCEND_MIN_ESSENCE)} lifetime essence`,
+      a.canAscend
+        ? `+${fmtInt(a.lotus)} lotus — ${fmtInt(a.fromEssence)} for essence, ${fmtInt(a.fromDepth)} for ground covered`
+        : `Needs ${fmtInt(ASCEND_MIN_ESSENCE)} lifetime essence`,
     );
+    setText(
+      this.ascendFloor,
+      a.floor > 0
+        ? `The next run starts at stage ${Math.floor(a.floor / 10) + 1} rather than the first.`
+        : '',
+    );
+    this.ascendFloor.hidden = a.floor <= 0;
     this.ascendBtn.disabled = !a.canAscend;
     this.ascendCard.classList.toggle('is-ready', a.canAscend);
   }
@@ -401,6 +433,16 @@ export class RebirthPanel {
   }
 
   updateStars(state) {
+    for (const figure of figureStatus(state)) {
+      const ref = this.figureRefs.get(figure.id);
+      if (!ref) continue;
+      ref.card.classList.toggle('is-lit', figure.lit);
+      setText(
+        ref.progress,
+        figure.lit ? 'Lit' : `${figure.owned} of ${figure.stars.length} stars`,
+      );
+    }
+
     for (const def of CONSTELLATIONS) {
       const entry = this.starRefs.get(def.id);
       const owned = state.constellations[def.id] || 0;

@@ -93,6 +93,12 @@ export function rebirth(state, now = Date.now()) {
   const banked = collectCache(state);
   state.totalZen += banked.zen;
 
+  // Bank the run's depth before it is wiped. Ascension pays for the ground you
+  // have covered across every rebirth, and this is the only moment that number
+  // still exists.
+  state.stats.totalDepth = (state.stats.totalDepth || 0) + (state.combat.bestDepth || 0);
+  state.stats.deepestEver = Math.max(state.stats.deepestEver || 0, state.combat.bestDepth || 0);
+
   const fresh = createState(now);
 
   // Everything below is explicitly carried across the reset. Anything not

@@ -37,3 +37,77 @@ export const CONSTELLATIONS_BY_ID = Object.fromEntries(CONSTELLATIONS.map((c) =>
 export function rankCost(def, ownedRanks) {
   return Math.ceil(def.cost * Math.pow(1.6, ownedRanks));
 }
+
+// ------------------------------------------------------------------- figures
+//
+// The twelve are grouped into four figures of three. Owning a rank in every
+// star of a figure lights it, and a lit figure pays a bonus of its own.
+//
+// Each figure deliberately spans the price range — one cheap star, one middling
+// and one dear. The first draft grouped them by cost instead, which produced
+// four neat bands and no decision at all: you would light them in order simply
+// by buying what you could afford, which is the queue this was meant to
+// replace. A test now asserts no figure is the three cheapest stars.
+//
+// This is what turns twelve independent purchases into a board. On their own
+// the stars are twelve prices in ascending order, and the only decision is
+// which one you can afford next — which is not a decision, it is a queue. The
+// figures cut across cost, so completing the cheap one early and the dear one
+// late are both real plans, and a player short of Lotus has to choose between
+// finishing a figure and taking the strongest single star they can reach.
+//
+// Every figure bonus is an ordinary effect in the shared vocabulary, for the
+// same reason keystone drawbacks are: a bespoke rule is a thing that can
+// silently stop being read.
+
+export const FIGURES = [
+  {
+    id: 'theBath',
+    name: 'The Bath',
+    stars: ['theBather', 'theDreamer', 'theEndless'],
+    line: 'Warmth, and the patience to sit in it.',
+    effect: { type: 'globalMult', value: 3 },
+    blurb: '×3 all income while lit.',
+  },
+  {
+    id: 'theLongNight',
+    name: 'The Long Night',
+    stars: ['theFloater', 'theWatcher', 'theFrugal'],
+    line: 'What the pond does while nobody is looking.',
+    effect: { type: 'offlineRate', value: 0.35 },
+    blurb: '+35% offline rate while lit.',
+  },
+  {
+    id: 'theHunt',
+    name: 'The Hunt',
+    stars: ['theTapper', 'theHunter', 'theGenerous'],
+    line: 'Downstream, and whatever is waiting there.',
+    effect: { type: 'combatAtk', value: 1.5 },
+    blurb: '+150% attack while lit.',
+  },
+  {
+    id: 'theQuiet',
+    name: 'The Quiet',
+    stars: ['theHoarder', 'theWall', 'theStillPoint'],
+    line: 'The figure you finish last, if you finish it at all.',
+    effect: { type: 'essenceGain', value: 1.5 },
+    blurb: '+150% essence from rebirthing while lit.',
+  },
+];
+
+export const FIGURES_BY_ID = Object.fromEntries(FIGURES.map((f) => [f.id, f]));
+
+/** The figure a star belongs to. */
+export function figureOf(starId) {
+  return FIGURES.find((f) => f.stars.includes(starId)) || null;
+}
+
+/** A figure is lit once every star in it has at least one rank. */
+export function isFigureLit(state, figure) {
+  return figure.stars.every((id) => (state.constellations?.[id] || 0) > 0);
+}
+
+/** Every lit figure, for the panel and for the effect accumulator. */
+export function litFigures(state) {
+  return FIGURES.filter((f) => isFigureLit(state, f));
+}

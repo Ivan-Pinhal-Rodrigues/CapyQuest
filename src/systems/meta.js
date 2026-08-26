@@ -8,7 +8,7 @@
 import { treeEffects } from './tree.js';
 import { partyMembers } from './gacha.js';
 import { equippedBonuses } from './equipment.js';
-import { CONSTELLATIONS_BY_ID } from '../data/constellations.js';
+import { CONSTELLATIONS_BY_ID, litFigures } from '../data/constellations.js';
 
 /** Effects from the rebirth tree, constellations, party companions and gear. */
 export function metaEffects(state) {
@@ -21,6 +21,10 @@ export function metaEffects(state) {
     if (!def) continue;
     for (let i = 0; i < ranks; i++) out.push(def.effect);
   }
+
+  // A lit figure pays once, however many ranks its stars hold — the bonus is
+  // for having completed the shape, not for over-investing in it.
+  for (const figure of litFigures(state)) out.push(figure.effect);
 
   // Party bonuses are flat: you have them or you do not, regardless of level.
   for (const member of partyMembers(state)) {

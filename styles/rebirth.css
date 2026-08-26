@@ -309,3 +309,74 @@
 @media (max-width: 480px) {
   .keystones__row { grid-template-columns: 1fr; }
 }
+
+/* ================================================================= figures
+   Four shapes of three stars each. Shown above the star list because they are
+   the reason it is a board and not a price list. */
+
+.figures {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.8rem;
+}
+
+.figures__head {
+  font-family: var(--font-pixel);
+  font-size: 0.38rem;
+  color: var(--text-faint);
+}
+
+.figure {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'name progress' 'line progress' 'pay progress';
+  gap: 0.05rem 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all 160ms ease;
+}
+
+.figure.is-lit {
+  background: var(--surface-2);
+  border-color: var(--lotus);
+  box-shadow: 0 0 10px rgba(201, 160, 255, 0.24);
+}
+
+.figure__name { grid-area: name; font-size: 0.84rem; color: var(--text); }
+.figure.is-lit .figure__name { color: var(--lotus); }
+
+.figure__line {
+  grid-area: line;
+  font-size: 0.7rem;
+  font-style: italic;
+  color: var(--text-faint);
+  line-height: 1.35;
+}
+
+.figure__pay { grid-area: pay; font-size: 0.72rem; color: var(--text-dim); }
+
+.figure__progress {
+  grid-area: progress;
+  align-self: center;
+  font-family: var(--font-pixel);
+  font-size: 0.34rem;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.figure.is-lit .figure__progress { color: var(--leaf); }
+
+/* Which shape a star belongs to, on the star. */
+.relic__figure {
+  display: inline-block;
+  margin-top: 0.1rem;
+  font-family: var(--font-pixel);
+  font-size: 0.3rem;
+  color: var(--lotus);
+  opacity: 0.75;
+}
+
+.meta-card__floor { font-size: 0.76rem; color: var(--leaf); line-height: 1.4; }

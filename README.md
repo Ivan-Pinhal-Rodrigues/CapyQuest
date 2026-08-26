@@ -28,8 +28,13 @@ you, and the pity counter is on screen the whole time.
 
 Eventually a boss will not fall inside thirty seconds, and the game says so out loud. That is
 Rebirth: start the run again, paid in Essence for how deep you got, and spend it on a tree of 210
-nodes that no reset can take back. Beyond that is the Still Point, which works and is openly
-still being built.
+nodes that no reset can take back.
+
+Beyond that is the Still Point. Ascending takes the Essence and the whole tree and pays Lotus —
+counted from the ground you covered across every run, not only from how often you pressed the
+button — and each ascension leaves the next run starting deeper than the last. Lotus buys twelve
+constellations arranged in four figures of three; light every star in a figure and it pays a
+bonus of its own.
 
 ## Running it
 
@@ -180,6 +185,12 @@ Built in stages. Landed so far:
       four fixed bands rather than on hand-picked numbers, because two hundred entries each
       paying "just a few percent" compounds to a factor of eight million; a full clear is worth
       x68, which is a number somebody chose.
+- [x] **The Still Point** — it shipped working and thin: a reset, a currency, twelve upgrades, and
+      no reason to exist that Rebirth did not already provide. It pays for ground covered now
+      rather than for button presses, each ascension starts the next run deeper so the second is
+      not the first with bigger numbers, and the twelve constellations became four figures of
+      three that cut across the price range. The "still being built" banner and its roadmap are
+      gone, because they are done.
 - [x] **A way in** — twelve tabs met a new player before they had done anything, several of them
       near-duplicates. Eight now, with the pairs that always belonged together sharing a tab and a
       small strip of sub-navigation. The opening was measured rather than guessed: a simulated

@@ -25,7 +25,7 @@
 
 .hud__meta-item--essence { color: var(--zen); border-color: rgba(247, 201, 72, 0.4); }
 .hud__meta-item--leaf { color: var(--leaf); border-color: rgba(95, 163, 72, 0.45); }
-.hud__meta-item--lotus { color: #c9a0ff; border-color: rgba(201, 160, 255, 0.4); }
+.hud__meta-item--lotus { color: var(--lotus); border-color: rgba(201, 160, 255, 0.4); }
 .hud__meta-item--ticket { color: var(--water); border-color: rgba(127, 208, 230, 0.4); }
 
 /* -------------------------------------------------------------------- summon */
@@ -319,7 +319,7 @@
 .relic__side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.12rem; }
 
 .relic__cost { font-family: var(--font-pixel); font-size: 0.5rem; }
-.relic__cost--lotus { color: #c9a0ff; }
+.relic__cost--lotus { color: var(--lotus); }
 .relic__ranks { font-size: 0.66rem; color: var(--text-faint); }
 
 .relic.is-owned { border-color: var(--border-bright); }

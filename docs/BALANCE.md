@@ -250,6 +250,38 @@ Between them they also exposed a live bug: `zpsShare: -1` was subtracting the wh
 the tap and producing a **negative click value**. The floors added for keystones were on the
 values reported out of `recomputeDerived`, not on the one the formula consumes.
 
+## Ascension
+
+The second reset layer. It shipped working and thin — a reset, a currency and twelve upgrades,
+with no reason to exist that Rebirth did not already provide.
+
+| | |
+|---|---|
+| Opens at | 5,000 lifetime Essence |
+| Lotus from Essence | `floor((lifetime / 5000) ^ 0.7)` |
+| Lotus from depth | `floor((total depth / 60) ^ 0.8)` |
+| Depth floor per ascension | **12 levels**, capped at 120 |
+| Constellations | 12, in **4 figures of three** |
+
+Both halves of the payout are sub-linear and are **added, not multiplied**. Sub-linear so that a
+hundred shallow rebirths never out-pay going deep — if depth paid linearly the optimal play would
+be to rebirth on a timer and never travel. Added so a player who has done one of the two well can
+still ascend.
+
+The depth floor is what stops the second ascension being the first one again with better
+multipliers. It is capped at twelve stages, reached only after ten ascensions, and the wall lands
+around stage 7 for a fresh kit — so it removes the repetition without removing the run.
+
+### Figures cut across price on purpose
+
+The first grouping put the three cheapest stars in one figure, the next three in the next, and so
+on. That produced four neat bands and no decision at all: you would light them in cost order
+simply by buying what you could afford, which is the queue the figures were meant to replace.
+
+Each figure now spans one cheap star, one middling and one dear, so finishing a figure early and
+taking the strongest single star you can reach are both real plans. A test asserts no figure is
+exactly the three cheapest — it is what caught the first version.
+
 ## The rarity ladder
 
 `RARITY_MULT = 1.45` per rung, twenty rungs, `STAR_STEP` per star, forge +0 → +15.

@@ -91,7 +91,9 @@ The anniversary. Retro cosmetics, and the original pond palette as it shipped.
 seven and the most likely to land next.
 
 ### 10. The Still Point Rift 🌀
-The endgame event, and the one that finally opens Ascension properly — the layer
-currently marked "still being built" on its own panel.
-*Needs:* the Ascension roadmap in `systems/ascension.js` closed out. This is
-deliberately last: it is the payoff for the layer, not a patch over it.
+The endgame event: a Lotus faucet outside the ascension loop, so a player deep
+in the constellations has something to do with a season.
+*Needs:* nothing blocking. Ascension itself is finished — it pays for ground
+covered, banks a depth floor between runs, and its twelve stars are grouped into
+four figures. This event would add a second way to earn Lotus, not a reason for
+the layer to exist.

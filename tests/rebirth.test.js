@@ -31,7 +31,13 @@ import {
   ranksOf, respec, totalRanks, treeEffects, treeSummary,
 } from '../src/systems/tree.js';
 import { rebirth, rebirthPreview, essenceGainMult, noteWall, deepestStage } from '../src/systems/rebirth.js';
-import { ascend, ascendPreview, ASCEND_MIN_ESSENCE, ASCENSION_ROADMAP } from '../src/systems/ascension.js';
+import {
+  ascend, ascendPreview, ASCEND_MIN_ESSENCE,
+  FLOOR_MAX, FLOOR_PER_ASCENSION, depthFloor, figureEffects, figureStatus,
+  lotusFromDepth,
+} from '../src/systems/ascension.js';
+import { CONSTELLATIONS, FIGURES, isFigureLit } from '../src/data/constellations.js';
+import { metaEffects } from '../src/systems/meta.js';
 import { shouldSuggestRebirth } from '../src/systems/wall.js';
 
 /** Minimal stat block that produces a chosen DPS. Mirrors stages.test.js. */
@@ -422,9 +428,122 @@ test('ascension takes the essence and the tree but never the collection', () => 
   assert.equal(s.rebirthUnlocked, true, 'you do not have to re-learn the wall');
 });
 
-test('the ascension layer says out loud that it is unfinished', () => {
-  assert.ok(ASCENSION_ROADMAP.length >= 3, 'a roadmap of nothing is not a roadmap');
-  for (const line of ASCENSION_ROADMAP) assert.ok(line.length > 20, `too vague: "${line}"`);
+// ------------------------------------------------------------- the still point
+
+test('ascending pays for ground covered as well as for essence', () => {
+  // The payout used to be a function of lifetime essence alone, which is a
+  // function of how often you pressed Rebirth rather than of how far you got.
+  const shallow = readyToRebirth();
+  shallow.lifetimeEssence = ASCEND_MIN_ESSENCE * 4;
+  shallow.stats.totalDepth = 0;
+  shallow.combat.bestDepth = 0;
+
+  const travelled = readyToRebirth();
+  travelled.lifetimeEssence = ASCEND_MIN_ESSENCE * 4;
+  travelled.stats.totalDepth = 4000;
+  travelled.combat.bestDepth = 300;
+
+  const a = ascendPreview(shallow);
+  const b = ascendPreview(travelled);
+  assert.equal(a.fromEssence, b.fromEssence, 'the essence halves should match');
+  assert.ok(b.fromDepth > a.fromDepth, 'depth did not pay');
+  assert.ok(b.lotus > a.lotus);
+});
+
+test('a hundred shallow rebirths never out-pay going deep', () => {
+  // Both halves are sub-linear on purpose. If depth paid linearly, the optimal
+  // play would be to rebirth on a timer and never travel.
+  const shallow = { stats: { totalDepth: 100 * 20 }, combat: { bestDepth: 20 } };
+  const deep = { stats: { totalDepth: 2000 }, combat: { bestDepth: 600 } };
+  assert.ok(lotusFromDepth(deep) >= lotusFromDepth(shallow));
+});
+
+test('each ascension starts the next run deeper, up to a cap', () => {
+  // Without a floor the second ascension is the first one again with better
+  // multipliers, which is a treadmill.
+  const s = readyToRebirth();
+  s.lifetimeEssence = ASCEND_MIN_ESSENCE * 10;
+  assert.equal(depthFloor(s), 0, 'a first-time player should start at the beginning');
+
+  assert.equal(ascend(s).ok, true);
+  assert.equal(s.ascendCount, 1);
+  assert.equal(s.combat.depth, FLOOR_PER_ASCENSION);
+  assert.equal(s.combat.bestDepth, FLOOR_PER_ASCENSION);
+
+  s.ascendCount = 50;
+  assert.equal(depthFloor(s), FLOOR_MAX, 'the floor is uncapped');
+});
+
+test('the floor stops well short of where an ascending player is walled', () => {
+  // A floor that skipped the whole run would remove the game rather than the
+  // repetition. The wall lands around stage 7 for a fresh kit; the cap is
+  // twelve stages, reached only after ten ascensions.
+  assert.ok(FLOOR_MAX / 10 <= 15, `the floor skips ${FLOOR_MAX / 10} stages`);
+  assert.ok(FLOOR_PER_ASCENSION > 0);
+});
+
+test('an ascension banks the run it ends, so a long run is never lost', () => {
+  const s = readyToRebirth();
+  s.lifetimeEssence = ASCEND_MIN_ESSENCE * 10;
+  s.combat.bestDepth = 500;
+  s.stats.totalDepth = 1000;
+  ascend(s);
+  assert.equal(s.stats.totalDepth, 1500, 'the final run was not banked');
+  assert.ok(s.stats.deepestEver >= 500);
+});
+
+test('the twelve stars are grouped into four figures of three, with none spare', () => {
+  const inFigures = FIGURES.flatMap((f) => f.stars);
+  assert.equal(FIGURES.length, 4);
+  assert.equal(inFigures.length, CONSTELLATIONS.length, 'a star is in two figures or none');
+  assert.equal(new Set(inFigures).size, inFigures.length, 'a star appears twice');
+  for (const id of inFigures) {
+    assert.ok(CONSTELLATIONS.some((c) => c.id === id), `figure names unknown star "${id}"`);
+  }
+});
+
+test('a figure lights only when every star in it is owned', () => {
+  const s = createState();
+  const figure = FIGURES[0];
+  assert.equal(isFigureLit(s, figure), false);
+
+  for (const id of figure.stars.slice(0, -1)) s.constellations[id] = 1;
+  assert.equal(isFigureLit(s, figure), false, 'a figure lit one star short');
+
+  s.constellations[figure.stars.at(-1)] = 1;
+  assert.equal(isFigureLit(s, figure), true);
+  assert.equal(figureEffects(s).length, 1);
+});
+
+test('figures cut across cost, so completing one is a real plan', () => {
+  // If a figure were simply the three cheapest, lighting it would be what
+  // happens anyway rather than something chosen.
+  for (const figure of FIGURES) {
+    const costs = figure.stars.map((id) => CONSTELLATIONS.find((c) => c.id === id).cost);
+    assert.ok(Math.max(...costs) > Math.min(...costs), `${figure.id} is a flat price band`);
+  }
+  const cheapest = [...CONSTELLATIONS].sort((a, b) => a.cost - b.cost).slice(0, 3).map((c) => c.id);
+  assert.ok(
+    !FIGURES.some((f) => f.stars.every((id) => cheapest.includes(id))),
+    'one figure is exactly the three cheapest stars',
+  );
+});
+
+test('every figure bonus speaks the shared effect vocabulary', () => {
+  for (const figure of FIGURES) {
+    assert.ok(figure.effect?.type, `${figure.id} has no effect`);
+    assert.ok(Number.isFinite(figure.effect.value));
+    assert.ok(figure.name && figure.line && figure.blurb, `${figure.id} has no copy`);
+  }
+});
+
+test('figureStatus reports progress towards each figure', () => {
+  const s = createState();
+  s.constellations[FIGURES[0].stars[0]] = 1;
+  const status = figureStatus(s);
+  assert.equal(status.length, FIGURES.length);
+  assert.equal(status[0].owned, 1);
+  assert.equal(status[0].lit, false);
 });
 
 // ---------------------------------------------------------- the v1 migration
@@ -530,4 +649,30 @@ test('an id in a save that no longer exists is ignored, not fatal', () => {
   assert.equal(treeEffects(s).length, 0);
   assert.equal(essenceSpent(s), 0);
   assert.equal(respec(s).refunded, 0);
+});
+
+test('a lit figure actually reaches the derived stats, and pays only once', () => {
+  // A figure bonus that never enters the accumulator is decoration. And it pays
+  // for completing the shape, not for over-investing in one corner of it.
+  const s = createState();
+  const figure = FIGURES[0];
+  const before = recomputeDerived(s).globalMult;
+
+  for (const id of figure.stars) s.constellations[id] = 1;
+  const lit = recomputeDerived(s).globalMult;
+  assert.ok(lit > before, 'lighting a figure changed nothing');
+
+  // Deeper ranks in one star raise that star's own effect, but must not pay the
+  // figure bonus a second time. Counting the effect in the accumulator says
+  // that directly; comparing derived multipliers does not, because the other
+  // stars in the figure are multiplying too.
+  const countFigure = (st) =>
+    metaEffects(st).filter((e) => e === figure.effect).length;
+
+  assert.equal(countFigure(s), 1, 'a lit figure did not pay');
+  s.constellations[figure.stars[0]] = 3;
+  assert.equal(countFigure(s), 1, 'deepening a star paid the figure bonus again');
+
+  s.constellations[figure.stars[0]] = 0;
+  assert.equal(countFigure(s), 0, 'the figure stayed lit with a star sold off');
 });
