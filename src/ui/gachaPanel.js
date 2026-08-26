@@ -11,8 +11,12 @@ import { pityProgress, ownedCompanions, collectionProgress, ticketPrice, FOUR_ST
 import { PITY_SOFT, PITY_HARD, fiveStarChance } from '../balance.js';
 import { CAPY_SKINS } from '../render/palettes.js';
 import { GOLDEN_CAPY } from '../render/sprites.js';
-import { spriteDataUrl } from './icons.js';
+import { capyLookUrl, spriteDataUrl } from './icons.js';
 import { el } from './modal.js';
+import { COMPANION_SLOTS } from '../data/companionGear.js';
+import { crewEquipped, crewGearStats, crewHat, crewUnequipped } from '../systems/crew.js';
+import { liveCosmeticsOfKind } from '../content/registry.js';
+import { owns } from '../systems/cosmetics.js';
 
 export function companionIconUrl(companion) {
   return spriteDataUrl(GOLDEN_CAPY, CAPY_SKINS[companion.skin] || CAPY_SKINS.classic, `capy:${companion.skin}`);
@@ -251,14 +255,24 @@ export function pullResultsBody(results) {
   return body;
 }
 
-/** Modal body for one companion. */
-export function companionDetailBody(companion, { inParty }) {
+/**
+ * Modal body for one companion.
+ *
+ * `state` and the two callbacks are optional: the roster in the Summon panel
+ * shows companions you may not own yet, and a picker for gear you cannot equip
+ * would be a dead control.
+ */
+export function companionDetailBody(companion, { inParty, state, onPickGear, onPickHat } = {}) {
   const body = el('div', 'item-detail');
 
   const head = el('div', 'item-detail__head');
   const img = document.createElement('img');
   img.className = 'item-detail__icon pixel-icon';
-  img.src = companionIconUrl(companion);
+  // Wearing its hat, and at the size the pond draws it — the portrait should be
+  // the animal you can see in the water, not a generic one.
+  img.src = state
+    ? capyLookUrl({ skin: companion.skin, hat: crewHat(state, companion.id) })
+    : companionIconUrl(companion);
   img.alt = '';
   const titles = el('div', 'item-detail__titles');
   titles.appendChild(el('strong', 'item-detail__name', `${companion.name} · Lv${companion.level}`));
@@ -273,11 +287,17 @@ export function companionDetailBody(companion, { inParty }) {
   elLine.style.color = element.color;
   body.appendChild(elLine);
 
+  // Own stats, plus whatever the gear adds. Shown as one line rather than two
+  // because the question is "how strong is this companion", not "how strong is
+  // it before its charm".
   const mult = companionMultiplier(companion.level);
+  const fromGear = state ? crewGearStats(state, companion.id) : {};
+  const keys = new Set([...Object.keys(companion.stats), ...Object.keys(fromGear).filter((k) => fromGear[k])]);
   const parts = [];
-  for (const [key, value] of Object.entries(companion.stats)) {
-    const label = key === 'critDmg' ? 'CDMG' : key.toUpperCase();
-    parts.push(key === 'crit' ? `${label} ${fmtPct(value * mult)}` : `${label} ${fmtInt(value * mult)}`);
+  for (const key of keys) {
+    const value = (companion.stats[key] || 0) * mult + (fromGear[key] || 0);
+    if (!value) continue;
+    parts.push(describeStat(key, value));
   }
   body.appendChild(el('p', 'item-detail__stats', parts.join(' · ')));
 
@@ -296,7 +316,16 @@ export function companionDetailBody(companion, { inParty }) {
     body.appendChild(el('p', 'item-detail__forge', 'Fully levelled.'));
   }
 
+  if (state) body.appendChild(crewKitSection(companion, state, { onPickGear, onPickHat }));
+
   if (inParty) body.appendChild(el('p', 'item-detail__note', 'In your party.'));
+  else if (state) {
+    body.appendChild(el(
+      'p',
+      'item-detail__note',
+      'Only the three in your party contribute. Gear stays on whoever is wearing it.',
+    ));
+  }
   return body;
 }
 
@@ -376,4 +405,146 @@ function btn(className, label, onClick) {
 
 function setText(node, value) {
   if (node.textContent !== value) node.textContent = value;
+}
+
+/**
+ * The three gear slots and the hat, for one companion.
+ *
+ * Deliberately compact: it sits inside a modal that already carries stats, a
+ * blurb and a shard counter, and a full inventory grid here would push the
+ * party buttons off a phone screen. Tapping a slot opens the picker.
+ */
+function crewKitSection(companion, state, { onPickGear, onPickHat } = {}) {
+  const wrap = el('div', 'crew-kit');
+  wrap.appendChild(el('h4', 'crew-kit__head', 'Kit'));
+
+  const row = el('div', 'crew-kit__slots');
+  for (const slot of COMPANION_SLOTS) {
+    const item = crewEquipped(state, companion.id, slot.id);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `crew-slot${item ? ' is-filled' : ''}`;
+    btn.title = item ? `${item.rarity.name} ${item.name}` : `${slot.name} — ${slot.blurb}`;
+
+    btn.appendChild(el('span', 'crew-slot__label', slot.name));
+    const name = el('span', 'crew-slot__name', item ? item.name : 'Empty');
+    if (item) name.style.color = item.rarity.color;
+    btn.appendChild(name);
+    if (item) btn.appendChild(el('span', 'crew-slot__stars', '★'.repeat(item.stars)));
+
+    // Without a handler the slot is a label, not a dead button.
+    if (onPickGear) btn.addEventListener('click', () => onPickGear(companion.id, slot.id));
+    else btn.disabled = true;
+    row.appendChild(btn);
+  }
+  wrap.appendChild(row);
+
+  const hatId = crewHat(state, companion.id);
+  const hatDef = liveCosmeticsOfKind('hat').find((h) => h.id === hatId);
+  const hatBtn = document.createElement('button');
+  hatBtn.type = 'button';
+  hatBtn.className = 'btn btn--small crew-kit__hat';
+  hatBtn.textContent = `Hat: ${hatDef?.name || 'Bare'}`;
+  if (onPickHat) hatBtn.addEventListener('click', () => onPickHat(companion.id));
+  else hatBtn.disabled = true;
+  wrap.appendChild(hatBtn);
+
+  return wrap;
+}
+
+/** Picker body: everything in the bag that fits one slot, plus "take it off". */
+export function crewGearPickerBody(state, companionId, slot, onPick) {
+  const body = el('div', 'picker');
+  const current = crewEquipped(state, companionId, slot);
+  const choices = crewUnequipped(state, slot);
+
+  if (current) {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'picker__row';
+    row.appendChild(el('span', 'picker__text', 'Take it off'));
+    row.addEventListener('click', () => onPick(null));
+    body.appendChild(row);
+  }
+
+  if (!choices.length) {
+    body.appendChild(el(
+      'p',
+      'shop__hint',
+      current
+        ? 'Nothing else for this slot yet. Bosses drop crew gear.'
+        : 'Nothing for this slot yet. Bosses drop crew gear.',
+    ));
+    return body;
+  }
+
+  for (const item of choices) {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'picker__row';
+
+    const text = el('span', 'picker__text');
+    const name = el('strong', 'picker__name', `${item.name} ${'★'.repeat(item.stars)}`);
+    name.style.color = item.rarity.color;
+    text.appendChild(name);
+    text.appendChild(el('span', 'picker__stats', describeCrewStats(item.stats)));
+    row.appendChild(text);
+
+    row.addEventListener('click', () => onPick(item.uid));
+    body.appendChild(row);
+  }
+  return body;
+}
+
+/** Picker body: every hat the player owns, wearable by any companion. */
+export function crewHatPickerBody(state, companion, onPick) {
+  const body = el('div', 'wardrobe');
+
+  const grid = el('div', 'wardrobe__grid');
+  const worn = crewHat(state, companion.id);
+
+  for (const def of liveCosmeticsOfKind('hat')) {
+    if (def.id !== 'none' && !owns(state, 'hat', def.id)) continue;
+
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `wardrobe__item${worn === def.id ? ' is-worn' : ''}`;
+
+    const img = document.createElement('img');
+    img.className = 'wardrobe__thumb pixel-icon';
+    img.alt = '';
+    // Previewed on *this* companion's own skin, so the choice is what it will
+    // actually look like rather than what it looks like on the player.
+    img.src = capyLookUrl({ skin: companion.skin, hat: def.id });
+    card.append(img, el('span', 'wardrobe__label', def.name));
+
+    card.addEventListener('click', () => onPick(def.id));
+    grid.appendChild(card);
+  }
+
+  body.appendChild(grid);
+  return body;
+}
+
+function describeCrewStats(stats) {
+  const parts = [];
+  for (const [key, value] of Object.entries(stats)) {
+    if (!value) continue;
+    parts.push(describeStat(key, value));
+  }
+  return parts.join(' · ');
+}
+
+/**
+ * One stat, labelled and formatted.
+ *
+ * Crit chance and crit damage are rates, not quantities. Printing crit damage
+ * with fmtInt turned +30% into "CDMG 0" — true of every companion carrying it
+ * since they were added, and invisible until gear started handing it out.
+ */
+const RATE_KEYS = new Set(['crit', 'critDmg']);
+
+function describeStat(key, value) {
+  const label = key === 'critDmg' ? 'CDMG' : key.toUpperCase();
+  return RATE_KEYS.has(key) ? `${label} ${fmtPct(value)}` : `${label} ${fmtInt(value)}`;
 }

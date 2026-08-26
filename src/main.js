@@ -26,8 +26,11 @@ import { rarityFor, MAX_TIER, MAX_STARS } from './data/rarities.js';
 import { openModal, el } from './ui/modal.js';
 import { RebirthPanel } from './ui/rebirthPanel.js';
 import { StorePanel, caseRevealBody } from './ui/storePanel.js';
-import { GachaPanel, pullResultsBody, companionDetailBody, partyPickerBody } from './ui/gachaPanel.js';
-import { summon, buyTicket, ticketPrice, ownedCompanions, TEN_PULL } from './systems/gacha.js';
+import {
+  GachaPanel, pullResultsBody, companionDetailBody, partyPickerBody,
+  crewGearPickerBody, crewHatPickerBody,
+} from './ui/gachaPanel.js';
+import { summon, buyTicket, ticketPrice, ownedCompanions, partyMembers, TEN_PULL } from './systems/gacha.js';
 import { rebirth, rebirthPreview, noteWall } from './systems/rebirth.js';
 import { ascend, ascendPreview, buyConstellation } from './systems/ascension.js';
 import { buyNode, respec, hasKeystone, takeKeystone, dropKeystone } from './systems/tree.js';
@@ -40,6 +43,10 @@ import { loadContent } from './content/load.js';
 import { adminRequested, openAdminPanel } from './ui/adminPanel.js';
 import { ticketsPerBoss } from './systems/meta.js';
 import { COMPANIONS_BY_ID, PARTY_SIZE } from './data/companions.js';
+import {
+  addCrewItem, crewEquipped, crewHat, equipCrewItem, resolveCrewItem, rollCrewLoot,
+  setCrewHat, unequipCrewItem,
+} from './systems/crew.js';
 import { DailyPanel } from './ui/dailyPanel.js';
 import {
   rollQuests, claimQuest, questSummary, checkLogin, collectChests, chestsReady, redeemCode,
@@ -324,6 +331,7 @@ class Game {
       const hit = this.scene.hitTest(x, y);
       if (hit === 'golden') this.catchGolden(x, y);
       else if (hit === 'capy') this.tapCapy();
+      else if (hit?.startsWith('companion:')) this.inspectCompanion(hit.slice('companion:'.length));
     };
 
     // Pointer events cover mouse, touch and pen in one path, and preventing the
@@ -1117,6 +1125,14 @@ class Game {
     const drop = rollLoot(stage, { isBoss: enemy.boss, luck: this.cstats.luck });
     if (drop) this.awardGear(drop);
 
+    // Bosses also drop for the crew. A side channel, deliberately quieter than
+    // player loot: the companions improve because you played, not because you
+    // scheduled a second grind.
+    if (enemy.boss) {
+      const crewDrop = rollCrewLoot(stage, { luck: this.cstats.luck });
+      if (crewDrop) this.awardCrewGear(crewDrop);
+    }
+
     // Recompute before reading the new level so the toast is not one behind.
     this.cstats = combatStats(s);
     if (this.cstats.level > beforeLevel) {
@@ -1127,6 +1143,35 @@ class Game {
         body: 'Bigger. Rounder. Harder to argue with.',
         kind: 'achievement',
         icon: '⭐',
+      });
+    }
+  }
+
+  /** A crew piece. Auto-worn into an empty slot on whoever is in the party. */
+  awardCrewGear(drop) {
+    const s = this.state;
+    const entry = addCrewItem(s, drop.id, { tier: drop.tier, stars: drop.stars });
+    if (!entry) return;
+
+    const item = resolveCrewItem(entry);
+    s.stats.crewDrops = (s.stats.crewDrops || 0) + 1;
+
+    // Fill an empty slot on the first party member who has one, for the same
+    // reason player gear auto-equips: a reward you have to go and find in a
+    // menu is a reward that does not land.
+    for (const member of partyMembers(s)) {
+      if (crewEquipped(s, member.id, item.slot)) continue;
+      equipCrewItem(s, member.id, entry.uid);
+      this.cstats = combatStats(s);
+      break;
+    }
+
+    if (item.tier >= 9 || item.stars >= 3) {
+      this.toaster.show({
+        title: `${item.rarity.name} ${item.name}`,
+        body: 'For the crew.',
+        kind: 'buff',
+        icon: '🎁',
       });
     }
   }
@@ -1401,6 +1446,7 @@ class Game {
   /** Anything meta — a pull, a tree node, a star — moves both stat blocks too. */
   afterMetaChange() {
     this.checkCosmeticUnlocks();
+    this.applyParty();
     this.cstats = combatStats(this.state);
     this.derived = recomputeDerived(this.state, { comboPoints: this.combo.points });
     if (this.summonUnlocked()) this.gachaPanel.update(this.state);
@@ -1500,8 +1546,48 @@ class Game {
     }
     actions.push({ label: 'Close' });
 
-    openModal({ title: def.name, bodyNode: companionDetailBody(companion, { inParty }), actions });
+    openModal({
+      title: def.name,
+      bodyNode: companionDetailBody(companion, {
+        inParty,
+        state: this.state,
+        onPickGear: (cid, slot) => this.openCrewGearPicker(cid, slot),
+        onPickHat: (cid) => this.openCrewHatPicker(cid),
+      }),
+      actions,
+    });
     return undefined;
+  }
+
+  /**
+   * The two crew pickers.
+   *
+   * Both reopen the detail sheet when they close, so putting a charm on and
+   * then a hat is two taps rather than a trip back through the roster.
+   */
+  openCrewGearPicker(companionId, slot) {
+    const body = crewGearPickerBody(this.state, companionId, slot, (uid) => {
+      if (uid === null) unequipCrewItem(this.state, companionId, slot);
+      else equipCrewItem(this.state, companionId, uid);
+      audio.buy();
+      this.afterMetaChange();
+      closeModal();
+      this.inspectCompanion(companionId);
+    });
+    openModal({ title: 'Crew kit', bodyNode: body, actions: [{ label: 'Back' }] });
+  }
+
+  openCrewHatPicker(companionId) {
+    const def = COMPANIONS_BY_ID[companionId];
+    if (!def) return;
+    const body = crewHatPickerBody(this.state, def, (hatId) => {
+      setCrewHat(this.state, companionId, hatId);
+      audio.buy();
+      this.afterMetaChange();
+      closeModal();
+      this.inspectCompanion(companionId);
+    });
+    openModal({ title: `${def.name}'s hat`, wide: true, bodyNode: body, actions: [{ label: 'Back' }] });
   }
 
   openPartyPicker(slot) {
@@ -1784,6 +1870,19 @@ class Game {
       accessory: equipped(this.state, 'accessory'),
     });
     document.body.dataset.pond = equipped(this.state, 'pond');
+    this.applyParty();
+  }
+
+  /**
+   * Push the party into the scene.
+   *
+   * Called from applyCosmetics because a hat change and a party change both
+   * have to reach the same place, and afterMetaChange already runs it.
+   */
+  applyParty() {
+    this.scene.setParty(
+      partyMembers(this.state).map((member) => ({ ...member, hat: crewHat(this.state, member.id) })),
+    );
   }
 
   /**

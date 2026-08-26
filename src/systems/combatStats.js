@@ -11,6 +11,7 @@ import { companionMultiplier } from '../data/companions.js';
 import { resolveItem, equippedItem, equippedItems, equippedBonuses } from './equipment.js';
 import { combatModifiers } from './meta.js';
 import { partyMembers } from './gacha.js';
+import { crewGearStats } from './crew.js';
 
 const BASE = { atk: 10, def: 5, hp: 100, spd: 20, crit: 0.05, critDmg: 0, luck: 0 };
 const GROWTH = { atk: 1.12, def: 1.075, hp: 1.095 };
@@ -53,9 +54,13 @@ export function combatStats(state) {
     if (skill?.kind === 'passive') addStats(block, skill.stats);
   }
 
-  // Party companions add their stats scaled by their own level.
+  // Party companions add their stats scaled by their own level, plus whatever
+  // their gear adds. The gear is NOT scaled by companion level — it is already
+  // scaled by its own rung, and multiplying the two would make a levelled
+  // companion's charm worth several times the same charm on a fresh one.
   for (const member of partyMembers(state)) {
     addStats(block, member.stats, companionMultiplier(member.level));
+    addStats(block, crewGearStats(state, member.id));
   }
 
   // The rebirth tree and constellations multiply what everything else built.

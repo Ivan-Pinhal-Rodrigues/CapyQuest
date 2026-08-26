@@ -123,6 +123,10 @@ export function ascend(state, now = Date.now()) {
     pass: state.pass,
     codes: state.codes,
     gacha: state.gacha,
+    // The crew's gear is a collection, and a reset never costs a collection.
+    // It lives outside `gacha` so it needs listing here explicitly — exactly
+    // the case the rebuild-from-createState discipline exists to catch.
+    companionGear: state.companionGear,
     // The kit stays; the run through the terrains starts over — but not from
     // nothing. Each ascension banks a little of the ground covered.
     combat: { ...state.combat, depth: floor, bestDepth: floor, xp: 0 },

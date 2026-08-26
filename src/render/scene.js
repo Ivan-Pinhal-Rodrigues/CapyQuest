@@ -1,8 +1,8 @@
 // The onsen scene: capybara, water, bobbing yuzu, drifting steam, and the
 // golden capybara when it shows up.
 
-import { CAPY, EYES, EYE_OVERLAY_ORIGIN, YUZU, STEAM, GOLDEN_CAPY } from './sprites.js';
-import { CAPY_SKINS, PROP_PALETTE } from './palettes.js';
+import { CAPY, EYES, EYE_OVERLAY_ORIGIN, YUZU, STEAM, GOLDEN_CAPY, ICONS } from './sprites.js';
+import { BUILDING_ART, CAPY_SKINS, PROP_PALETTE } from './palettes.js';
 import { bake, bakeLayered, blit, blitSquash, resizeCanvas, fitScale } from './canvas.js';
 import { wornKey, wornLayers } from './wearables.js';
 import { ParticleField } from './particles.js';
@@ -39,6 +39,17 @@ export class Scene {
       seed: Math.random(),
     }));
 
+    /**
+     * The party, in the water with you.
+     *
+     * Twenty-four companions existed for two versions and none of them was ever
+     * visible — they were a list in a tab. Each carries its own bob phase and
+     * blink timer so the three of them do not move as one object, which is what
+     * makes a group of sprites read as a group of animals.
+     */
+    this.party = [];
+    this.crewBoxes = [];
+
     this.golden = null; // { x, y, vx, vy, bornAt, ttl }
     // Both are recomputed in draw(); seeded here so a hitTest before the first
     // frame does not read undefined.
@@ -48,6 +59,27 @@ export class Scene {
 
   setSkin(skin) {
     if (CAPY_SKINS[skin]) this.skin = skin;
+  }
+
+  /**
+   * Who is in the water. Takes what gacha.partyMembers() returns, plus a `hat`
+   * per member.
+   */
+  setParty(members = []) {
+    const next = members.slice(0, 3);
+    // Rebuilding the phases every frame would freeze the animation, so they are
+    // only re-seeded when the party actually changes.
+    const key = next.map((m) => `${m.id}:${m.skin}:${m.hat || 'none'}`).join(',');
+    if (key === this.partyKey) return;
+    this.partyKey = key;
+
+    this.party = next.map((member, i) => ({
+      ...member,
+      phase: (i * 2.1) % (Math.PI * 2),
+      speed: 1.3 + i * 0.19,
+      blinkAt: 1 + i * 1.7 + Math.random() * 3,
+      blinking: false,
+    }));
   }
 
   /** What the capybara has on. Unknown ids simply draw nothing. */
@@ -128,7 +160,13 @@ export class Scene {
     }
     const { x, y, r } = this.capyBox;
     // Generous circular hitbox — a clicker should never feel like it missed.
+    // Tested before the crew on purpose: the pond is the clicker, and a
+    // companion that ate a tap would be a companion costing you zen.
     if ((px - x) ** 2 + (py - y) ** 2 <= r * r) return 'capy';
+
+    for (const box of this.crewBoxes) {
+      if ((px - box.x) ** 2 + (py - box.y) ** 2 <= box.r * box.r) return `companion:${box.id}`;
+    }
     return null;
   }
 
@@ -188,6 +226,10 @@ export class Scene {
     this.goldenScale = Math.max(2, Math.round(scale * 0.55));
 
     this.drawSteam(ctx, width, height, scale);
+    // The crew go behind the capybara: it is the thing being tapped, and a
+    // companion overlapping in front of it would eat the hitbox visually even
+    // though hitTest puts the capybara first.
+    this.drawParty(ctx, cx, cy, scale, width);
     this.drawCapy(ctx, cx, cy, scale, frenzy);
     this.drawYuzu(ctx, cx, cy, scale);
     if (this.golden) this.drawGolden(ctx);
@@ -215,6 +257,72 @@ export class Scene {
     const squashY = 1 - s * 0.11;
 
     blitSquash(ctx, baked, cx, cy + bob, scale, squashX, squashY);
+  }
+
+  /**
+   * Up to three companions on their own lily pads, arranged around the pool.
+   *
+   * Positions are fractions of the capybara's own size rather than of the
+   * canvas, so the arrangement holds together at every viewport: the crew stays
+   * the same distance from the capybara whether the stage is 900px wide or 350.
+   */
+  drawParty(ctx, cx, cy, scale, width) {
+    this.crewBoxes = [];
+    if (!this.party.length) return;
+
+    // 0.38, not 0.45. At 0.45 the three of them read as four capybaras of
+    // roughly equal standing; smaller, they read as the crew, which is what
+    // they are.
+    const crewScale = Math.max(1, Math.round(scale * 0.38));
+    const span = CAPY.w * scale;
+    // Left, right, and behind-left. Three points that read as "around" without
+    // any of them sitting on the capybara's own silhouette.
+    const spots = [
+      { dx: -0.78, dy: 0.20 },
+      { dx: 0.78, dy: 0.20 },
+      { dx: -0.46, dy: -0.34 },
+    ];
+
+    this.party.forEach((member, i) => {
+      const spot = spots[i] || spots[0];
+      let x = cx + spot.dx * span;
+      const y = cy + spot.dy * span;
+
+      // On a narrow stage the outer two would sit off the edge. Pull them in
+      // rather than letting them clip — a companion you cannot see is worse
+      // than one standing slightly too close.
+      const margin = CAPY.w * crewScale * 0.6;
+      x = Math.max(margin, Math.min(width - margin, x));
+
+      const bob = this.reducedMotion ? 0 : Math.sin(this.time * member.speed + member.phase) * crewScale * 0.7;
+      this.drawPad(ctx, x, y + bob + CAPY.h * crewScale * 0.30, crewScale);
+
+      const palette = CAPY_SKINS[member.skin] || CAPY_SKINS.classic;
+      // Companions blink on their own clocks. Cheap, and the difference between
+      // three animals and three copies of a sprite.
+      const blinking = !this.reducedMotion
+        && ((this.time + member.phase) % (5 + i)) < 0.14;
+      const mood = blinking ? 'blink' : 'open';
+      const worn = { hat: member.hat || 'none' };
+      const layers = [{ sprite: EYES[mood], origin: EYE_OVERLAY_ORIGIN }, ...wornLayers(worn)];
+      const baked = bakeLayered(CAPY, layers, palette, `crew:${member.skin}:${mood}:${wornKey(worn)}`);
+
+      blit(ctx, baked, x, y + bob, crewScale);
+      this.crewBoxes.push({ id: member.id, x, y: y + bob, r: (CAPY.w * crewScale) / 2.4 });
+    });
+  }
+
+  /**
+   * The lily pad each companion sits on.
+   *
+   * Worth noting why it is bigger than the capybara it holds: the CAPY sprite
+   * carries its own water in rows 25-30, so a pad the same width disappears
+   * entirely behind it. Drawn wider, the green rim shows around the little pool
+   * and the two read as one object — a companion in its own pond.
+   */
+  drawPad(ctx, x, y, scale) {
+    const baked = bake(ICONS.pad, BUILDING_ART.lilypad.palette, 'crewpad');
+    blit(ctx, baked, x, y, Math.max(1, Math.round(scale * 1.7)), { alpha: 0.85 });
   }
 
   drawYuzu(ctx, cx, cy, scale) {

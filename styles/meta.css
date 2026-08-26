@@ -370,3 +370,49 @@
   .talent { min-height: 46px; }
   .talent__name { font-size: 0.55rem; }
 }
+
+/* -------------------------------------------------------------- crew kit */
+
+.crew-kit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+
+.crew-kit__head {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+
+.crew-kit__slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.3rem; }
+
+.crew-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.3rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+
+.crew-slot:hover:not(:disabled) { border-color: var(--border-bright); }
+.crew-slot.is-filled { border-style: solid; }
+.crew-slot:disabled { cursor: default; opacity: 0.7; }
+
+.crew-slot__label { font-size: 0.62rem; color: var(--text-faint); }
+/* Names are long and the slots are narrow; truncating beats reflowing the row. */
+.crew-slot__name { font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crew-slot__stars { font-size: 0.6rem; color: var(--zen); letter-spacing: 0.1em; }
+
+.crew-kit__hat { align-self: flex-start; }

@@ -106,6 +106,17 @@ so nineteen hand-drawn shapes cover fifty-two items by palette swap.
 **None of it moves a number.** That is asserted, not promised: a test wears every look in the
 catalogue in turn and checks the income and combat blocks are bit-identical.
 
+### The pond crew
+
+Your three party companions sit in the water beside the capybara on their own lily pads, each
+with its own bob, its own blink and its own palette. Tapping one opens its sheet — and never
+counts as a tap on the capybara, because the pond is the clicker.
+
+They wear **your** hats: owning one puts it in reach of all four capybaras, and it moves no
+number on any of them. What does carry stats is **crew gear** — charm, collar and trinket, 24
+pieces on the same 20-rung ladder as player gear at 45% of the budget, dropped by bosses and
+never sold. `docs/BALANCE.md` has what a full set is actually worth, measured.
+
 ### The art is text
 
 There are no image files in this repository. Sprites are character grids with a palette map:
@@ -153,7 +164,8 @@ either.
 | Purchasable upgrades | **306** — 16 tap, 18 generators, 36 generator tiers, 210 tree nodes, 14 keystones, 12 constellations |
 | Gear | 42 pieces across 6 slots, on a 20-rung rarity ladder, 1–5 stars, enhanceable +0 → +15 |
 | Wardrobe | 89 looks across 6 kinds — skins, ponds, titles, hats, outfits, extras — none of which moves a number |
-| Companions | 24, summoned, three in the party |
+| Companions | 24, summoned, three in the party — visible in the pond, wearing your hats and their own gear |
+| Crew gear | 24 pieces across 3 slots, dropped by bosses, never sold |
 | Combat skills | 18, three slotted, cast by hand or automatically |
 | Achievements | 232 across 13 groups, every one paying a permanent bonus |
 | Terrains / stages | 18 cycling, unlimited stages, with 71 enemies and bosses |

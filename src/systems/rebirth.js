@@ -136,6 +136,10 @@ export function rebirth(state, now = Date.now()) {
     pass: state.pass,
     codes: state.codes,
     gacha: state.gacha,
+    // The crew's gear is a collection, and a reset never costs a collection.
+    // It lives outside `gacha` so it needs listing here explicitly — exactly
+    // the case the rebuild-from-createState discipline exists to catch.
+    companionGear: state.companionGear,
     // The run through the terrains starts again, but the kit you earned on it
     // does not. Gear, forge levels, skills and shards all stay.
     combat: { ...state.combat, depth: 0, bestDepth: 0, xp: 0 },

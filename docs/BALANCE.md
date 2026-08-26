@@ -291,6 +291,47 @@ stage 3, because gear outran the HP curve early and then hit the ceiling long be
 tree could take over. The slope was chosen by sweeping `(RARITY_MULT, BASE_BUDGET)` against
 the wall position, and it is not a free parameter.
 
+## Crew gear
+
+Three slots per companion, only the party of three contributes, and pieces drop from bosses at
+`CREW_DROP_CHANCE = 0.35`. `COMPANION_BUDGET_SHARE = 0.45` — a companion piece is worth 45% of a
+player piece on the same rung.
+
+Measured against a player kitted to the same rung, which is the only comparison that means
+anything:
+
+| Rung | Party power, no crew gear | Fully kitted | Gain |
+|---|---|---|---|
+| 2 | 842 | 1,036 | +23% |
+| 5 | 1,939 | 2,458 | +27% |
+| 8 | 4,233 | 6,607 | +56% |
+| 11 | 12,903 | 16,385 | +27% |
+| 14 | 38,928 | 59,418 | +53% |
+| 17 | 114,813 | 173,020 | +51% |
+| 19 | 240,707 | 363,088 | +51% |
+
+**The first measurement of this was wrong and said +540%.** It compared rung-19 crew gear against
+a player wearing nothing — a fact about the model, not about the game, since at the depth rung-19
+crew gear drops the player is wearing rung-19 gear too. Same shape of mistake as the simulated
+player that stacked Lily Pads forever; see `docs/POSTMORTEM.md`.
+
+Two honest notes on the table:
+
+- **It sawtooths**, +56% at rung 8 against +27% at rung 11, for the same reason the difficulty
+  curve does: neither table has a piece on every rung, so "best piece at or below this rung" lags
+  by a different amount on each side. It settles at about +50% from rung 14 up.
+- **One full set on one companion is worth about 18%**, and more than twenty companion levels.
+  The design note said "roughly three levels" — that was a guess, and it was wrong. Companion
+  levels are worth very little (`companionMultiplier` is +22% of a small base), so gear dominates
+  them. That is the right way round: gear you found beats duplicates you rolled.
+
+Filling all nine slots takes a mean of **38.8 bosses** at the 35% rate, counting duplicate slots
+properly. Kitting the crew is therefore something that happens while you play rather than
+something you set out to do — which is the whole point of it being a side channel.
+
+There is no forge, no fuse and no refine for crew gear. One upgrade path in the game is enough;
+two would make the Kit tab a second job.
+
 ## The leaf economy
 
 | | |

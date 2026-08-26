@@ -6,7 +6,7 @@
 
 import { BUILDINGS } from './data/buildings.js';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export function createState(now = Date.now()) {
   return {
@@ -50,7 +50,10 @@ export function createState(now = Date.now()) {
       pulls: 0,
       fiveStars: 0,
       pity: { five: 0, four: 0 },
-      companions: {}, // id -> { level, shards }
+      // id -> { level, shards, hat, gear: { charm, collar, trinket } }.
+      // The hat is cosmetic and comes from the player's own wardrobe; the gear
+      // uids point into state.companionGear.
+      companions: {},
       party: [], // up to PARTY_SIZE ids
     },
 
@@ -71,6 +74,12 @@ export function createState(now = Date.now()) {
       dailyBase: {},
       weeklyBase: {},
     },
+
+    // The crew's gear. Its own bag rather than part of combat.inventory: the
+    // slots are different, and mixing them would mean every "is this better"
+    // comparison in the Kit panel had to filter first. Survives every reset,
+    // like every other collection.
+    companionGear: [], // [{ uid, id, tier, stars }]
 
     // Cases keep their own pity counters; cosmetics keep what is owned and what
     // is worn. Both survive every reset — a collection is never the price of a
@@ -276,10 +285,43 @@ export function reconcileState(state, now = Date.now()) {
     ? Object.fromEntries(
         Object.entries(state.gacha.companions).map(([id, c]) => [
           id,
-          { level: Math.max(1, safeNumber(c?.level) || 1), shards: safeNumber(c?.shards) },
+          {
+            level: Math.max(1, safeNumber(c?.level) || 1),
+            shards: safeNumber(c?.shards),
+            // A save from before the crew existed has neither, and both have to
+            // be the right shape: the scene reads the hat every frame and the
+            // stat block walks the gear on every recompute.
+            hat: typeof c?.hat === 'string' ? c.hat : 'none',
+            gear: isPlainObject(c?.gear)
+              ? Object.fromEntries(
+                  Object.entries(c.gear).filter(([, uid]) => typeof uid === 'string'),
+                )
+              : {},
+          },
         ]),
       )
     : {};
+
+  // The crew's bag, repaired the same way the player's is.
+  out.companionGear = Array.isArray(state.companionGear)
+    ? state.companionGear
+        .filter((i) => i && typeof i.uid === 'string' && typeof i.id === 'string')
+        .map((i) => ({
+          uid: i.uid,
+          id: i.id,
+          tier: clampInt(i.tier ?? 0, 0, 19),
+          stars: clampInt(i.stars ?? 1, 1, 5),
+        }))
+    : [];
+
+  // Drop equip references to pieces no longer in the bag — exactly the repair
+  // out.combat.equipped gets above, for exactly the same reason.
+  const crewOwned = new Set(out.companionGear.map((i) => i.uid));
+  for (const owned of Object.values(out.gacha.companions)) {
+    for (const [slot, uid] of Object.entries(owned.gear)) {
+      if (!crewOwned.has(uid)) delete owned.gear[slot];
+    }
+  }
   out.gacha.party = Array.isArray(state.gacha?.party)
     ? state.gacha.party.filter((id) => typeof id === 'string' && id in out.gacha.companions)
     : [];
