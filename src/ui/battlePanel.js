@@ -6,8 +6,7 @@ import { LEVELS_PER_STAGE } from '../balance.js';
 import { ELEMENTS, ELEMENT_IDS } from '../data/elements.js';
 import { buildEnemy, depthInfo, terrainForDepth } from '../systems/stages.js';
 import { assess } from '../systems/wall.js';
-import { spriteDataUrl } from './icons.js';
-import { SHAPES } from '../render/shapes.js';
+import { Arena } from '../render/arena.js';
 
 export class BattlePanel {
   constructor(root, { onToggleAuto, onTravel, onStance, onCast, onToggleAutoCast }) {
@@ -55,11 +54,16 @@ export class BattlePanel {
     this.wall.hidden = true;
     r.appendChild(this.wall);
 
-    // --- the enemy
+    // --- the fight itself
+    //
+    // A canvas rather than the `<img>` this used to be: the capybara is in it
+    // now, and so are the lunges, the wind-up ring and the six skill effects.
+    // See render/arena.js. The damage numbers stay in the DOM, layered over the
+    // top, because canvas text at this size is worse than DOM text.
     this.arena = div('battle__arena');
-    this.enemySprite = document.createElement('img');
-    this.enemySprite.className = 'battle__enemy pixel-icon';
-    this.enemySprite.alt = '';
+    this.arenaCanvas = document.createElement('canvas');
+    this.arenaCanvas.className = 'battle__canvas';
+    this.arenaCanvas.setAttribute('role', 'img');
     this.enemyName = div('battle__enemy-name');
     this.enemyElement = div('battle__enemy-element');
 
@@ -67,7 +71,7 @@ export class BattlePanel {
     this.enemyHpText = div('battle__hp-text');
 
     this.arena.append(
-      this.enemySprite,
+      this.arenaCanvas,
       this.enemyName,
       this.enemyElement,
       this.enemyBar.wrap,
@@ -173,6 +177,10 @@ export class BattlePanel {
 
     this.log = div('battle__log');
     r.appendChild(this.log);
+
+    // Built here rather than in main.js so the canvas and the thing that draws
+    // on it are created together and cannot get out of step.
+    this.renderer = new Arena(this.arenaCanvas);
   }
 
   /** Push a line into the rolling combat log. */
@@ -203,19 +211,20 @@ export class BattlePanel {
 
     // Show the live enemy when fighting, otherwise a preview of what waits here.
     const enemy = combat.enemy || buildEnemy(depth);
+    // The renderer decides for itself whether this is a new arrival; handing it
+    // the same enemy every frame is a no-op there.
+    this.renderer.setEnemy(enemy);
     if (enemy.id !== this.currentEnemyId) {
       this.currentEnemyId = enemy.id;
-      this.enemySprite.src = spriteDataUrl(
-        SHAPES[enemy.shape],
-        enemy.palette,
-        `enemy:${enemy.id}`,
+      this.arena.classList.toggle('is-boss', !!enemy.boss);
+      this.arenaCanvas.setAttribute(
+        'aria-label',
+        `${enemy.name}${enemy.boss ? ', a boss' : ''}, facing your capybara`,
       );
-      this.enemySprite.alt = enemy.name;
       setText(this.enemyName, enemy.name);
       const el = ELEMENTS[enemy.element];
       setText(this.enemyElement, `${el.icon} ${el.name}`);
       this.enemyElement.style.color = el.color;
-      this.enemySprite.classList.toggle('is-boss', !!enemy.boss);
     }
 
     const hpRatio = combat.enemy ? combat.enemy.hp / combat.enemy.maxHp : 1;
@@ -363,8 +372,9 @@ export class BattlePanel {
     this.matchup.className = `stance__matchup ${cls}`;
   }
 
-  /** Turn combat events into log lines. */
+  /** Turn combat events into log lines and into animation. */
   consume(events) {
+    this.renderer.consume(events);
     for (const ev of events) {
       if (ev.kind === 'cleared') {
         this.logLine(

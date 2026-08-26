@@ -412,7 +412,9 @@ export class Combat {
     if (e.type === 'heal') {
       const healed = Math.min(this.playerMaxHp - this.playerHp, this.playerMaxHp * e.pct);
       this.playerHp += healed;
-      this.emit({ kind: 'skill', skill: skill.name, heal: healed });
+      // `id` rides along so the arena can look up how the skill should look
+      // without the combat system knowing anything about how it is drawn.
+      this.emit({ kind: 'skill', id: skill.id, skill: skill.name, heal: healed });
       return;
     }
 
@@ -439,7 +441,7 @@ export class Combat {
       element,
     });
 
-    this.emit({ kind: 'skill', skill: skill.name, charge });
+    this.emit({ kind: 'skill', id: skill.id, skill: skill.name, charge, element: stance });
     this.dealToEnemy(dmg, { crit, element, source: 'skill', skill: skill.name, stance, charge });
 
     if (e.healPct) {

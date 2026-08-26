@@ -25,8 +25,10 @@ underneath: stats, gear, auto-battle, gacha companions, a 210-node skill tree, a
 layers.
 
 At 1,000 zen — about three minutes in — the Quest line opens: unlimited stages of ten levels each, a boss on every tenth, 18
-cycling terrains and 42 pieces of gear to find and enhance. Combat runs itself — what you choose is
-the kit, the three skills, and the elemental stance.
+cycling terrains and 42 pieces of gear to find and enhance. You watch it happen: your capybara
+faces the enemy in an arena that lunges, recoils, telegraphs the heavy hits and draws each of the
+eighteen skills as one of six effects. Combat still runs itself if you want it to — what you
+choose is the kit, the three skills, the elemental stance, and whether to cast by hand.
 
 Bosses drop summon tickets. Twenty-four capybaras can be summoned, three of them fight alongside
 you, and the pity counter is on screen the whole time.
@@ -105,6 +107,17 @@ so nineteen hand-drawn shapes cover fifty-two items by palette swap.
 
 **None of it moves a number.** That is asserted, not promised: a test wears every look in the
 catalogue in turn and checks the income and combat blocks are bit-identical.
+
+### The fight is drawn
+
+The combat panel used to be an `<img>` of the enemy above two bars: every mechanic the fight had
+was a line of text and the capybara doing the fighting was not on screen. `src/render/arena.js`
+is a sibling of the pond scene sharing its whole toolkit — same rasteriser, same particles, same
+reduced-motion discipline — driven entirely by the event stream `systems/combat.js` already
+emitted. **No combat logic lives in it and none should: the arena reacts, it never decides.**
+
+A skill's look is derived from the effect it declares rather than from a hand-written table, so
+adding a skill cannot leave it drawing nothing.
 
 ### The pond crew
 

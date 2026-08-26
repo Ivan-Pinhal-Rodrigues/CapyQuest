@@ -373,6 +373,7 @@ class Game {
     // Respect the OS preference unless the player has explicitly opted in.
     const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     this.scene.setReducedMotion(s.reducedMotion || prefersReduced);
+    this.battlePanel?.renderer?.setReducedMotion(s.reducedMotion || prefersReduced);
     document.documentElement.dataset.motion = s.reducedMotion || prefersReduced ? 'reduced' : 'full';
   }
 
@@ -899,6 +900,18 @@ class Game {
     this.scene.update(dtSec);
     const frenzy = this.state.buffs.some((b) => b.id === 'frenzy' && b.until > Date.now());
     this.scene.draw({ frenzy });
+
+    // The arena only animates while you are looking at it. A canvas ticking
+    // behind a hidden panel is frames spent on nothing, and the fight itself
+    // runs in the simulation either way — the arena is a view of it, so
+    // pausing the view costs nothing but the entrance animation of an enemy
+    // you did not watch arrive.
+    // Which enemy is on screen is the panel's decision — it already works that
+    // out for the name and the HP bar — so the loop only drives the clock.
+    if (this.tabs.current === 'quest' && this.state.combat.unlocked) {
+      this.battlePanel.renderer.update(dtSec);
+      this.battlePanel.renderer.draw();
+    }
   }
 
   updateUi(now) {
@@ -1871,6 +1884,16 @@ class Game {
     });
     document.body.dataset.pond = equipped(this.state, 'pond');
     this.applyParty();
+
+    // The capybara in the arena is the same capybara, wearing the same things.
+    this.battlePanel?.renderer?.setLook({
+      skin: equipped(this.state, 'skin'),
+      worn: {
+        hat: equipped(this.state, 'hat'),
+        outfit: equipped(this.state, 'outfit'),
+        accessory: equipped(this.state, 'accessory'),
+      },
+    });
   }
 
   /**
@@ -1880,9 +1903,13 @@ class Game {
    * have to reach the same place, and afterMetaChange already runs it.
    */
   applyParty() {
-    this.scene.setParty(
-      partyMembers(this.state).map((member) => ({ ...member, hat: crewHat(this.state, member.id) })),
-    );
+    const party = partyMembers(this.state).map((member) => ({
+      ...member,
+      hat: crewHat(this.state, member.id),
+    }));
+    this.scene.setParty(party);
+    // They fight alongside you, so they are in the arena too.
+    this.battlePanel?.renderer?.setLook({ party });
   }
 
   /**

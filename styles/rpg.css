@@ -632,3 +632,25 @@
   .skillbtn__key { display: none; }
   .skillbtn__name { font-size: 0.66rem; }
 }
+
+/* ---------------------------------------------------------------- the arena */
+
+.battle__canvas {
+  display: block;
+  width: 100%;
+  /* Wide enough that the capybara and the enemy are not crowded, short enough
+     that the fight bar below stays on screen on a phone. */
+  height: 150px;
+  image-rendering: pixelated;
+}
+
+/* A boss gets a heavier frame. The glow used to live on the enemy <img>; it
+   belongs on the arena now that the capybara shares the frame with it. */
+.battle__arena.is-boss {
+  border-color: var(--danger);
+  box-shadow: inset 0 0 24px rgba(232, 85, 109, 0.18);
+}
+
+@media (max-width: 520px) {
+  .battle__canvas { height: 124px; }
+}
