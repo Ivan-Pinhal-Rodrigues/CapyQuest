@@ -6,8 +6,9 @@ many upgrades.
 Play it at **[ivan-pinhal-rodrigues.github.io/CapyQuest](https://ivan-pinhal-rodrigues.github.io/CapyQuest/)**.
 
 > This repo is the expanded game — infinite stages, rebirth, a 210-node skill tree with keystones,
-> a 20-rung rarity ladder, seasons, a weekly bracket and events. The original finite version lives
-> at [ivan-pinhal-rodrigues.github.io](https://ivan-pinhal-rodrigues.github.io/).
+> a 20-rung rarity ladder, seasons, a weekly bracket and events. The original finite version is
+> still playable at [ivan-pinhal-rodrigues.github.io/v1](https://ivan-pinhal-rodrigues.github.io/v1/)
+> ([source](https://github.com/Ivan-Pinhal-Rodrigues/Ivan-Pinhal-Rodrigues.github.io)).
 >
 > It was built in six phases, audited as a finished game, and then rebuilt in six more from what
 > that audit found. `docs/POSTMORTEM.md` is the honest record — including the six digit-count
