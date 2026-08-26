@@ -30,6 +30,13 @@ export const PASS_XP_PER_BOSS = 12;
 export function freeReward(level) {
   if (level === 100) return { cosmetic: 'title:seasoned', text: 'Title: Seasoned' };
   if (level === 40) return { cosmetic: 'pond:lantern', text: 'Pond: Lantern' };
+  // The looks sit on levels that otherwise paid "a pile of zen" — the weakest
+  // rung on the track, and the one where a hundred levels start to feel like a
+  // hundred levels. Nothing was displaced to make room for them.
+  if (level === 11) return { cosmetic: 'hat:laurel', text: 'Hat: Laurel' };
+  if (level === 23) return { cosmetic: 'outfit:yuzuTowel', text: 'Outfit: Yuzu Towel' };
+  if (level === 37) return { cosmetic: 'skin:sand', text: 'Skin: Sand' };
+  if (level === 57) return { cosmetic: 'accessory:yuzuFloat', text: 'Extra: Yuzu Float' };
   if (level % 25 === 0) return { leafs: 100 + level, text: `${100 + level} leafs` };
   if (level % 10 === 0) return { tickets: 3, shards: 400 + level * 12, text: `3 tickets · ${400 + level * 12} shards` };
   if (level % 5 === 0) return { tickets: 1, shards: 150 + level * 6, text: `1 ticket · ${150 + level * 6} shards` };
@@ -44,6 +51,11 @@ export function freeReward(level) {
 export function premiumReward(level) {
   if (level === 1) return { cosmetic: 'skin:seasonal', text: 'Skin: Hot Spring' };
   if (level === 100) return { cosmetic: 'title:patronOfSeasons', text: 'Title: Of Every Season' };
+  if (level === 17) return { cosmetic: 'accessory:toyBoat', text: 'Extra: Toy Boat' };
+  if (level === 31) return { cosmetic: 'hat:conjurer', text: "Hat: Conjurer's Hat" };
+  if (level === 47) return { cosmetic: 'outfit:emberCloak', text: 'Outfit: Ember Cloak' };
+  if (level === 61) return { cosmetic: 'pond:starlight', text: 'Pond: Starlight' };
+  if (level === 77) return { cosmetic: 'hat:emberHorns', text: 'Hat: Ember Horns' };
   if (level % 10 === 0) return { leafs: 60 + level, tickets: 3, text: `${60 + level} leafs · 3 tickets` };
   if (level % 5 === 0) return { tickets: 2, shards: 300 + level * 12, text: `2 tickets · ${300 + level * 12} shards` };
   if (level % 3 === 0) return { shards: 180 + level * 8, text: `${180 + level * 8} shards` };

@@ -76,7 +76,17 @@ export function createState(now = Date.now()) {
     // is worn. Both survive every reset — a collection is never the price of a
     // button.
     cases: {}, // caseId -> { opened, since }
-    cosmetics: { owned: [], skin: 'classic', pond: 'dusk', title: 'bather' },
+    cosmetics: {
+      owned: [],
+      skin: 'classic',
+      pond: 'dusk',
+      title: 'bather',
+      // The three wearable slots. `none` is a real choice, not an absence —
+      // taking a hat off has to be as available as putting one on.
+      hat: 'none',
+      outfit: 'none',
+      accessory: 'none',
+    },
     store: { leafDay: null, packs: {} },
     // Petals belong to one event occurrence. `key` names it; when the clock
     // moves past that event, systems/events.js zeroes the lot — see syncEvent.
@@ -309,7 +319,10 @@ export function reconcileState(state, now = Date.now()) {
 
   out.cosmetics = { ...base.cosmetics, ...(state.cosmetics || {}) };
   out.cosmetics.owned = stringList(out.cosmetics.owned);
-  for (const kind of ['skin', 'pond', 'title']) {
+  // A save written before the wardrobe existed has no hat, outfit or accessory
+  // key; the spread above fills all three from the defaults, and this repairs
+  // anything hand-edited to a non-string.
+  for (const kind of ['skin', 'pond', 'title', 'hat', 'outfit', 'accessory']) {
     if (typeof out.cosmetics[kind] !== 'string') out.cosmetics[kind] = base.cosmetics[kind];
   }
 

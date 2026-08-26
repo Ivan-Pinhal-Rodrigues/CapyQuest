@@ -28,6 +28,12 @@ export const CAPY_SKINS = {
   matcha: { ...CAPY_PALETTE, d: '#5f7a3a', m: '#87a353', l: '#b4cc80', n: '#42551f' },
   frost: { ...CAPY_PALETTE, d: '#6b8fa3', m: '#96b8c9', l: '#c9e2ed', n: '#4a6675' },
   void: { ...CAPY_PALETTE, d: '#241c33', m: '#3b2f52', l: '#5c4b7d', n: '#160f22' },
+  ember: { ...CAPY_PALETTE, d: '#a83f22', m: '#d4602f', l: '#f09060', n: '#7a2a14' },
+  cocoa: { ...CAPY_PALETTE, d: '#4a3527', m: '#6d4c36', l: '#966c4e', n: '#332419' },
+  slate: { ...CAPY_PALETTE, d: '#4a5163', m: '#6b7387', l: '#98a1b5', n: '#343a49' },
+  mint: { ...CAPY_PALETTE, d: '#4a8f7a', m: '#6fb89e', l: '#a3ddc8', n: '#33685a' },
+  plum: { ...CAPY_PALETTE, d: '#5a2f52', m: '#824674', l: '#b06fa0', n: '#3f1e39' },
+  sand: { ...CAPY_PALETTE, d: '#a8874a', m: '#cdac72', l: '#ecd3a3', n: '#7d6334' },
   // Season-pass exclusive: steam-flushed, like it has been in the water too long.
   seasonal: { ...CAPY_PALETTE, d: '#a8543f', m: '#d1795c', l: '#f0a88c', n: '#7d3a2b' },
   // Event exclusive: Yuzu Harvest.

@@ -3,7 +3,8 @@
 
 import { CAPY, EYES, EYE_OVERLAY_ORIGIN, YUZU, STEAM, GOLDEN_CAPY } from './sprites.js';
 import { CAPY_SKINS, PROP_PALETTE } from './palettes.js';
-import { bake, bakeWithOverlay, blit, blitSquash, resizeCanvas, fitScale } from './canvas.js';
+import { bake, bakeLayered, blit, blitSquash, resizeCanvas, fitScale } from './canvas.js';
+import { wornKey, wornLayers } from './wearables.js';
 import { ParticleField } from './particles.js';
 
 const YUZU_COUNT = 3;
@@ -21,6 +22,8 @@ export class Scene {
     this.expressionUntil = 0;
     this.blinkAt = 2 + Math.random() * 4;
     this.skin = 'classic';
+    /** What is worn, as ids. `none` in a slot means bare. */
+    this.worn = { hat: 'none', outfit: 'none', accessory: 'none' };
     this.reducedMotion = false;
 
     // Props get fixed random phases so they bob independently but repeatably.
@@ -45,6 +48,15 @@ export class Scene {
 
   setSkin(skin) {
     if (CAPY_SKINS[skin]) this.skin = skin;
+  }
+
+  /** What the capybara has on. Unknown ids simply draw nothing. */
+  setWorn(worn = {}) {
+    this.worn = {
+      hat: worn.hat || 'none',
+      outfit: worn.outfit || 'none',
+      accessory: worn.accessory || 'none',
+    };
   }
 
   setReducedMotion(on) {
@@ -187,8 +199,14 @@ export class Scene {
   drawCapy(ctx, cx, cy, scale, frenzy) {
     const palette = CAPY_SKINS[frenzy ? 'golden' : this.skin] || CAPY_SKINS.classic;
     const mood = frenzy && this.expression === 'open' ? 'star' : this.expression;
-    const key = `capy:${frenzy ? 'golden' : this.skin}:${mood}`;
-    const baked = bakeWithOverlay(CAPY, EYES[mood] || EYES.open, EYE_OVERLAY_ORIGIN, palette, key);
+
+    // Expression first, then the clothes, so a hat can sit over the ears and a
+    // pair of glasses over the eyes rather than under them. The key has to
+    // carry everything the composite depends on — a stale bake here is a
+    // capybara wearing the last thing you tried on.
+    const layers = [{ sprite: EYES[mood] || EYES.open, origin: EYE_OVERLAY_ORIGIN }, ...wornLayers(this.worn)];
+    const key = `capy:${frenzy ? 'golden' : this.skin}:${mood}:${wornKey(this.worn)}`;
+    const baked = bakeLayered(CAPY, layers, palette, key);
 
     // Slow breathing bob, plus squash-and-stretch on tap.
     const bob = this.reducedMotion ? 0 : Math.sin(this.time * 1.7) * scale * 0.35;

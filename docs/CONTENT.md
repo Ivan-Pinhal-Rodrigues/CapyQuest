@@ -82,7 +82,7 @@ panel can still find the entry to un-hide it.
 
 ### Cosmetics
 
-Keyed `kind:id` — `skin:void`, `title:patron`.
+Keyed `kind:id`. Six kinds: `skin`, `pond`, `title`, `hat`, `outfit`, `accessory`.
 
 ```json
 { "kind": "title", "id": "earlyBird", "name": "Early Bird",
@@ -99,6 +99,12 @@ Keyed `kind:id` — `skin:void`, `title:patron`.
 A `skin` names a palette in `src/render/palettes.js`. **Adding a skin whose palette does not exist
 is refused with a warning**, because the alternative is a look that silently draws as the default
 and nothing saying why.
+
+A `hat`, `outfit` or `accessory` needs a grid in `src/render/wearables.js` — `WEARABLE_ART`, keyed
+the same `kind:id` way. A pack can reprice or hide one of those, and can add one whose art already
+exists, but it cannot draw new art: grids are code. Adding one with no art gets you a card that
+does nothing when worn, which `tests/wearables.test.js` refuses for the shipped catalogue and
+cannot catch in a pack.
 
 ### Boosts and leaf packs
 

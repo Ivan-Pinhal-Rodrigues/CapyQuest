@@ -70,6 +70,13 @@ export function profile(state) {
     name: displayName(state),
     generated: !state.profile?.name,
     avatar: currentAvatar(state),
+    // What is on, for the card's portrait. Kept alongside the avatar rather
+    // than folded into it so the panel can draw the whole capybara.
+    worn: {
+      hat: equipped(state, 'hat'),
+      outfit: equipped(state, 'outfit'),
+      accessory: equipped(state, 'accessory'),
+    },
     title: title?.name || null,
     guest: true, // there is no other kind; the panel says so
     createdAt: state.createdAt,

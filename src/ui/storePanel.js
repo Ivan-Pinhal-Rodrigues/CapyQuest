@@ -13,6 +13,10 @@ import { DAILY_LEAFS, SIMULATED_NOTICE, dailyLeafsReady, boostRemaining } from '
 // The shelves are read from the registry at build time rather than imported as
 // constants, so an admin change reaches the panel — see rebuild() below.
 import { liveBoosts, liveCosmeticKinds, liveLeafPacks } from '../content/registry.js';
+import { capyLookUrl } from './icons.js';
+
+/** Kinds whose cards can show the capybara actually wearing the thing. */
+const PREVIEWABLE = new Set(['skin', 'hat', 'outfit', 'accessory']);
 import { collection, equipped, meetsNeed, owns } from '../systems/cosmetics.js';
 import { pityLeft } from '../systems/cases.js';
 
@@ -193,6 +197,17 @@ export class StorePanel {
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'look';
+
+        // A hat sold on its name alone is a hat nobody buys. Kinds the
+        // capybara can be shown wearing get a thumbnail of it wearing them;
+        // ponds repaint the page and titles are words, so neither gets one.
+        if (PREVIEWABLE.has(kind.id)) {
+          const thumb = document.createElement('img');
+          thumb.className = 'look__thumb pixel-icon';
+          thumb.alt = '';
+          thumb.src = capyLookUrl(kind.id === 'skin' ? { skin: def.id } : { [kind.id]: def.id });
+          card.appendChild(thumb);
+        }
 
         const name = document.createElement('strong');
         name.className = 'look__name';

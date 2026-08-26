@@ -8,8 +8,11 @@
 
 import { CAPY } from '../render/sprites.js';
 import { CAPY_SKINS } from '../render/palettes.js';
-import { spriteDataUrl } from './icons.js';
-import { profile, avatarChoices, titleChoices, NAME_MAX } from '../systems/profile.js';
+import { capyLookUrl, spriteDataUrl } from './icons.js';
+import { liveCosmeticKinds, liveCosmeticsOfKind } from '../content/registry.js';
+import { SOURCES } from '../data/cosmetics.js';
+import { equipped, owns } from '../systems/cosmetics.js';
+import { profile, NAME_MAX } from '../systems/profile.js';
 import { storyLog, storyProgress } from '../systems/story.js';
 import { el } from './modal.js';
 
@@ -48,7 +51,7 @@ export class ProfileCard {
     const actions = document.createElement('div');
     actions.className = 'profile__actions';
     actions.append(
-      button('btn btn--small', 'Change look', () => this.h.onPickAvatar()),
+      button('btn btn--small', 'Wardrobe', () => this.h.onWardrobe()),
       button('btn btn--small', 'Change title', () => this.h.onPickTitle()),
     );
 
@@ -75,7 +78,9 @@ export class ProfileCard {
   update(state) {
     const p = profile(state);
 
-    this.avatar.src = spriteDataUrl(CAPY, CAPY_SKINS[p.avatar] || CAPY_SKINS.classic, `profile:${p.avatar}`);
+    // The card shows the capybara dressed, not just its palette — the profile
+    // is the one place you look at yourself, so it had better be you.
+    this.avatar.src = capyLookUrl({ skin: p.avatar, ...p.worn });
     setText(this.name, p.name);
     setText(this.title, p.title || '');
     this.title.hidden = !p.title;
@@ -170,9 +175,105 @@ export function renameBody(current) {
 }
 
 /** A picker over owned cosmetics of one kind. */
-export function lookPickerBody(state, kind, onPick) {
-  const choices = kind === 'skin' ? avatarChoices(state) : titleChoices(state);
+/**
+ * The wardrobe.
+ *
+ * Six slots, and the capybara wearing whatever is picked, updating as you pick
+ * it. That preview is the whole feature: fifty-two wearables cannot be chosen
+ * from a list of names, and a hat you have to buy before you can see is a hat
+ * most people will not buy.
+ *
+ * Ponds and titles have no sprite, so they fall back to the same row list they
+ * always used — a pond preview would have to repaint the page, and a title is
+ * words.
+ */
+export function wardrobeBody(state, onEquip) {
+  const body = el('div', 'wardrobe');
+
+  const preview = document.createElement('img');
+  preview.className = 'wardrobe__preview pixel-icon';
+  preview.alt = 'Your capybara, wearing what you have chosen';
+  body.appendChild(preview);
+
+  const tabs = el('div', 'wardrobe__kinds');
+  const grid = el('div', 'wardrobe__grid');
+  const count = el('p', 'wardrobe__count');
+  body.append(tabs, count, grid);
+
+  let kind = 'hat';
+  const kindBtns = new Map();
+
+  for (const table of liveCosmeticKinds()) {
+    const btn = button('meta-switch__btn', table.name, () => {
+      kind = table.id;
+      render();
+    });
+    tabs.appendChild(btn);
+    kindBtns.set(table.id, btn);
+  }
+
+  function refreshPreview() {
+    preview.src = capyLookUrl({
+      skin: equipped(state, 'skin'),
+      hat: equipped(state, 'hat'),
+      outfit: equipped(state, 'outfit'),
+      accessory: equipped(state, 'accessory'),
+    });
+  }
+
+  function render() {
+    for (const [id, btn] of kindBtns) btn.classList.toggle('is-active', id === kind);
+
+    const items = liveCosmeticsOfKind(kind);
+    const owned = items.filter((i) => owns(state, kind, i.id));
+    count.textContent = `${owned.length} of ${items.length} owned`;
+
+    grid.textContent = '';
+    for (const def of items) {
+      const held = owns(state, kind, def.id);
+      const worn = equipped(state, kind) === def.id;
+
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = `wardrobe__item${worn ? ' is-worn' : ''}${held ? '' : ' is-locked'}`;
+      card.disabled = !held;
+      card.title = held ? def.blurb : `${def.blurb} — ${SOURCES[def.source] || 'Locked'}`;
+
+      if (PREVIEWABLE.has(kind)) {
+        const img = document.createElement('img');
+        img.className = 'wardrobe__thumb pixel-icon';
+        img.alt = '';
+        // Each thumbnail wears one thing over the current skin, so the row
+        // reads as "what would change" rather than as a set of loose objects.
+        img.src = capyLookUrl({ skin: kind === 'skin' ? def.id : equipped(state, 'skin'), [kind]: def.id });
+        card.appendChild(img);
+      }
+
+      card.appendChild(el('span', 'wardrobe__label', def.name));
+      card.addEventListener('click', () => {
+        if (!held) return;
+        onEquip(kind, def.id);
+        refreshPreview();
+        render();
+      });
+      grid.appendChild(card);
+    }
+  }
+
+  refreshPreview();
+  render();
+  return body;
+}
+
+/** Kinds the capybara can actually be shown wearing. */
+const PREVIEWABLE = new Set(['skin', 'hat', 'outfit', 'accessory']);
+
+/**
+ * Titles, which are words rather than pixels and so keep the plain row list.
+ */
+export function titlePickerBody(state, onPick) {
   const body = el('div', 'picker');
+  const choices = liveCosmeticsOfKind('title').filter((c) => owns(state, 'title', c.id));
 
   if (!choices.length) {
     body.appendChild(el('p', 'shop__hint', 'Nothing owned yet. The Store has some.'));
@@ -182,15 +283,7 @@ export function lookPickerBody(state, kind, onPick) {
   for (const choice of choices) {
     const row = document.createElement('button');
     row.type = 'button';
-    row.className = `picker__row${choice.worn ? ' is-current' : ''}`;
-
-    if (kind === 'skin') {
-      const img = document.createElement('img');
-      img.className = 'picker__icon pixel-icon';
-      img.alt = '';
-      img.src = spriteDataUrl(CAPY, CAPY_SKINS[choice.id] || CAPY_SKINS.classic, `profile:${choice.id}`);
-      row.appendChild(img);
-    }
+    row.className = `picker__row${equipped(state, 'title') === choice.id ? ' is-current' : ''}`;
 
     const text = el('span', 'picker__text');
     text.appendChild(el('strong', 'picker__name', choice.name));

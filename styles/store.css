@@ -162,3 +162,59 @@
 .reveal__stars { font-size: 1rem; color: var(--zen); letter-spacing: 0.15em; }
 .reveal__stats { font-size: 0.78rem; color: var(--text-dim); text-align: center; }
 .reveal__pity { font-size: 0.72rem; color: var(--zen); }
+
+/* ---------------------------------------------------------------- wardrobe */
+
+.wardrobe { display: flex; flex-direction: column; gap: 0.6rem; align-items: center; min-width: 0; }
+
+.wardrobe__preview {
+  width: 128px;
+  height: 128px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45));
+}
+
+.wardrobe__kinds { display: flex; flex-wrap: wrap; gap: 0.25rem; justify-content: center; }
+.wardrobe__count { margin: 0; font-size: 0.75rem; color: var(--text-faint); }
+
+.wardrobe__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 0.35rem;
+  width: 100%;
+  /* The hat shelf alone is twenty-three entries; the dialog must not grow past
+     the viewport to hold them. */
+  max-height: min(42vh, 20rem);
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.wardrobe__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.35rem 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.wardrobe__item:hover:not(:disabled) { border-color: var(--border-bright); }
+.wardrobe__item.is-worn { border-color: var(--zen); box-shadow: 0 0 0 1px var(--zen) inset; }
+
+/* Locked entries stay visible and readable — seeing what is still to come is
+   most of why a wardrobe is worth opening. */
+.wardrobe__item.is-locked { opacity: 0.4; cursor: not-allowed; }
+
+.wardrobe__thumb { width: 48px; height: 48px; image-rendering: pixelated; }
+.wardrobe__label { font-size: 0.66rem; text-align: center; line-height: 1.25; }
+
+.look__thumb {
+  width: 44px;
+  height: 44px;
+  image-rendering: pixelated;
+  align-self: center;
+}

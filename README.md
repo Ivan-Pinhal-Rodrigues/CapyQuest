@@ -96,6 +96,16 @@ JSON to commit. A malformed pack is dropped entry by entry and the game boots on
 nothing in a pack can touch a save, take a look out of a wardrobe, or move a number in the
 simulation. `docs/CONTENT.md` has the format.
 
+### The wardrobe
+
+Six kinds — skins, ponds, titles, hats, outfits and extras — and eighty-nine looks between them,
+of which thirty-four are earned by playing, thirty-six are sold for leafs and thirteen sit on the
+season pass. Hats, outfits and extras are drawn as layers stamped onto the capybara's own grid,
+so nineteen hand-drawn shapes cover fifty-two items by palette swap.
+
+**None of it moves a number.** That is asserted, not promised: a test wears every look in the
+catalogue in turn and checks the income and combat blocks are bit-identical.
+
 ### The art is text
 
 There are no image files in this repository. Sprites are character grids with a palette map:
@@ -142,12 +152,13 @@ either.
 |---|---|
 | Purchasable upgrades | **306** — 16 tap, 18 generators, 36 generator tiers, 210 tree nodes, 14 keystones, 12 constellations |
 | Gear | 42 pieces across 6 slots, on a 20-rung rarity ladder, 1–5 stars, enhanceable +0 → +15 |
+| Wardrobe | 89 looks across 6 kinds — skins, ponds, titles, hats, outfits, extras — none of which moves a number |
 | Companions | 24, summoned, three in the party |
 | Combat skills | 18, three slotted, cast by hand or automatically |
 | Achievements | 232 across 13 groups, every one paying a permanent bonus |
 | Terrains / stages | 18 cycling, unlimited stages, with 71 enemies and bosses |
 | Currencies | Zen, Essence, Leafs, Lotus, tickets, shards |
-| Store | 3 cases with their odds on the card, 5 boosts, 24 cosmetics — all simulated |
+| Store | 3 cases with their odds on the card, 5 boosts, 36 looks for sale — all simulated |
 | Season | 45 days, a 100-level two-track pass, 60 simulated rivals, a weekly bracket, 3 live events of 10 designed |
 | Story | 3 acts, 20 beats, 5 NPCs, a 6-frame opening and 6 coach-marked tutorial steps |
 | Offline | A cache with a stated capacity, a fill rate, and a spill marker when it overflows |
@@ -182,8 +193,8 @@ Playable and finished. Built in six phases, audited, then rebuilt in six more �
       branches with a free respec. Every rank survives every rebirth. The 49 permanent upgrades
       from the previous version live on inside it, ids and ranks intact.
 - [x] **The store** — three cases with their full drop tables and pity counters printed on the
-      card, five timed boosts, twenty-four cosmetics that change how things look and not one
-      number, and simulated leaf packs that add leafs and charge nothing
+      card, five timed boosts, thirty-six of the eighty-nine looks in the wardrobe, and simulated
+      leaf packs that add leafs and charge nothing
 - [x] **The season** — 45 days computed from the clock rather than announced by a server, a
       100-level pass across a free and a premium track, sixty simulated rivals whose gear you can
       actually open and read, and three live events of ten designed in `docs/EVENTS.md`

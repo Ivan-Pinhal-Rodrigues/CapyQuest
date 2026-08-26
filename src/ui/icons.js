@@ -4,9 +4,10 @@
 // and reusing it means the browser treats them as ordinary images — no canvas
 // per row, no redraw when the list re-renders.
 
-import { bake } from '../render/canvas.js';
-import { ICONS, YUZU, GOLDEN_CAPY, SPARKLE } from '../render/sprites.js';
+import { bake, bakeLayered } from '../render/canvas.js';
+import { ICONS, YUZU, GOLDEN_CAPY, SPARKLE, CAPY, EYES, EYE_OVERLAY_ORIGIN } from '../render/sprites.js';
 import { BUILDING_ART, PROP_PALETTE, CAPY_SKINS } from '../render/palettes.js';
+import { wornKey, wornLayers } from '../render/wearables.js';
 
 const urlCache = new Map();
 
@@ -14,6 +15,29 @@ export function spriteDataUrl(spr, palette, key) {
   const hit = urlCache.get(key);
   if (hit) return hit;
   const url = bake(spr, palette, key).toDataURL();
+  urlCache.set(key, url);
+  return url;
+}
+
+/**
+ * The capybara wearing a specific set of things, as an <img> source.
+ *
+ * Used by the wardrobe and by every card in the Looks shelf, so a hat can be
+ * seen before it is bought. Fifty-two wearables is far too many to sell on a
+ * name and a one-line blurb.
+ *
+ * Both the scene and this go through bakeLayered with the same key shape, so a
+ * look already on screen costs nothing to preview.
+ */
+export function capyLookUrl({ skin = 'classic', hat, outfit, accessory } = {}) {
+  const worn = { hat, outfit, accessory };
+  const palette = CAPY_SKINS[skin] || CAPY_SKINS.classic;
+  const layers = [{ sprite: EYES.open, origin: EYE_OVERLAY_ORIGIN }, ...wornLayers(worn)];
+  const key = `capy:${skin}:open:${wornKey(worn)}`;
+
+  const hit = urlCache.get(key);
+  if (hit) return hit;
+  const url = bakeLayered(CAPY, layers, palette, key).toDataURL();
   urlCache.set(key, url);
   return url;
 }

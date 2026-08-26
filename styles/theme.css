@@ -154,3 +154,51 @@ body[data-pond='bathhouse'] {
   --water: #b8cdf7;
   --water-deep: #5a72b5;
 }
+
+body[data-pond='mist'] {
+  --bg: #171a1c;
+  --bg-deep: #0f1112;
+  --surface: #232729;
+  --surface-2: #2e3336;
+  --surface-3: #3b4145;
+  --border: #3d4347;
+  --border-bright: #5a6266;
+  --water: #cdd8db;
+  --water-deep: #7d8a8e;
+}
+
+body[data-pond='bamboo'] {
+  --bg: #131a12;
+  --bg-deep: #0c110b;
+  --surface: #1d281b;
+  --surface-2: #263424;
+  --surface-3: #31432e;
+  --border: #33452f;
+  --border-bright: #4d6746;
+  --water: #a8d98a;
+  --water-deep: #55893c;
+}
+
+body[data-pond='glacier'] {
+  --bg: #0f1a20;
+  --bg-deep: #091116;
+  --surface: #182731;
+  --surface-2: #1f3340;
+  --surface-3: #294353;
+  --border: #2a4455;
+  --border-bright: #3e657d;
+  --water: #b7e6f5;
+  --water-deep: #4a92ad;
+}
+
+body[data-pond='starlight'] {
+  --bg: #14101f;
+  --bg-deep: #0d0916;
+  --surface: #1f1930;
+  --surface-2: #29213f;
+  --surface-3: #362b52;
+  --border: #372c54;
+  --border-bright: #52427c;
+  --water: #d8c9f7;
+  --water-deep: #7a5fb8;
+}

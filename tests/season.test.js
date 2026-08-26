@@ -262,7 +262,11 @@ test('the premium track pays more than the free one, without paying for itself',
   );
 });
 
-test('the free track alone gives leafs and two looks', () => {
+test('the free track alone gives leafs and looks', () => {
+  // The promise is that the free track is a complete pass on its own — not that
+  // it holds any particular number of looks. That count went from two to six
+  // when the wardrobe landed. What has to stay true is that it pays real leafs
+  // and hands out cosmetics nobody spent anything for, each of them once.
   const cosmetics = [];
   let leafs = 0;
   for (let level = 1; level <= PASS_LEVELS; level++) {
@@ -270,8 +274,9 @@ test('the free track alone gives leafs and two looks', () => {
     if (reward.cosmetic) cosmetics.push(reward.cosmetic);
     leafs += reward.leafs || 0;
   }
-  assert.equal(cosmetics.length, 2, 'the free track should give exactly two looks');
+  assert.ok(cosmetics.length >= 2, `the free track gives only ${cosmetics.length} looks`);
   assert.ok(leafs >= 400, `the free track only pays ${leafs} leafs across a season`);
+  assert.equal(new Set(cosmetics).size, cosmetics.length, 'the free track pays a look twice');
 });
 
 test('a level claims once, on the track you own', () => {

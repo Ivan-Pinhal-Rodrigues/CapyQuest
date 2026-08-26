@@ -56,7 +56,7 @@ import { LeaderboardPanel, rivalBody } from './ui/leaderboardPanel.js';
 import { Dialogue } from './ui/dialogue.js';
 import { playCutscene, cutsceneOpen } from './ui/cutscene.js';
 import { showCoachmark, closeCoachmark, coachmarkOpen } from './ui/coachmark.js';
-import { ProfileCard, beatBody, renameBody, lookPickerBody } from './ui/profilePanel.js';
+import { ProfileCard, beatBody, renameBody, titlePickerBody, wardrobeBody } from './ui/profilePanel.js';
 import { nextStep, markStep } from './systems/onboarding.js';
 import { displayName, setName } from './systems/profile.js';
 import { nextBeat, markSeen, beat as storyBeat } from './systems/story.js';
@@ -173,7 +173,7 @@ class Game {
     });
     this.profileCard = new ProfileCard($('profilePanel'), {
       onRename: () => this.renameProfile(),
-      onPickAvatar: () => this.pickLook('skin'),
+      onWardrobe: () => this.openWardrobe(),
       onPickTitle: () => this.pickLook('title'),
       onReadBeat: (id) => this.readBeat(id),
     });
@@ -1778,6 +1778,11 @@ class Game {
   /** Push what is worn into the renderer and the page. */
   applyCosmetics() {
     this.scene.setSkin(equipped(this.state, 'skin'));
+    this.scene.setWorn({
+      hat: equipped(this.state, 'hat'),
+      outfit: equipped(this.state, 'outfit'),
+      accessory: equipped(this.state, 'accessory'),
+    });
     document.body.dataset.pond = equipped(this.state, 'pond');
   }
 
@@ -1872,19 +1877,29 @@ class Game {
     setTimeout(() => input.focus(), 30);
   }
 
+  /**
+   * The wardrobe. Stays open while you try things on — a modal that closed on
+   * every pick would make dressing a capybara take six trips.
+   */
+  openWardrobe() {
+    const body = wardrobeBody(this.state, (kind, id) => {
+      equipCosmetic(this.state, kind, id);
+      this.applyCosmetics();
+      this.profileCard.update(this.state);
+      this.save();
+    });
+    openModal({ title: 'Wardrobe', wide: true, bodyNode: body, actions: [{ label: 'Done' }] });
+  }
+
   pickLook(kind) {
-    const body = lookPickerBody(this.state, kind, (id) => {
+    const body = titlePickerBody(this.state, (id) => {
       equipCosmetic(this.state, kind, id);
       this.applyCosmetics();
       this.profileCard.update(this.state);
       this.save();
       closeModal();
     });
-    openModal({
-      title: kind === 'skin' ? 'Choose a look' : 'Choose a title',
-      bodyNode: body,
-      actions: [{ label: 'Close' }],
-    });
+    openModal({ title: 'Choose a title', bodyNode: body, actions: [{ label: 'Close' }] });
   }
 
   readBeat(id) {

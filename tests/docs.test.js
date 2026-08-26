@@ -14,6 +14,7 @@ import { ACTS, BEATS, BEATS_BY_ID } from '../src/data/story.js';
 import { NPCS, NPCS_BY_ID } from '../src/data/npcs.js';
 import { CASES } from '../src/data/cases.js';
 import { ACHIEVEMENTS } from '../src/data/achievements.js';
+import { COSMETICS } from '../src/data/cosmetics.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (name) => readFileSync(root + name, 'utf8');
@@ -112,4 +113,22 @@ test('the document has exactly one h1, and it is the game', () => {
   const h1s = html.match(/<h1\b/g) || [];
   assert.equal(h1s.length, 1, `found ${h1s.length} h1 elements`);
   assert.ok(/<h1 class="hud__title">CapyQuest<\/h1>/.test(html));
+});
+
+test('the README claims the number of looks that exist', () => {
+  // Sixty-two looks landed in one commit and the README quoted the count in
+  // three places. A number written by hand three times is a number that will be
+  // wrong within a phase.
+  const looks = COSMETICS.filter((c) => c.id !== 'none').length;
+  const readme = read('README.md');
+  assert.ok(
+    readme.includes(`| Wardrobe | ${looks} looks`),
+    `README does not claim ${looks} looks`,
+  );
+
+  const forSale = COSMETICS.filter((c) => c.source === 'store').length;
+  assert.ok(
+    readme.includes(`${forSale} looks for sale`),
+    `README does not claim ${forSale} looks for sale`,
+  );
 });
