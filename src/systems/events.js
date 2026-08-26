@@ -11,9 +11,10 @@
 // full of a currency nothing accepts.
 
 import { seasonAt } from '../data/seasons.js';
+import { WINDOWS, PETALS_PER_CLEAR, PETALS_PER_BOSS } from '../data/events.js';
 import {
-  EVENTS, EVENTS_BY_ID, LIVE_EVENTS, WINDOWS, PETALS_PER_CLEAR, PETALS_PER_BOSS,
-} from '../data/events.js';
+  eventById, liveEventDefs, rotatingEvents, scheduledEvents,
+} from '../content/registry.js';
 import { grant } from './cosmetics.js';
 
 /** The window a day falls in, or null between events. */
@@ -28,13 +29,38 @@ export function windowForDay(day) {
  * petals, which is what makes expiry work across seasons as well as within one.
  */
 export function activeEvent(now = Date.now()) {
+  // A pack can schedule an event on the wall clock instead — "runs from this
+  // Friday until the following Sunday" — and that beats the rotation, because
+  // somebody set those dates deliberately. Earliest end first, so two
+  // overlapping hand-scheduled events resolve to the one closing soonest
+  // rather than to whichever happened to be listed first.
+  const dated = scheduledEvents()
+    .filter((e) => now >= e.startsAt && now < e.endsAt)
+    .sort((a, b) => a.endsAt - b.endsAt)[0];
+
+  if (dated) {
+    const days = Math.max(1, Math.ceil((dated.endsAt - dated.startsAt) / 86400e3));
+    return {
+      ...dated,
+      // The occurrence key carries the start, so the same event scheduled again
+      // later is a different occurrence with its own petals.
+      key: `at:${dated.startsAt}:${dated.id}`,
+      season: null,
+      window: null,
+      msLeft: Math.max(0, dated.endsAt - now),
+      day: Math.floor((now - dated.startsAt) / 86400e3) + 1,
+      days,
+    };
+  }
+
+  const rotating = rotatingEvents();
   const season = seasonAt(now);
   const win = windowForDay(season.day);
-  if (!win || !LIVE_EVENTS.length) return null;
+  if (!win || !rotating.length) return null;
 
   // Rotate which live event fills which window, so a season is not the same
   // three in the same order forever.
-  const def = LIVE_EVENTS[(season.index + win.index) % LIVE_EVENTS.length];
+  const def = rotating[(season.index + win.index) % rotating.length];
 
   const startsAt = season.startsAt + (win.startDay - 1) * 86400e3;
   const endsAt = season.startsAt + win.endDay * 86400e3;
@@ -54,18 +80,34 @@ export function activeEvent(now = Date.now()) {
 
 /** The next event, for the "nothing on right now" state. */
 export function nextEvent(now = Date.now()) {
+  const soonest = scheduledEvents()
+    .filter((e) => e.startsAt > now)
+    .sort((a, b) => a.startsAt - b.startsAt)[0];
+
+  const rotating = rotatingEvents();
   const season = seasonAt(now);
+  let fromRotation = null;
+
   for (const win of WINDOWS) {
     if (season.day > win.endDay) continue;
     const startsAt = season.startsAt + (win.startDay - 1) * 86400e3;
     if (startsAt <= now) continue;
-    const def = LIVE_EVENTS[(season.index + WINDOWS.indexOf(win)) % LIVE_EVENTS.length];
-    return { ...def, startsAt, inMs: startsAt - now };
+    if (!rotating.length) break;
+    const def = rotating[(season.index + WINDOWS.indexOf(win)) % rotating.length];
+    fromRotation = { ...def, startsAt, inMs: startsAt - now };
+    break;
   }
-  // Nothing left this season; the next one opens on day 1 of the next.
-  const startsAt = season.endsAt;
-  const def = LIVE_EVENTS[(season.index + 1) % LIVE_EVENTS.length];
-  return { ...def, startsAt, inMs: startsAt - now };
+  if (!fromRotation && rotating.length) {
+    // Nothing left this season; the next one opens on day 1 of the next.
+    const startsAt = season.endsAt;
+    const def = rotating[(season.index + 1) % rotating.length];
+    fromRotation = { ...def, startsAt, inMs: startsAt - now };
+  }
+
+  if (!soonest) return fromRotation;
+  const dated = { ...soonest, inMs: soonest.startsAt - now };
+  if (!fromRotation) return dated;
+  return dated.startsAt <= fromRotation.startsAt ? dated : fromRotation;
 }
 
 /**
@@ -80,7 +122,10 @@ export function syncEvent(state, now = Date.now()) {
   if (live && held.key === live.key) return null;
 
   const expired = held.key && held.petals > 0
-    ? { key: held.key, petals: held.petals, name: EVENTS_BY_ID[held.key.split(':')[2]]?.name || 'That event' }
+    // An occurrence key ends with the event id in both schedule shapes, and no
+    // id contains a colon — so the last segment is the id whichever way the
+    // event was scheduled.
+    ? { key: held.key, petals: held.petals, name: eventById(held.key.split(':').pop())?.name || 'That event' }
     : null;
 
   state.events = { key: live ? live.key : null, petals: 0, claimed: {} };
@@ -150,4 +195,9 @@ export function exchange(state, id, now = Date.now()) {
   return { ok: true, row: check.row, spent: check.row.petals, reward: check.row.reward };
 }
 
-export { EVENTS, EVENTS_BY_ID, LIVE_EVENTS };
+/** Every event the catalogue knows about, live or not — for the roadmap list. */
+export function allEvents() {
+  return liveEventDefs();
+}
+
+export { eventById };

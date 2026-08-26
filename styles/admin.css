@@ -1,0 +1,137 @@
+/* The content editor.
+ *
+ * Deliberately plainer than the rest of the game: this is a tool, not a place,
+ * and dressing it up like the shop would make it easy to mistake one for the
+ * other. Dense rows, real form controls, no pixel font except on the tabs.
+ */
+
+.admin { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; }
+
+.admin__header { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.admin__status {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.admin__warnings {
+  margin: 0;
+  padding: 0.4rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--text);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.admin__note {
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.admin__lead { margin: 0 0 0.5rem; font-size: 0.8rem; color: var(--text-dim); line-height: 1.5; }
+.admin__meta { margin: 0.2rem 0; font-size: 0.75rem; color: var(--text-faint); }
+.admin__subhead { margin: 0.8rem 0 0.35rem; font-size: 0.85rem; }
+
+/* --------------------------------------------------------------------- tabs */
+
+.admin__tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
+.admin__tab {
+  padding: 0.32rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-family: var(--font-pixel);
+  font-size: 0.42rem;
+  cursor: pointer;
+}
+
+.admin__tab:hover { border-color: var(--border-bright); color: var(--text); }
+.admin__tab.is-active { background: var(--zen); border-color: var(--zen); color: var(--bg-deep); }
+
+/* --------------------------------------------------------------------- list */
+
+.admin__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  /* The catalogue is long and the dialog must not grow past the viewport. */
+  max-height: min(52vh, 26rem);
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+/* Hidden entries stay legible — you have to be able to find one to unhide it. */
+.admin-row.is-hidden { opacity: 0.55; border-style: dashed; }
+
+.admin-row__main { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.admin-row__name { font-size: 0.85rem; }
+.admin-row__meta { font-size: 0.72rem; color: var(--text-faint); }
+
+.admin-row__controls { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
+
+.admin-row__cost {
+  width: 5rem;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+/* -------------------------------------------------------------------- forms */
+
+.admin-form { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+
+.admin-field { display: flex; flex-direction: column; gap: 0.2rem; }
+.admin-field__label { font-size: 0.75rem; color: var(--text-dim); }
+
+.admin-field__input {
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.admin__export {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: ui-monospace, 'Courier New', monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+@media (max-width: 520px) {
+  .admin-row { flex-direction: column; align-items: stretch; }
+  .admin-row__controls { justify-content: flex-end; }
+}

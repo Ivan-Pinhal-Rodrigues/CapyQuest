@@ -33,10 +33,11 @@ import { ascend, ascendPreview, buyConstellation } from './systems/ascension.js'
 import { buyNode, respec, hasKeystone, takeKeystone, dropKeystone } from './systems/tree.js';
 import { KEYSTONE_COST, KEYSTONE_GATE } from './data/keystones.js';
 import { openCase } from './systems/cases.js';
-import { buyBoost, buyLeafPack, claimDailyLeafs, dailyLeafsReady, LEAF_PACKS_BY_ID, SIMULATED_NOTICE } from './systems/store.js';
+import { buyBoost, buyLeafPack, claimDailyLeafs, dailyLeafsReady, SIMULATED_NOTICE } from './systems/store.js';
 import { buyCosmetic, checkUnlocks, equipCosmetic, equipped, owns } from './systems/cosmetics.js';
-import { BOOSTS_BY_ID } from './data/boosts.js';
-import { COSMETICS_BY_ID, cosmeticKey } from './data/cosmetics.js';
+import { boostById, cosmeticById, leafPackById } from './content/registry.js';
+import { loadContent } from './content/load.js';
+import { adminRequested, openAdminPanel } from './ui/adminPanel.js';
 import { ticketsPerBoss } from './systems/meta.js';
 import { COMPANIONS_BY_ID, PARTY_SIZE } from './data/companions.js';
 import { DailyPanel } from './ui/dailyPanel.js';
@@ -124,6 +125,7 @@ class Game {
     this.maybeOpen();
     this.handleReturn();
     this.golden.start(Date.now(), this.derived.goldenChanceMult);
+    if (adminRequested()) this.openAdminWhenClear();
 
     requestAnimationFrame((t) => this.frame(t));
   }
@@ -1696,7 +1698,7 @@ class Game {
     }
     audio.levelUp();
     this.afterStoreChange();
-    const def = BOOSTS_BY_ID[id];
+    const def = boostById(id);
     this.toaster.show({
       title: result.extended ? `${def.name} extended` : def.name,
       body: def.blurb,
@@ -1711,7 +1713,7 @@ class Game {
    * after it.
    */
   purchaseLeafPack(id) {
-    const pack = LEAF_PACKS_BY_ID[id];
+    const pack = leafPackById(id);
     if (!pack) return;
 
     const body = el('div', 'confirm');
@@ -1755,7 +1757,7 @@ class Game {
 
   /** One tap on a cosmetic: buy it if it is for sale and unowned, else wear it. */
   chooseLook(kind, id) {
-    const def = COSMETICS_BY_ID[cosmeticKey(kind, id)];
+    const def = cosmeticById(kind, id);
     if (!def) return;
 
     if (!owns(this.state, kind, id)) {
@@ -2235,6 +2237,40 @@ class Game {
 
   // --------------------------------------------------------------- settings
 
+  /**
+   * Open the content editor once the doorway is clear.
+   *
+   * The intro cutscene and the nap report both open during boot, and a dialog
+   * opened underneath one of them is a dialog nobody can reach — on a fresh
+   * profile ?admin=1 simply appeared to do nothing. Waiting costs nothing.
+   */
+  openAdminWhenClear() {
+    const attempt = () => {
+      if (cutsceneOpen() || isModalOpen()) {
+        setTimeout(attempt, 400);
+        return;
+      }
+      this.openAdmin();
+    };
+    attempt();
+  }
+
+  /**
+   * The content editor. Reached with ?admin=1 — see ui/adminPanel.js for why
+   * that is not pretending to be a permission.
+   */
+  openAdmin() {
+    openAdminPanel({
+      onApply: () => {
+        // The store builds its shelves once and then only writes text into
+        // them, so a catalogue change has to be pushed in rather than noticed.
+        // Every other panel reads the catalogue on each update and picks the
+        // change up on the next UI tick by itself.
+        this.storePanel?.rebuild();
+      },
+    });
+  }
+
   openSettings() {
     openSettingsModal(this.state, {
       toaster: this.toaster,
@@ -2288,4 +2324,12 @@ function list(items) {
 }
 
 // The module is deferred, so the DOM is parsed by the time this runs.
-window.capyquest = new Game();
+//
+// The content pack is fetched before the game is constructed, because the
+// panels build their rows once from the catalogue and a shelf that is right
+// only after the second repaint is a shelf that flickers. loadContent() never
+// rejects — a missing or broken pack resolves to the built-in defaults — so
+// there is nothing here that can stop the game starting.
+loadContent().then(() => {
+  window.capyquest = new Game();
+});

@@ -14,8 +14,12 @@
 import { seasonAt } from '../data/seasons.js';
 import {
   PASS_LEVELS, PASS_XP_PER_LEVEL, PASS_XP_PER_CLEAR, PASS_XP_PER_BOSS,
-  PREMIUM_LEAFS, TRACKS, passReward,
+  PREMIUM_LEAFS, TRACKS,
 } from '../data/pass.js';
+// Levels come from the generator in data/pass.js unless a content pack names an
+// override for that level, so a season can put a specific cosmetic at level 50
+// without restating the other ninety-nine.
+import { passRewardFor as passReward } from '../content/registry.js';
 import { grant } from './cosmetics.js';
 
 /** The live season, plus how the save stands against it. */

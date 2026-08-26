@@ -7,10 +7,12 @@
 import { fmtInt, fmtPct, fmtTime } from './numbers.js';
 import { el } from './modal.js';
 import { CASES, caseOdds, pityTier } from '../data/cases.js';
-import { BOOSTS } from '../data/boosts.js';
-import { COSMETIC_KINDS, SOURCES } from '../data/cosmetics.js';
+import { SOURCES } from '../data/cosmetics.js';
 import { rarityFor } from '../data/rarities.js';
-import { LEAF_PACKS, DAILY_LEAFS, SIMULATED_NOTICE, dailyLeafsReady, boostRemaining } from '../systems/store.js';
+import { DAILY_LEAFS, SIMULATED_NOTICE, dailyLeafsReady, boostRemaining } from '../systems/store.js';
+// The shelves are read from the registry at build time rather than imported as
+// constants, so an admin change reaches the panel — see rebuild() below.
+import { liveBoosts, liveCosmeticKinds, liveLeafPacks } from '../content/registry.js';
 import { collection, equipped, meetsNeed, owns } from '../systems/cosmetics.js';
 import { pityLeft } from '../systems/cases.js';
 
@@ -66,7 +68,28 @@ export class StorePanel {
     this.buildBoosts();
     this.buildLooks();
     this.buildPacks();
-    this.setView('cases');
+    this.setView(this.view);
+  }
+
+  /**
+   * Rebuild the shelves from the current catalogue.
+   *
+   * The panel builds its rows once and then only writes text into them, which
+   * is what keeps it cheap at 15Hz — so a content change has to be pushed in
+   * rather than picked up. The admin panel calls this after applying an edit;
+   * nothing else needs to.
+   */
+  rebuild() {
+    const view = this.view;
+    const lookKind = this.lookKind;
+    this.root.textContent = '';
+    this.caseRefs.clear();
+    this.boostRefs.clear();
+    this.packRefs.clear();
+    this.lookRefs.clear();
+    this.view = view;
+    this.lookKind = lookKind;
+    this.build();
   }
 
   setView(view) {
@@ -117,7 +140,7 @@ export class StorePanel {
   // ----------------------------------------------------------------- boosts
 
   buildBoosts() {
-    for (const def of BOOSTS) {
+    for (const def of liveBoosts()) {
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'relic';
@@ -156,7 +179,7 @@ export class StorePanel {
   buildLooks() {
     const picker = section('looks__kinds');
     this.kindBtns = new Map();
-    for (const kind of COSMETIC_KINDS) {
+    for (const kind of liveCosmeticKinds()) {
       const btn = button('meta-switch__btn', kind.name, () => this.setLookKind(kind.id));
       picker.appendChild(btn);
       this.kindBtns.set(kind.id, btn);
@@ -165,7 +188,7 @@ export class StorePanel {
     this.lookCount = add(this.looksWrap, 'p', 'looks__count');
 
     this.lookGrid = section('looks__grid');
-    for (const kind of COSMETIC_KINDS) {
+    for (const kind of liveCosmeticKinds()) {
       for (const def of kind.items) {
         const card = document.createElement('button');
         card.type = 'button';
@@ -208,7 +231,7 @@ export class StorePanel {
       'These are price tags, not prices. Nothing asks for a card and nothing is charged — pressing one simply adds the leafs.',
     );
 
-    for (const pack of LEAF_PACKS) {
+    for (const pack of liveLeafPacks()) {
       const row = document.createElement('button');
       row.type = 'button';
       row.className = `pack${pack.best ? ' is-best' : ''}`;
@@ -267,8 +290,9 @@ export class StorePanel {
       ref.card.classList.toggle('is-pitied', left === 0);
     }
 
-    for (const def of BOOSTS) {
+    for (const def of liveBoosts()) {
       const ref = this.boostRefs.get(def.id);
+      if (!ref) continue;
       const left = boostRemaining(state, def.id, now);
       setText(ref.timer, left > 0 ? `Running · ${fmtTime(left)} left` : '');
       ref.row.classList.toggle('is-owned', left > 0);

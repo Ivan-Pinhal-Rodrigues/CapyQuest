@@ -1,0 +1,26 @@
+{
+  "_readme": [
+    "CapyQuest's content pack. Editing it changes what the game offers without",
+    "touching a line of code \u2014 commit it and every player sees the change on their",
+    "next load.",
+    "",
+    "It is a PATCH over the built-in tables, not a replacement: anything you do not",
+    "mention keeps its shipped value. Four catalogues take add / patch / remove \u2014",
+    "cosmetics, boosts, leafPacks, events \u2014 plus `pass`, which overrides one level",
+    "of one track at a time.",
+    "",
+    "Prefer \"hidden\": true over remove. Hiding takes something off the shelf and",
+    "leaves it wearable by everyone who already owns it; nothing here can ever take",
+    "a look out of a save.",
+    "",
+    "An event given startsAt and endsAt runs on the wall clock between exactly those",
+    "two moments instead of taking part in the season rotation. Both or neither.",
+    "",
+    "Anything malformed is dropped with a console warning and the game boots on the",
+    "defaults, so a mistake here cannot take the site down. Open the game with",
+    "?admin=1 to edit all of this visually and have it write this file for you.",
+    "",
+    "Full format: docs/CONTENT.md. Keys starting with _ are ignored."
+  ],
+  "version": 1
+}

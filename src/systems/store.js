@@ -16,27 +16,21 @@
 // ============================================================================
 
 import { dayKey } from './quests.js';
-import { BOOSTS_BY_ID } from '../data/boosts.js';
+import { boostById, leafPackById, liveBoosts, liveLeafPacks } from '../content/registry.js';
+import { LEAF_PACKS, LEAF_PACKS_BY_ID } from '../data/leafPacks.js';
 
 export const PAYMENTS = false;
 
 /** Repeated verbatim on every purchase surface. Do not soften this. */
 export const SIMULATED_NOTICE = 'Simulated — no real payment, ever.';
 
-/**
- * Leaf packs. The prices are the genre's own psychology, quoted rather than
- * charged: the middle pack is always the one with the best rate per leaf and
- * the badge that says so.
- */
-export const LEAF_PACKS = [
-  { id: 'handful', name: 'A Handful', leafs: 100, price: '£0.99' },
-  { id: 'basket', name: 'A Basket', leafs: 550, price: '£4.99', bonus: '+10%' },
-  { id: 'armful', name: 'An Armful', leafs: 1200, price: '£8.99', bonus: '+33%', best: true },
-  { id: 'cartload', name: 'A Cartload', leafs: 2600, price: '£17.99', bonus: '+44%' },
-  { id: 'pondful', name: 'The Whole Pond', leafs: 7000, price: '£44.99', bonus: '+55%' },
-];
-
-export const LEAF_PACKS_BY_ID = Object.fromEntries(LEAF_PACKS.map((p) => [p.id, p]));
+// The shelves themselves now come from the content registry, so an admin can
+// change a price or pull an item without a code change. The tables these
+// re-export are the *defaults* the registry starts from — kept exported because
+// the balance tests reason about what the game ships with, not about whatever
+// pack happens to be applied.
+export { LEAF_PACKS, LEAF_PACKS_BY_ID };
+export { liveBoosts, liveLeafPacks };
 
 /**
  * The free daily grant. Deliberately just short of a Reed Case: close enough
@@ -63,8 +57,8 @@ export function claimDailyLeafs(state, now = Date.now()) {
  * it was simulated; it never contacts anything and never asks for a card.
  */
 export function buyLeafPack(state, id) {
-  const pack = LEAF_PACKS_BY_ID[id];
-  if (!pack) return { ok: false, reason: 'unknown' };
+  const pack = leafPackById(id);
+  if (!pack || pack.hidden) return { ok: false, reason: 'unknown' };
   if (PAYMENTS) return { ok: false, reason: 'unavailable' };
 
   state.leafs += pack.leafs;
@@ -89,8 +83,8 @@ export function boostRemaining(state, id, now = Date.now()) {
  * to spend at exactly the right moment is a chore, not a treat.
  */
 export function buyBoost(state, id, now = Date.now()) {
-  const def = BOOSTS_BY_ID[id];
-  if (!def) return { ok: false, reason: 'unknown' };
+  const def = boostById(id);
+  if (!def || def.hidden) return { ok: false, reason: 'unknown' };
   if ((state.leafs || 0) < def.cost) return { ok: false, reason: 'leafs', price: def.cost };
 
   state.leafs -= def.cost;

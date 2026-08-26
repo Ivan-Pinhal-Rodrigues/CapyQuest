@@ -130,7 +130,13 @@ test('a module never uses an exported constant it forgot to import', () => {
     // `import * as B from ...` makes B.THING legal for any THING.
     const namespaced = /import\s+\*\s+as\s+\w+\s+from/.test(code);
 
-    for (const m of code.matchAll(/(?<![.\w$])([A-Z][A-Z0-9_]{2,})\b/g)) {
+    // The import statements themselves are not uses. Without this, renaming on
+    // the way in — `import { COSMETIC_KINDS as DEFAULT_KINDS }` — reads as the
+    // original name being used while only the alias is bound, and the check
+    // reports a module for the one thing it did correctly.
+    const body = code.replace(/import\s[^;]*?from\s*(''|""|``)\s*;?/g, ' ');
+
+    for (const m of body.matchAll(/(?<![.\w$])([A-Z][A-Z0-9_]{2,})\b/g)) {
       const name = m[1];
       if (!exported.has(name) || available.has(name)) continue;
       if (namespaced) continue;

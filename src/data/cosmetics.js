@@ -66,6 +66,9 @@ export const COSMETIC_KINDS = [
   { id: 'title', name: 'Titles', items: TITLES, defaultId: 'bather' },
 ];
 
+/** Just the ids, for validating a content pack without importing the tables. */
+export const COSMETIC_KIND_IDS = COSMETIC_KINDS.map((k) => k.id);
+
 export const COSMETICS = COSMETIC_KINDS.flatMap((k) => k.items.map((item) => ({ ...item, kind: k.id })));
 
 export const COSMETICS_BY_ID = Object.fromEntries(COSMETICS.map((c) => [`${c.kind}:${c.id}`, c]));

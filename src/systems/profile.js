@@ -10,7 +10,7 @@
 // nothing and gets you into the water.
 
 import * as B from '../balance.js';
-import { COSMETICS_BY_ID, cosmeticKey } from '../data/cosmetics.js';
+import { cosmeticById, liveCosmeticsOfKind } from '../content/registry.js';
 import { equipped, owns } from './cosmetics.js';
 
 const ADJECTIVES = [
@@ -55,7 +55,7 @@ export function setName(state, input) {
 /** The title currently worn, resolved to its definition. */
 export function currentTitle(state) {
   const id = equipped(state, 'title');
-  return COSMETICS_BY_ID[cosmeticKey('title', id)] || null;
+  return cosmeticById('title', id);
 }
 
 /** The skin currently worn, used as the profile avatar. */
@@ -82,13 +82,13 @@ export function profile(state) {
 
 /** Owned skins and titles, for the two pickers on the card. */
 export function avatarChoices(state) {
-  return Object.values(COSMETICS_BY_ID)
-    .filter((c) => c.kind === 'skin' && owns(state, 'skin', c.id))
-    .map((c) => ({ ...c, worn: equipped(state, 'skin') === c.id }));
+  return liveCosmeticsOfKind('skin')
+    .filter((c) => owns(state, 'skin', c.id))
+    .map((c) => ({ ...c, kind: 'skin', worn: equipped(state, 'skin') === c.id }));
 }
 
 export function titleChoices(state) {
-  return Object.values(COSMETICS_BY_ID)
-    .filter((c) => c.kind === 'title' && owns(state, 'title', c.id))
-    .map((c) => ({ ...c, worn: equipped(state, 'title') === c.id }));
+  return liveCosmeticsOfKind('title')
+    .filter((c) => owns(state, 'title', c.id))
+    .map((c) => ({ ...c, kind: 'title', worn: equipped(state, 'title') === c.id }));
 }

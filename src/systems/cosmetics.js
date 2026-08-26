@@ -9,9 +9,14 @@
 // so; it is idempotent, so calling it on every tick costs nothing but a walk of
 // a short table.
 
+// The catalogue comes from the registry rather than the data module, so a
+// content pack can add a look, reprice one, or pull one from the shelf. What a
+// player *owns* is untouched by any of that: a key that has left the catalogue
+// stays in `state.cosmetics.owned`, and equipped() already falls back when a
+// worn look cannot be resolved.
 import {
-  COSMETIC_KINDS, COSMETICS, COSMETICS_BY_ID, cosmeticKey, cosmeticsOfKind,
-} from '../data/cosmetics.js';
+  cosmeticById, cosmeticKey, liveCosmetics, liveCosmeticKinds, liveCosmeticsOfKind,
+} from '../content/registry.js';
 
 /** The counters a cosmetic's `need` can read, gathered in one place. */
 export function progressFor(state) {
@@ -33,16 +38,17 @@ export function meetsNeed(state, need) {
 }
 
 export function owns(state, kind, id) {
-  const def = COSMETICS_BY_ID[cosmeticKey(kind, id)];
-  if (!def) return false;
-  if (def.source === 'start') return true;
+  // A "yours from the start" look is free and never written to the save.
+  // Everything else is a lookup in the owned list — including a look whose
+  // definition a pack has since removed, which stays yours.
+  if (cosmeticById(kind, id)?.source === 'start') return true;
   return (state.cosmetics?.owned || []).includes(cosmeticKey(kind, id));
 }
 
 /** Grant a cosmetic outright. Returns false if it was already owned. */
 export function grant(state, kind, id) {
   const key = cosmeticKey(kind, id);
-  if (!COSMETICS_BY_ID[key]) return false;
+  if (!cosmeticById(kind, id)) return false;
   if (owns(state, kind, id)) return false;
   state.cosmetics.owned.push(key);
   return true;
@@ -54,7 +60,7 @@ export function grant(state, kind, id) {
  */
 export function checkUnlocks(state) {
   const opened = [];
-  for (const def of COSMETICS) {
+  for (const def of liveCosmetics()) {
     if (def.source !== 'play') continue;
     if (owns(state, def.kind, def.id)) continue;
     if (!meetsNeed(state, def.need)) continue;
@@ -66,9 +72,11 @@ export function checkUnlocks(state) {
 
 /** Buy a store cosmetic with leafs. */
 export function buyCosmetic(state, kind, id) {
-  const def = COSMETICS_BY_ID[cosmeticKey(kind, id)];
+  const def = cosmeticById(kind, id);
   if (!def) return { ok: false, reason: 'unknown' };
-  if (def.source !== 'store') return { ok: false, reason: 'notForSale' };
+  // `hidden` is how a pack takes something off the shelf without taking it out
+  // of anybody's wardrobe, so it has to block the sale as well as the display.
+  if (def.source !== 'store' || def.hidden) return { ok: false, reason: 'notForSale' };
   if (owns(state, kind, id)) return { ok: false, reason: 'owned' };
   if (state.leafs < def.cost) return { ok: false, reason: 'leafs', price: def.cost };
 
@@ -79,7 +87,7 @@ export function buyCosmetic(state, kind, id) {
 
 /** Wear something you own. Refuses anything you do not. */
 export function equipCosmetic(state, kind, id) {
-  if (!COSMETIC_KINDS.some((k) => k.id === kind)) return { ok: false, reason: 'unknown' };
+  if (!liveCosmeticKinds().some((k) => k.id === kind)) return { ok: false, reason: 'unknown' };
   if (!owns(state, kind, id)) return { ok: false, reason: 'locked' };
   state.cosmetics[kind] = id;
   return { ok: true };
@@ -87,7 +95,7 @@ export function equipCosmetic(state, kind, id) {
 
 /** What is currently worn in a slot, falling back to the free default. */
 export function equipped(state, kind) {
-  const table = COSMETIC_KINDS.find((k) => k.id === kind);
+  const table = liveCosmeticKinds().find((k) => k.id === kind);
   if (!table) return null;
   const chosen = state.cosmetics?.[kind];
   return chosen && owns(state, kind, chosen) ? chosen : table.defaultId;
@@ -95,7 +103,7 @@ export function equipped(state, kind) {
 
 /** Owned / total, for the panel header. */
 export function collection(state, kind) {
-  const items = cosmeticsOfKind(kind);
+  const items = liveCosmeticsOfKind(kind);
   return {
     owned: items.filter((i) => owns(state, kind, i.id)).length,
     total: items.length,

@@ -77,12 +77,24 @@ src/
   state.js          save schema and defaults
   save.js           localStorage, migrations, export/import codes
   data/             the content tables — generators, upgrades, achievements
+  content/          the live catalogue: the tables with a pack merged over them
   systems/          game logic: clicking, income, shop, goldens, audio
   render/           sprites, palettes, canvas rasteriser, particles, scene
   ui/               HUD, shop panels, modals, toasts, tabs
-docs/             BALANCE.md, STORY.md, EVENTS.md, POSTMORTEM.md
+content/
+  pack.json         the editable half of the game — see docs/CONTENT.md
+docs/               BALANCE.md, CONTENT.md, STORY.md, EVENTS.md, POSTMORTEM.md
 tests/
 ```
+
+### Content is editable without a deploy
+
+What the shop sells, what a boost costs, which looks exist, when an event opens and closes and
+what a pass level pays all live in `content/pack.json` — a patch over the built-in tables. Open
+the game with `?admin=1` to edit it visually, watch the change in the running game, and export the
+JSON to commit. A malformed pack is dropped entry by entry and the game boots on its defaults;
+nothing in a pack can touch a save, take a look out of a wardrobe, or move a number in the
+simulation. `docs/CONTENT.md` has the format.
 
 ### The art is text
 
