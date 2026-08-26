@@ -58,6 +58,11 @@ export function createState(now = Date.now()) {
     quests: {
       dayKey: null,
       weekKey: null,
+      // What the day put on the table, and what you took from it. `daily` is
+      // empty until the player chooses — see systems/quests.js.
+      dailyOffer: [],
+      weeklyOffer: [],
+      rerolls: 0,
       daily: [],
       weekly: [],
       dailyClaimed: {},
@@ -88,6 +93,10 @@ export function createState(now = Date.now()) {
     // accrued, so leaving it uncollected is a choice about *when*, never a way
     // to earn more — see systems/cache.js.
     cache: { zen: 0, ms: 0, lostMs: 0, since: 0 },
+
+    // The weekly bracket. `best` is a placement, so 1 is the best there is and
+    // 0 means you have never entered one.
+    bracket: { weekKey: null, placement: 0, claimed: false, results: [], best: 0 },
 
     login: { lastDay: null, streak: 0, best: 0, total: 0, pendingDay: 0 },
     chest: { lastAt: now, opened: 0 },
@@ -263,6 +272,18 @@ export function reconcileState(state, now = Date.now()) {
   out.quests = { ...base.quests, ...(state.quests || {}) };
   out.quests.daily = stringList(out.quests.daily);
   out.quests.weekly = stringList(out.quests.weekly);
+  out.quests.dailyOffer = stringList(out.quests.dailyOffer);
+  out.quests.weeklyOffer = stringList(out.quests.weeklyOffer);
+  out.quests.rerolls = safeNumber(out.quests.rerolls);
+  // A save written before quests were a choice has picks but no offer. Those
+  // picks were made for the player by the old build and stand for the day; the
+  // offer being empty simply means there is nothing left to choose.
+  if (!out.quests.dailyOffer.length && out.quests.daily.length) {
+    out.quests.dailyOffer = [...out.quests.daily];
+  }
+  if (!out.quests.weeklyOffer.length && out.quests.weekly.length) {
+    out.quests.weeklyOffer = [...out.quests.weekly];
+  }
   out.quests.dailyClaimed = isPlainObject(out.quests.dailyClaimed) ? { ...out.quests.dailyClaimed } : {};
   out.quests.weeklyClaimed = isPlainObject(out.quests.weeklyClaimed) ? { ...out.quests.weeklyClaimed } : {};
   out.quests.dailyBase = numberMap(out.quests.dailyBase);
@@ -305,6 +326,15 @@ export function reconcileState(state, now = Date.now()) {
   for (const key of ['zen', 'ms', 'lostMs', 'since']) {
     out.cache[key] = safeNumber(out.cache[key]);
   }
+
+  out.bracket = { ...base.bracket, ...(state.bracket || {}) };
+  out.bracket.weekKey = typeof out.bracket.weekKey === 'string' ? out.bracket.weekKey : null;
+  out.bracket.placement = Math.floor(safeNumber(out.bracket.placement));
+  out.bracket.best = Math.floor(safeNumber(out.bracket.best));
+  out.bracket.claimed = !!out.bracket.claimed;
+  out.bracket.results = Array.isArray(out.bracket.results)
+    ? out.bracket.results.filter(isPlainObject).slice(0, 8)
+    : [];
 
   out.login = { ...base.login, ...(state.login || {}) };
   for (const key of ['streak', 'best', 'total', 'pendingDay']) {

@@ -36,6 +36,24 @@ export const WEEKLY_POOL = [
 export const DAILY_COUNT = 4;
 export const WEEKLY_COUNT = 3;
 
+/**
+ * How many are offered to choose from.
+ *
+ * The old version rolled four dailies and that was your day. Nothing was asked
+ * of the player except to notice. Offering seven for four slots turns the daily
+ * from a list into a decision about the session you are about to have — pick
+ * the tapping ones or the fighting ones, take the boss quest or avoid it.
+ *
+ * Seven for four rather than five for four because a choice you make by
+ * elimination is barely a choice; there has to be something you actually give
+ * up.
+ */
+export const DAILY_OFFER = 7;
+export const WEEKLY_OFFER = 5;
+
+/** Leafs to throw the offer away and roll a fresh one. */
+export const REROLL_COST = 40;
+
 // ------------------------------------------------------------- login streak
 
 /**

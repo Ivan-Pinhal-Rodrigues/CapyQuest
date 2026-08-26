@@ -16,13 +16,17 @@ import { ascend } from '../src/systems/ascension.js';
 import {
   dayKey, weekKey, daysBetween, msUntilTomorrow,
   rollQuests, activeQuests, claimQuest, questSummary, counters,
+  questOffers, chooseQuest, rerollQuests,
   checkLogin, loginCalendar,
   chestsReady, chestProgress, msUntilNextChest, collectChests,
   redeemCode,
   CHEST_FILL_MS, CHEST_MAX_STORED,
 } from '../src/systems/quests.js';
 import { grantReward, describeGrant, rewardBase } from '../src/systems/rewards.js';
-import { DAILY_POOL, WEEKLY_POOL, DAILY_COUNT, WEEKLY_COUNT, LOGIN_REWARDS } from '../src/data/quests.js';
+import {
+  DAILY_POOL, WEEKLY_POOL, DAILY_COUNT, WEEKLY_COUNT,
+  DAILY_OFFER, WEEKLY_OFFER, REROLL_COST, LOGIN_REWARDS,
+} from '../src/data/quests.js';
 import { CODES, normaliseCode, lookupCode } from '../src/data/codes.js';
 
 /** Midday on a given date, to keep away from midnight boundaries. */
@@ -63,15 +67,72 @@ test('the daily countdown never exceeds a day', () => {
 
 // ------------------------------------------------------------------ quests
 
-test('rolling quests picks the promised number of each kind', () => {
+test('rolling quests offers more than there are slots', () => {
+  // The day no longer hands you a list — it offers one, and you choose. The
+  // slots start empty on purpose; nothing is active until the player picks.
   const s = createState();
   const rolled = rollQuests(s, TUESDAY);
 
   assert.equal(rolled.daily, true);
   assert.equal(rolled.weekly, true);
+  assert.equal(s.quests.dailyOffer.length, DAILY_OFFER);
+  assert.equal(s.quests.weeklyOffer.length, WEEKLY_OFFER);
+  assert.ok(DAILY_OFFER > DAILY_COUNT, 'an offer the size of the slots is not a choice');
+  assert.equal(s.quests.daily.length, 0);
+  assert.equal(activeQuests(s).length, 0);
+});
+
+test('choosing fills the slots, and the picker closes when they are full', () => {
+  const s = createState();
+  rollQuests(s, TUESDAY);
+
+  for (let i = 0; i < DAILY_COUNT; i++) {
+    const { offers, open } = questOffers(s, 'daily');
+    assert.equal(open, true);
+    assert.equal(chooseQuest(s, offers[0].id, 'daily').ok, true);
+  }
+
   assert.equal(s.quests.daily.length, DAILY_COUNT);
-  assert.equal(s.quests.weekly.length, WEEKLY_COUNT);
-  assert.equal(activeQuests(s).length, DAILY_COUNT + WEEKLY_COUNT);
+  assert.equal(questOffers(s, 'daily').open, false, 'the picker stayed open past the last slot');
+  assert.equal(chooseQuest(s, DAILY_POOL[0].id, 'daily').reason, 'full');
+  assert.equal(activeQuests(s).length, DAILY_COUNT);
+});
+
+test('you cannot take a quest that was not offered, or take one twice', () => {
+  const s = createState();
+  rollQuests(s, TUESDAY);
+  const notOffered = DAILY_POOL.find((q) => !s.quests.dailyOffer.includes(q.id));
+  assert.equal(chooseQuest(s, notOffered.id, 'daily').reason, 'notOffered');
+
+  const first = s.quests.dailyOffer[0];
+  assert.equal(chooseQuest(s, first, 'daily').ok, true);
+  assert.equal(chooseQuest(s, first, 'daily').reason, 'taken');
+});
+
+test('a reroll costs leafs and produces a different offer', () => {
+  const s = createState();
+  rollQuests(s, TUESDAY);
+  const before = [...s.quests.dailyOffer];
+
+  assert.equal(rerollQuests(s, 'daily').reason, 'poor', 'a reroll with no leafs should be refused');
+
+  s.leafs = REROLL_COST * 2;
+  const out = rerollQuests(s, 'daily');
+  assert.equal(out.ok, true);
+  assert.equal(s.leafs, REROLL_COST);
+  assert.notDeepEqual(s.quests.dailyOffer, before, 'the reroll gave the same list back');
+  assert.equal(s.quests.dailyOffer.length, DAILY_OFFER);
+});
+
+test('a reroll is refused once the slots are full', () => {
+  // Otherwise a player can shop for an easy list all day and the pick never
+  // actually closes.
+  const s = createState();
+  rollQuests(s, TUESDAY);
+  s.leafs = 1e6;
+  for (let i = 0; i < DAILY_COUNT; i++) chooseQuest(s, questOffers(s, 'daily').offers[0].id, 'daily');
+  assert.equal(rerollQuests(s, 'daily').reason, 'closed');
+  assert.equal(s.leafs, 1e6, 'a refused reroll still charged');
 });
 
 test('quest selection is stable within a day and changes the next', () => {
@@ -79,18 +140,18 @@ test('quest selection is stable within a day and changes the next', () => {
   const b = createState();
   rollQuests(a, TUESDAY);
   rollQuests(b, at(2026, 8, 25, 20)); // same day, different hour
-  assert.deepEqual(a.quests.daily, b.quests.daily, 'the same day must offer the same quests');
+  assert.deepEqual(a.quests.dailyOffer, b.quests.dailyOffer, 'the same day must offer the same quests');
 
   const c = createState();
   rollQuests(c, WEDNESDAY);
-  assert.notDeepEqual(a.quests.daily, c.quests.daily, 'a new day should offer different quests');
+  assert.notDeepEqual(a.quests.dailyOffer, c.quests.dailyOffer, 'a new day should offer different quests');
 });
 
 test('quests never duplicate within a period', () => {
   for (const day of [TUESDAY, WEDNESDAY, NEXT_MONDAY]) {
     const s = createState();
     rollQuests(s, day);
-    assert.equal(new Set(s.quests.daily).size, s.quests.daily.length);
+    assert.equal(new Set(s.quests.dailyOffer).size, s.quests.dailyOffer.length);
     assert.equal(new Set(s.quests.weekly).size, s.quests.weekly.length);
   }
 });
@@ -162,10 +223,11 @@ test('a new day resets dailies but leaves weeklies alone', () => {
 test('a new week resets weeklies', () => {
   const s = createState();
   rollQuests(s, WEDNESDAY);
-  const before = [...s.quests.weekly];
+  const before = [...s.quests.weeklyOffer];
   const rolled = rollQuests(s, NEXT_MONDAY);
   assert.equal(rolled.weekly, true);
-  assert.notDeepEqual(s.quests.weekly, before);
+  assert.notDeepEqual(s.quests.weeklyOffer, before);
+  assert.equal(s.quests.weekly.length, 0, 'a new week must ask again rather than assume');
 });
 
 test('the combo quest resets its high-water mark at rollover', () => {

@@ -250,6 +250,52 @@ close the loop, and never framed as a countdown to a purchase.
 Every case prints its full drop table and its live pity counter on the card, generated from
 the same weights the roll uses — there is no second table for display.
 
+## Retention, and what it asks of you
+
+The old retention layer was nine surfaces that all ended in a button marked Claim: two quest
+lists, a login streak, a chest, two pass tracks, an event exchange, a season rollover and a
+toast queue. None of it asked a question — it asked for a tap.
+
+| | |
+|---|---|
+| Daily quests | **7 offered, 4 taken** |
+| Weekly quests | 5 offered, 3 taken |
+| Reroll the offer | 40 leafs, only while slots remain |
+| Bracket | weekly, 3 opponents, **one entry** |
+
+Seven for four rather than five for four, because a choice made by elimination is barely a
+choice — something has to be given up. The picker disappears once the slots are full, and the
+reroll is refused after that: a decision you can revisit all afternoon is not a decision, and
+being able to shop for an easy list all day would make the pick meaningless.
+
+### The bracket
+
+The leaderboard was a screenshot — sixty rivals who never interacted with you and a ranking
+nothing you did could change. Now, once a week, three rivals from around your rank fight your
+kit as it stands.
+
+Both sides resolve into stat blocks and trade blows through `B.damage()`, the same function
+the real fight loop uses, so gear rungs and stars carry the weight they carry everywhere else.
+It is not the full combat state machine — no skills, no bracing, no boss patterns — because a
+rival has a loadout and no behaviour. Calling it a duel is the honest description.
+
+Measured placements, the same player at five kit strengths:
+
+| Depth | 1st | 2nd | 3rd | 4th |
+|---|---|---|---|---|
+| 20 | 5 | – | – | – |
+| 50 | 5 | – | – | – |
+| 200 | 1 | 1 | 1 | 2 |
+| 900 | 1 | 1 | 1 | 2 |
+
+A new player wins their first brackets, deliberately — the feature has to teach that entering
+is worth doing. It becomes a real competition once there is anyone near your rank worth
+fighting. Every placement pays, fourth included: a weekly event that gives nothing for turning
+up teaches people not to turn up.
+
+The result is written into the save rather than recomputed, so a bad week cannot be re-rolled
+by swapping a hat.
+
 ## The season pass
 
 The premium track costs **1,200 leafs** (or a decorative `£8.99` that charges nothing) and

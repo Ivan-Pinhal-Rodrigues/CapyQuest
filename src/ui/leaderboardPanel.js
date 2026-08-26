@@ -8,6 +8,7 @@
 import { fmtInt, fmtTime } from './numbers.js';
 import { SIMULATED_NOTICE } from '../systems/leaderboard.js';
 import { activeEvent, nextEvent, exchangeRows } from '../systems/events.js';
+import { BRACKET_REWARDS, bracketStatus } from '../systems/bracket.js';
 import { gearIconUrl, itemMarks } from './gearPanel.js';
 import { el } from './modal.js';
 
@@ -41,6 +42,24 @@ export class LeaderboardPanel {
     this.eventCard.appendChild(this.exchange);
     r.appendChild(this.eventCard);
 
+    // --- the weekly bracket
+    //
+    // Above the board, because the board is a thing you read and this is the
+    // one thing on the screen you can actually do.
+    this.bracket = section('bracket');
+    this.bracketHead = add(this.bracket, 'strong', 'bracket__head', 'This week');
+    this.bracketBlurb = add(this.bracket, 'p', 'bracket__blurb');
+    this.bracketList = section('bracket__opponents');
+    this.bracket.appendChild(this.bracketList);
+    this.bracketResults = section('bracket__results');
+    this.bracket.appendChild(this.bracketResults);
+    this.bracketBtn = document.createElement('button');
+    this.bracketBtn.type = 'button';
+    this.bracketBtn.className = 'btn btn--primary';
+    this.bracketBtn.addEventListener('click', () => this.h.onBracket());
+    this.bracket.appendChild(this.bracketBtn);
+    r.appendChild(this.bracket);
+
     // --- the board
     const head = section('board-head');
     this.boardTitle = add(head, 'h3', 'board-head__title');
@@ -52,6 +71,58 @@ export class LeaderboardPanel {
 
     this.board = section('board');
     r.appendChild(this.board);
+  }
+
+  // ---------------------------------------------------------------- bracket
+
+  /**
+   * This week's three opponents, or the result if you have already gone.
+   *
+   * The rivals were always readable; what they never were is *opposition*. One
+   * entry a week, whatever your kit is at the time — which is why the button
+   * says so plainly rather than letting anyone discover it afterwards.
+   */
+  updateBracket(state, now, cached) {
+    const status = bracketStatus(state, now, cached);
+
+    if (status.entered) {
+      const reward = BRACKET_REWARDS[status.placement];
+      setText(this.bracketHead, `${ordinal(status.placement)} place`);
+      setText(
+        this.bracketBlurb,
+        status.claimed
+          ? 'Collected. The next bracket opens on Monday.'
+          : `${reward.text}. Waiting for you.`,
+      );
+
+      this.bracketList.hidden = true;
+      this.bracketResults.hidden = false;
+      this.bracketResults.textContent = '';
+      for (const result of status.results) {
+        const row = add(this.bracketResults, 'p', 'bracket__result');
+        row.classList.toggle('is-win', result.won);
+        setText(row, `${result.won ? 'Beat' : 'Lost to'} ${result.name}`);
+      }
+
+      this.bracketBtn.hidden = status.claimed;
+      setText(this.bracketBtn, `Collect · ${reward.text}`);
+      return;
+    }
+
+    setText(this.bracketHead, 'This week’s bracket');
+    setText(
+      this.bracketBlurb,
+      'Three rivals from around your rank. Your kit as it stands right now fights theirs, once.',
+    );
+    this.bracketResults.hidden = true;
+    this.bracketList.hidden = false;
+    this.bracketList.textContent = '';
+    for (const rival of status.opponents) {
+      const row = add(this.bracketList, 'p', 'bracket__opponent');
+      setText(row, `${rival.name} · stage ${rival.stage + 1} · power ${fmtInt(rival.power)}`);
+    }
+    this.bracketBtn.hidden = false;
+    setText(this.bracketBtn, 'Enter the bracket');
   }
 
   // ------------------------------------------------------------------ event
@@ -117,6 +188,7 @@ export class LeaderboardPanel {
 
   update(board, state, now = Date.now()) {
     this.updateEvent(state, now);
+    this.updateBracket(state, now, board.cached);
 
     setText(this.boardTitle, board.season.name);
     setText(this.boardRank, `You are #${board.you.rank} of ${board.rows.length}`);
@@ -232,4 +304,8 @@ function add(parent, tag, className, text) {
 
 function setText(node, value) {
   if (node.textContent !== value) node.textContent = value;
+}
+
+function ordinal(n) {
+  return ['', 'First', 'Second', 'Third', 'Fourth'][n] || `#${n}`;
 }

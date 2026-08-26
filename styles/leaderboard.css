@@ -142,3 +142,28 @@
 .rival__piece-text { display: flex; flex-direction: column; gap: 0.05rem; }
 .rival__piece-name { font-size: 0.78rem; }
 .rival__piece-rarity { font-family: var(--font-pixel); font-size: 0.34rem; }
+
+/* ============================================================= the bracket
+   The one thing on this screen you can act on, so it sits above the board. */
+
+.bracket {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+  padding: 0.7rem;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(247, 201, 72, 0.07), var(--surface));
+  border: 1px solid rgba(247, 201, 72, 0.4);
+}
+
+.bracket__head { font-size: 0.95rem; color: var(--zen); }
+.bracket__blurb { font-size: 0.78rem; color: var(--text-dim); line-height: 1.45; }
+
+.bracket__opponents,
+.bracket__results { display: flex; flex-direction: column; gap: 0.15rem; }
+
+.bracket__opponent { font-size: 0.74rem; color: var(--text-faint); }
+
+.bracket__result { font-size: 0.76rem; color: var(--danger); }
+.bracket__result.is-win { color: var(--leaf); }

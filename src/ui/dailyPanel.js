@@ -7,14 +7,16 @@
 import { fmtInt, fmtClock, fmtTime } from './numbers.js';
 import {
   activeQuests, questSummary, chestsReady, chestProgress, msUntilNextChest,
-  msUntilTomorrow, loginCalendar,
+  msUntilTomorrow, loginCalendar, questOffers,
   CHEST_MAX_STORED,
 } from '../systems/quests.js';
+import { REROLL_COST } from '../data/quests.js';
 
 export class DailyPanel {
-  constructor(root, { onClaimQuest, onCollectChest }) {
+  constructor(root, { onClaimQuest, onCollectChest, onChooseQuest, onReroll, onClaimAll }) {
     this.root = root;
-    this.h = { onClaimQuest, onCollectChest };
+    this.h = { onClaimQuest, onCollectChest, onChooseQuest, onReroll, onClaimAll };
+    this.offerNodes = new Map();
     this.questNodes = new Map();
     this.calendarNodes = [];
     this.build();
@@ -41,8 +43,26 @@ export class DailyPanel {
     this.questReset = add(questHead, 'span', 'daily__reset');
     r.appendChild(questHead);
 
+    // --- the picker
+    //
+    // Sits above the list because until the slots are full it is the only
+    // thing on this screen worth doing.
+    this.picker = div('picker');
+    this.pickerHead = add(this.picker, 'p', 'picker__head');
+    this.pickerList = div('picker__list');
+    this.picker.appendChild(this.pickerList);
+    this.rerollBtn = button('btn btn--small picker__reroll', '', () => this.h.onReroll('daily'));
+    this.picker.appendChild(this.rerollBtn);
+    this.picker.hidden = true;
+    r.appendChild(this.picker);
+
     this.questList = div('quest-list');
     r.appendChild(this.questList);
+
+    // One button for everything finished, rather than a row of identical taps.
+    this.claimAllBtn = button('btn btn--primary quest__claim-all', '', () => this.h.onClaimAll());
+    this.claimAllBtn.hidden = true;
+    r.appendChild(this.claimAllBtn);
 
     // --- login streak
     r.appendChild(heading('Login streak'));
@@ -88,9 +108,15 @@ export class DailyPanel {
   }
 
   updateQuests(state, now) {
+    this.updatePicker(state);
     const quests = activeQuests(state);
     const summary = questSummary(state);
-    setText(this.questTitle, `Quests ${summary.done}/${summary.total}`);
+    // "Quests 0/0" before anything is picked reads like a bug rather than an
+    // invitation, so an empty board says what to do instead of counting it.
+    setText(
+      this.questTitle,
+      summary.total === 0 ? 'Quests — pick yours' : `Quests ${summary.done}/${summary.total}`,
+    );
     setText(this.questReset, `resets in ${fmtTime(msUntilTomorrow(now))}`);
 
     const seen = new Set();
@@ -133,6 +159,58 @@ export class DailyPanel {
       if (seen.has(id)) continue;
       entry.row.remove();
       this.questNodes.delete(id);
+    }
+
+    // The single button replaces the row of identical Claim taps. The
+    // individual ones stay for anyone who wants to take them one at a time —
+    // what is removed is the obligation to.
+    const ready = quests.filter((q) => q.done && !q.claimed).length;
+    this.claimAllBtn.hidden = ready < 2;
+    setText(this.claimAllBtn, `Collect all ${ready}`);
+  }
+
+  /**
+   * The offer. Shown only while there are slots left, so the day settles once
+   * you have chosen — a decision you can revisit all afternoon is not one.
+   */
+  updatePicker(state) {
+    const daily = questOffers(state, 'daily');
+    const weekly = questOffers(state, 'weekly');
+    const open = daily.open || weekly.open;
+
+    if (this.picker.hidden === open) this.picker.hidden = !open;
+    if (!open) return;
+
+    const kind = daily.open ? 'daily' : 'weekly';
+    const info = daily.open ? daily : weekly;
+    this.rerollBtn.onclick = () => this.h.onReroll(kind);
+
+    const left = info.slots - info.taken;
+    setText(
+      this.pickerHead,
+      `Pick ${left} more ${kind === 'daily' ? 'daily' : 'weekly'} quest${left === 1 ? '' : 's'} — ${info.offers.length} on offer`,
+    );
+    setText(this.rerollBtn, `New offer · ${REROLL_COST} 🍃`);
+    this.rerollBtn.disabled = (state.leafs || 0) < REROLL_COST;
+
+    const seen = new Set();
+    for (const quest of info.offers) {
+      seen.add(quest.id);
+      let entry = this.offerNodes.get(quest.id);
+      if (!entry) {
+        const btn = button('offer', '', () => this.h.onChooseQuest(quest.id, kind));
+        const text = add(btn, 'span', 'offer__text', quest.text);
+        const pay = add(btn, 'span', 'offer__pay');
+        this.pickerList.appendChild(btn);
+        entry = { btn, text, pay };
+        this.offerNodes.set(quest.id, entry);
+      }
+      entry.btn.hidden = false;
+      entry.btn.onclick = () => this.h.onChooseQuest(quest.id, kind);
+      setText(entry.pay, describeQuestReward(quest.reward));
+    }
+    for (const [id, entry] of this.offerNodes) {
+      if (!seen.has(id)) entry.btn.hidden = true;
     }
   }
 
@@ -193,4 +271,13 @@ function button(className, label, onClick) {
 
 function setText(node, value) {
   if (node.textContent !== value) node.textContent = value;
+}
+
+/** What a quest pays, in one short line. */
+function describeQuestReward(reward = {}) {
+  const parts = [];
+  if (reward.pass) parts.push(`${reward.pass} pass xp`);
+  if (reward.tickets) parts.push(`${reward.tickets} ticket${reward.tickets === 1 ? '' : 's'}`);
+  if (reward.leafs) parts.push(`${reward.leafs} leafs`);
+  return parts.join(' · ') || 'a reward';
 }

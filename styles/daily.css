@@ -219,3 +219,49 @@
   .calendar__label { font-size: 0.48rem; }
   .calendar__reward { font-size: 0.56rem; }
 }
+
+/* ============================================================== the picker
+   The day offers seven and you take four. Shown only while slots remain, so
+   the choice closes rather than following you around all afternoon. */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+  padding: 0.6rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--zen);
+}
+
+.picker__head { font-size: 0.82rem; color: var(--zen); }
+
+.picker__list { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.offer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  text-align: left;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.offer:hover { border-color: var(--zen); }
+.offer__text { font-size: 0.78rem; color: var(--text); }
+.offer__pay {
+  flex-shrink: 0;
+  font-family: var(--font-pixel);
+  font-size: 0.34rem;
+  color: var(--leaf);
+}
+
+.picker__reroll { align-self: flex-start; }
+
+.quest__claim-all { width: 100%; margin-top: 0.5rem; }

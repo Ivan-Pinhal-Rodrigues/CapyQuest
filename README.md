@@ -125,7 +125,7 @@ synthesised with WebAudio oscillators, so there are no audio files either.
 | Terrains / stages | 18 cycling, unlimited stages, with 71 enemies and bosses |
 | Currencies | Zen, Essence, Leafs, Lotus, tickets, shards |
 | Store | 3 cases with their odds on the card, 5 boosts, 24 cosmetics — all simulated |
-| Season | 45 days, a 100-level two-track pass, 60 simulated rivals, 3 live events of 10 designed |
+| Season | 45 days, a 100-level two-track pass, 60 simulated rivals, a weekly bracket, 3 live events of 10 designed |
 | Story | 3 acts, 20 beats, 5 NPCs, a 6-frame opening and 6 coach-marked tutorial steps |
 | Offline | A cache with a stated capacity, a fill rate, and a spill marker when it overflows |
 
@@ -179,6 +179,13 @@ Built in stages. Landed so far:
       four fixed bands rather than on hand-picked numbers, because two hundred entries each
       paying "just a few percent" compounds to a factor of eight million; a full clear is worth
       x68, which is a number somebody chose.
+- [x] **Retention that asks something** — nine surfaces all ended in a button marked Claim.
+      The day now offers seven quests for four slots and the week five for three, so a session
+      starts with a decision about the session; the picker closes once you have chosen, and a
+      reroll costs leafs and is refused afterwards. The leaderboard stopped being a screenshot:
+      once a week three rivals from around your rank fight your actual kit, through the same
+      damage function the real fight uses. A new player wins their first brackets on purpose,
+      and it turns into a real competition as you get deeper. Every placement pays.
 - [x] **A tree with a shape** — 210 nodes of "+x% per rank" and a free respec is a shopping
       list: buy long enough and you own all of it, and nothing you did was a decision. There
       are now 14 keystones, two per branch, each a large gain and a real cost in one package —

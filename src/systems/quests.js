@@ -7,6 +7,7 @@
 
 import {
   DAILY_POOL, WEEKLY_POOL, DAILY_COUNT, WEEKLY_COUNT,
+  DAILY_OFFER, WEEKLY_OFFER, REROLL_COST,
   LOGIN_REWARDS, CHEST_FILL_MS, CHEST_MAX_STORED,
 } from '../data/quests.js';
 import { lookupCode } from '../data/codes.js';
@@ -95,7 +96,11 @@ export function rollQuests(state, now = Date.now()) {
 
   if (q.dayKey !== today) {
     q.dayKey = today;
-    q.daily = pickQuests(DAILY_POOL, DAILY_COUNT, today);
+    // An offer to choose from, not a list handed down. `daily` stays empty
+    // until the player picks, which is what makes it a decision.
+    q.dailyOffer = pickQuests(DAILY_POOL, DAILY_OFFER, today);
+    q.daily = [];
+    q.rerolls = 0;
     q.dailyClaimed = {};
     // `bestCombo` is a high-water mark rather than a running total, so it has
     // to reset to zero at rollover instead of being diffed from a baseline.
@@ -106,7 +111,8 @@ export function rollQuests(state, now = Date.now()) {
 
   if (q.weekKey !== thisWeek) {
     q.weekKey = thisWeek;
-    q.weekly = pickQuests(WEEKLY_POOL, WEEKLY_COUNT, thisWeek);
+    q.weeklyOffer = pickQuests(WEEKLY_POOL, WEEKLY_OFFER, thisWeek);
+    q.weekly = [];
     q.weeklyClaimed = {};
     q.weeklyBase = { ...counters(state), bestCombo: 0 };
     rolled.weekly = true;
@@ -154,6 +160,75 @@ export function claimQuest(state, id) {
   const bag = quest.kind === 'daily' ? state.quests.dailyClaimed : state.quests.weeklyClaimed;
   bag[id] = true;
   return quest.reward;
+}
+
+/**
+ * The quests on offer that have not been taken yet, for the picker.
+ *
+ * Once the slots are full this returns nothing, so the picker disappears and
+ * the day settles — a choice you can revisit all day is not a choice.
+ */
+export function questOffers(state, kind = 'daily') {
+  const q = state.quests;
+  const pool = kind === 'daily' ? DAILY_POOL : WEEKLY_POOL;
+  const offer = (kind === 'daily' ? q.dailyOffer : q.weeklyOffer) || [];
+  const chosen = (kind === 'daily' ? q.daily : q.weekly) || [];
+  const slots = kind === 'daily' ? DAILY_COUNT : WEEKLY_COUNT;
+
+  if (chosen.length >= slots) return { open: false, slots, taken: chosen.length, offers: [] };
+  return {
+    open: true,
+    slots,
+    taken: chosen.length,
+    offers: offer
+      .filter((id) => !chosen.includes(id))
+      .map((id) => pool.find((p) => p.id === id))
+      .filter(Boolean),
+  };
+}
+
+/** Take one of the offered quests into a slot. */
+export function chooseQuest(state, id, kind = 'daily') {
+  const q = state.quests;
+  const slots = kind === 'daily' ? DAILY_COUNT : WEEKLY_COUNT;
+  const chosen = kind === 'daily' ? q.daily : q.weekly;
+  const offer = (kind === 'daily' ? q.dailyOffer : q.weeklyOffer) || [];
+
+  if (chosen.length >= slots) return { ok: false, reason: 'full' };
+  if (!offer.includes(id)) return { ok: false, reason: 'notOffered' };
+  if (chosen.includes(id)) return { ok: false, reason: 'taken' };
+
+  chosen.push(id);
+  return { ok: true, id, remaining: slots - chosen.length };
+}
+
+/**
+ * Throw the offer away and roll a new one, for leafs.
+ *
+ * Only while slots are still open. Rerolling after you have committed would let
+ * a player shop for an easy list all day, and the point of the pick is that it
+ * closes.
+ */
+export function rerollQuests(state, kind = 'daily', now = Date.now()) {
+  const q = state.quests;
+  const { open } = questOffers(state, kind);
+  if (!open) return { ok: false, reason: 'closed' };
+  if ((state.leafs || 0) < REROLL_COST) return { ok: false, reason: 'poor', price: REROLL_COST };
+
+  state.leafs -= REROLL_COST;
+  q.rerolls = (q.rerolls || 0) + 1;
+
+  // Seeded on the reroll count as well as the day, so a second reroll gives a
+  // genuinely different list rather than the same one back.
+  const key = `${kind}:${kind === 'daily' ? q.dayKey : q.weekKey}:${q.rerolls}`;
+  const pool = kind === 'daily' ? DAILY_POOL : WEEKLY_POOL;
+  const count = kind === 'daily' ? DAILY_OFFER : WEEKLY_OFFER;
+  const rolled = pickQuests(pool, count, key);
+
+  if (kind === 'daily') q.dailyOffer = rolled;
+  else q.weeklyOffer = rolled;
+
+  return { ok: true, price: REROLL_COST, offers: rolled };
 }
 
 export function questSummary(state) {

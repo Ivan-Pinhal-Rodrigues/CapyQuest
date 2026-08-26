@@ -42,7 +42,10 @@ import { COMPANIONS_BY_ID, PARTY_SIZE } from './data/companions.js';
 import { DailyPanel } from './ui/dailyPanel.js';
 import {
   rollQuests, claimQuest, questSummary, checkLogin, collectChests, chestsReady, redeemCode,
+  activeQuests, chooseQuest, rerollQuests,
 } from './systems/quests.js';
+import { REROLL_COST } from './data/quests.js';
+import { bracketStatus, claimBracket, enterBracket } from './systems/bracket.js';
 import {
   checkRollover, claimPassLevel, unclaimedPassLevels, passTrack,
   passXpForClear, addPassXp, unlockPremium,
@@ -216,11 +219,15 @@ class Game {
     this.dailyPanel = new DailyPanel($('dailyPanel'), {
       onClaimQuest: (id) => this.claimQuest(id),
       onCollectChest: () => this.collectChest(),
+      onChooseQuest: (id, kind) => this.pickQuest(id, kind),
+      onReroll: (kind) => this.rerollOffer(kind),
+      onClaimAll: () => this.claimAllQuests(),
     });
 
     this.leaderboardPanel = new LeaderboardPanel($('leaderboardPanel'), {
       onInspect: (id) => this.inspectRival(id),
       onExchange: (id) => this.exchangePetals(id),
+      onBracket: () => this.doBracket(),
     });
 
     this.seasonPanel = new SeasonPanel($('seasonPanel'), {
@@ -419,7 +426,59 @@ class Game {
     this.afterMetaChange();
   }
 
-  claimQuest(id) {
+  /** Take one of the offered quests into a slot. */
+  pickQuest(id, kind) {
+    const out = chooseQuest(this.state, id, kind);
+    if (!out.ok) {
+      audio.denied();
+      return;
+    }
+    audio.buy();
+    if (out.remaining === 0) {
+      this.toaster.show({
+        title: kind === 'daily' ? 'Your day is set' : 'Your week is set',
+        body: 'Those are the ones. They settle now.',
+        kind: 'info',
+        icon: '✅',
+      });
+    }
+    this.save();
+  }
+
+  rerollOffer(kind) {
+    const out = rerollQuests(this.state, kind);
+    if (!out.ok) {
+      audio.denied();
+      if (out.reason === 'poor') {
+        this.toaster.show({
+          title: 'Not enough leafs',
+          body: `A fresh offer costs ${REROLL_COST}.`,
+          kind: 'warn',
+          icon: '🍃',
+        });
+      }
+      return;
+    }
+    audio.buy();
+    this.save();
+  }
+
+  /** Everything finished, in one tap instead of a column of identical ones. */
+  claimAllQuests() {
+    const ready = activeQuests(this.state).filter((q) => q.done && !q.claimed);
+    if (!ready.length) return;
+    for (const quest of ready) this.claimQuest(quest.id, { quiet: true });
+
+    audio.achievement();
+    this.toaster.show({
+      title: `${ready.length} quests done`,
+      body: 'All collected.',
+      kind: 'achievement',
+      icon: '✅',
+    });
+  }
+
+  claimQuest(id, { quiet = false } = {}) {
     const reward = claimQuest(this.state, id);
     if (!reward) {
       audio.denied();
@@ -427,6 +486,7 @@ class Game {
     }
     const grant = grantReward(this.state, reward, this.derived);
     this.state.stats.questsDone = (this.state.stats.questsDone || 0) + 1;
+    if (quiet) return;
     audio.buy();
     this.toaster.show({
       title: 'Quest done',
@@ -1809,7 +1869,56 @@ class Game {
     if (!this.boardCache || this.boardCache.day !== day) {
       this.boardCache = { day, rivals: rivalsFor(now) };
     }
-    return leaderboard(this.state, now, this.boardCache.rivals);
+    const out = leaderboard(this.state, now, this.boardCache.rivals);
+    // Hand the cached rivals along so the bracket does not rebuild all sixty
+    // loadouts a second time on the same frame.
+    out.cached = this.boardCache.rivals;
+    return out;
+  }
+
+  /**
+   * Enter this week's bracket, or collect the placement from one already run.
+   *
+   * One button for both, because from the player's side it is one thing: the
+   * bracket is the thing on this screen you can act on, and what acting means
+   * depends only on whether you have been yet.
+   */
+  doBracket() {
+    const now = Date.now();
+    const status = bracketStatus(this.state, now, this.boardCache?.rivals);
+
+    if (!status.entered) {
+      const out = enterBracket(this.state, now, this.boardCache?.rivals);
+      if (!out.ok) {
+        audio.denied();
+        return;
+      }
+      audio.levelUp();
+      const wins = out.wins;
+      this.toaster.show({
+        title: `${['Fourth', 'Third', 'Second', 'First'][wins]} place`,
+        body: `${wins} of ${out.results.length} won. ${out.reward.text}.`,
+        kind: 'achievement',
+        icon: '🏅',
+      });
+      this.save();
+      return;
+    }
+
+    const claim = claimBracket(this.state, now);
+    if (!claim.ok) {
+      audio.denied();
+      return;
+    }
+    const grant = grantReward(this.state, claim.reward, this.derived);
+    audio.achievement();
+    this.toaster.show({
+      title: 'Bracket collected',
+      body: describeGrant(grant, fmt),
+      kind: 'achievement',
+      icon: '🏅',
+    });
+    this.save();
   }
 
   inspectRival(id) {
