@@ -233,17 +233,28 @@ export function isWalled(stage, dps, seconds = WALL_SECONDS) {
   return timeToKillBoss(stage, dps) > seconds;
 }
 
-/** Essence paid by a rebirth, scaling off the deepest stage reached. */
+/**
+ * Essence paid by a rebirth, scaling off the deepest stage reached.
+ *
+ * 8·s^1.70, not the 12·s^1.45 it was. The two curves cross around stage 5: a
+ * shallow rebirth now pays less (stage 3: 51 against 59) and a deep one pays a
+ * great deal more (stage 20: 1,302 against 924). That is the whole intent —
+ * pushing one stage further should beat pressing the button one more time, and
+ * under the flatter curve it did not.
+ */
+export const ESSENCE_COEFFICIENT = 8;
+export const ESSENCE_EXPONENT = 1.7;
+
 export function essenceFromStage(deepestStage, bonusMult = 1) {
   const s = Math.max(0, deepestStage);
   if (s <= 0) return 0;
-  return Math.floor(12 * Math.pow(s, 1.45) * bonusMult);
+  return Math.floor(ESSENCE_COEFFICIENT * Math.pow(s, ESSENCE_EXPONENT) * bonusMult);
 }
 
 /** Deepest stage needed to reach a given essence payout — for the "next at" hint. */
 export function stageForEssence(targetEssence, bonusMult = 1) {
   if (targetEssence <= 0) return 0;
-  return Math.pow(targetEssence / (12 * bonusMult), 1 / 1.45);
+  return Math.pow(targetEssence / (ESSENCE_COEFFICIENT * bonusMult), 1 / ESSENCE_EXPONENT);
 }
 
 /** Elemental triangle: 1.5x strong, 0.75x weak, 1x neutral. */

@@ -105,6 +105,7 @@ export class Combat {
     this.add = null; // { hp, maxHp } while an escort is alive
     this.enrage = 0; // attack-speed multiplier from an impatient boss
     this.fightTime = 0;
+    this.bossClock = 0; // seconds left to finish a boss; 0 for anything else
   }
 
   /** Start (or restart) the fight at the state's current stage. */
@@ -138,6 +139,11 @@ export class Combat {
     this.add = null;
     this.ward = null;
     this.pattern = this.enemy.boss ? patternForStage(this.enemy.stage) : null;
+    // Thirty seconds, and now it is a real clock rather than a figure the wall
+    // detector quotes at you. Only bosses carry one — an ordinary level you
+    // cannot finish is a level you retreat from, which RETREAT_AFTER_LOSSES
+    // already handles.
+    this.bossClock = this.enemy.boss ? B.WALL_SECONDS : 0;
 
     if (this.pattern) this.openPattern();
     this.emit({ kind: 'engage', enemy: this.enemy, pattern: this.pattern });
@@ -208,6 +214,16 @@ export class Combat {
     }
 
     this.fightTime += dt;
+
+    // Checked before the swings so the boundary is unambiguous: the boss is
+    // still standing at thirty seconds, so the run is over. Letting the final
+    // frame's damage land first would make the limit 30 seconds plus one tick,
+    // which is the kind of edge that only shows up in a bug report.
+    if (this.bossClock > 0) {
+      this.bossClock -= dt;
+      if (this.bossClock <= 0) return this.timeOut();
+    }
+
     this.focus = Math.max(0, this.focus - FOCUS_DECAY * dt);
     this.tickPattern(dt);
 
@@ -465,6 +481,14 @@ export class Combat {
 
       onReward?.({ depth, stage: cleared.stage, enemy: cleared });
 
+      // Held here after a boss ran out the clock: the kill still pays, but the
+      // fight does not walk you back up to the thing that beat you. Going on is
+      // a press of Forward.
+      if (this.state.combat.holding) {
+        this.emit({ kind: 'held', depth });
+        return;
+      }
+
       // There is no last depth. This is the point of the update.
       this.state.combat.depth = depth + 1;
       // bestDepth is the furthest *reached*, not the furthest cleared — it has
@@ -489,10 +513,43 @@ export class Combat {
     }
   }
 
+  /**
+   * The boss outlasted you.
+   *
+   * You go back a whole stage — to the last level of the stage below, which is
+   * that stage's boss and therefore something you have already proved you can
+   * beat. And you *stay* there: `holding` stops the fight walking forward on
+   * its own, so climbing back up is a decision you make rather than something
+   * that happens to you while you are looking at another tab.
+   *
+   * Nothing is paid out and nothing is lost beyond the ground. The boss keeps
+   * its full health, because a boss you softened and then ran out of time on is
+   * a boss you did not beat.
+   */
+  timeOut() {
+    this.settled = true; // there is nothing to settle: no reward, no defeat
+    this.state.combat.bossTimeouts = (this.state.combat.bossTimeouts || 0) + 1;
+
+    const from = this.state.combat.depth;
+    const back = Math.max(0, from - LEVELS_PER_STAGE);
+    this.state.combat.depth = back;
+    this.state.combat.holding = true;
+    this.losses = 0;
+
+    this.emit({ kind: 'timeout', boss: this.enemy, from, depth: back });
+
+    this.enemy = null;
+    this.phase = 'idle';
+  }
+
   /** Jump to a depth the player has already reached. No upper bound but theirs. */
   travelTo(depth) {
     const target = B.clamp(Math.floor(depth), 0, this.state.combat.bestDepth);
     this.state.combat.depth = target;
+    // Travelling is the deliberate act the hold is waiting for. Clearing it
+    // here rather than only on Forward means walking back on purpose also
+    // releases it — being stuck in two ways at once is one way too many.
+    this.state.combat.holding = false;
     this.losses = 0;
     this.phase = 'idle';
     this.enemy = null;
@@ -512,6 +569,11 @@ export class Combat {
       add: this.add ? this.add.hp / this.add.maxHp : null,
       enraged: this.enrage > 0,
       pattern: this.pattern,
+      // null for anything that is not a boss, so the panel can tell "no clock"
+      // from "no time left".
+      bossTime: this.enemy?.boss ? Math.max(0, this.bossClock) : null,
+      bossLimit: B.WALL_SECONDS,
+      holding: !!this.state.combat.holding,
     };
   }
 

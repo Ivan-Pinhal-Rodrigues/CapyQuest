@@ -654,3 +654,41 @@
 @media (max-width: 520px) {
   .battle__canvas { height: 124px; }
 }
+
+/* ------------------------------------------------------------- boss clock */
+
+.bossclock {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.bossclock__label {
+  min-width: 4.2rem;
+  font-family: var(--font-pixel);
+  font-size: 0.44rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.bossclock__track {
+  flex: 1;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.bossclock__track__fill {
+  height: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--zen), var(--gold));
+  transition: transform 120ms linear;
+}
+
+/* Under ten seconds it stops being decoration. */
+.bossclock.is-urgent .bossclock__label { color: var(--danger); }
+.bossclock.is-urgent .bossclock__track__fill {
+  background: linear-gradient(90deg, var(--danger), #ff8a9c);
+}

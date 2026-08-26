@@ -67,11 +67,22 @@ export function reachableStage(stats, fromStage = 0, lookahead = 40) {
 }
 
 /**
+ * The shallowest stage a rebirth will unlock at.
+ *
+ * Was 1, which meant a player who bounced off the stage-1 boss could rebirth
+ * for twelve essence and learn that the reset is something you do rather than
+ * something you earn. The measured first wall is stage 7, so this never blocks
+ * a player who is actually stuck — it only stops the button appearing before
+ * the run has been a run.
+ */
+export const REBIRTH_MIN_STAGE = 3;
+
+/**
  * Should the game be telling the player to rebirth? True once they are walled
  * *and* have enough depth behind them for the reset to pay something.
  */
 export function shouldSuggestRebirth(state, stats) {
   const { stage } = depthInfo(state.combat.depth);
-  if (stage < 1) return false;
+  if (stage < REBIRTH_MIN_STAGE) return false;
   return assess(stage, stats).walled;
 }

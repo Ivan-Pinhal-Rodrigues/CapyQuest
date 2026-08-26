@@ -26,16 +26,35 @@ import { createState } from '../state.js';
 import { collectCache } from './cache.js';
 import { CONSTELLATIONS_BY_ID, FIGURES, isFigureLit, litFigures, rankCost } from '../data/constellations.js';
 
-export const ASCEND_MIN_ESSENCE = 5000;
+/**
+ * What ascending costs, and why it costs more than it did.
+ *
+ * The gate was 5,000 lifetime essence and nothing else, which a player reached
+ * by pressing Rebirth enough times — the count, not the depth. Ascension is the
+ * *second* reset and it takes the tree, so arriving at it by repetition made it
+ * the cheapest thing in the game to reach and the least interesting to reach.
+ *
+ * Three times the essence, and a rebirth count as well: you have to have
+ * actually run the loop, not merely accumulated from it.
+ */
+export const ASCEND_MIN_ESSENCE = 15000;
+export const ASCEND_MIN_REBIRTHS = 8;
 
 /** Depth per ascension you keep, and the most you can ever bank. */
 export const FLOOR_PER_ASCENSION = 12;
 export const FLOOR_MAX = 120;
 
-/** Lotus awarded for ascending, from lifetime essence. */
+/**
+ * Lotus awarded for ascending, from lifetime essence.
+ *
+ * Rebased on the new gate and paying roughly double the old curve at every
+ * point — three at the gate rather than one, a hundred and fifty at two million
+ * rather than sixty-six. A harder button that paid the same would just be a
+ * worse button.
+ */
 export function lotusFromEssence(lifetimeEssence) {
   if (lifetimeEssence < ASCEND_MIN_ESSENCE) return 0;
-  return Math.floor(Math.pow(lifetimeEssence / ASCEND_MIN_ESSENCE, 0.7));
+  return Math.floor(3 * Math.pow(lifetimeEssence / ASCEND_MIN_ESSENCE, 0.8));
 }
 
 /**
@@ -66,11 +85,15 @@ export function ascendPreview(state) {
   const fromEssence = lotusFromEssence(state.lifetimeEssence);
   const fromDepth = lotusFromDepth(state);
   const lotus = fromEssence + fromDepth;
+  const rebirths = state.rebirthCount || 0;
+  const rebirthsShort = Math.max(0, ASCEND_MIN_REBIRTHS - rebirths);
   return {
     lotus,
     fromEssence,
     fromDepth,
-    canAscend: state.lifetimeEssence >= ASCEND_MIN_ESSENCE && lotus > 0,
+    rebirths,
+    rebirthsShort,
+    canAscend: state.lifetimeEssence >= ASCEND_MIN_ESSENCE && rebirthsShort === 0 && lotus > 0,
     needed: Math.max(0, ASCEND_MIN_ESSENCE - state.lifetimeEssence),
     // Where the *next* run will begin, which is the number that tells a player
     // this ascension is not the last one over again.
@@ -80,7 +103,9 @@ export function ascendPreview(state) {
 
 export function ascend(state, now = Date.now()) {
   const preview = ascendPreview(state);
-  if (!preview.canAscend) return { ok: false, reason: 'tooSoon' };
+  if (!preview.canAscend) {
+    return { ok: false, reason: preview.rebirthsShort > 0 ? 'rebirths' : 'tooSoon', preview };
+  }
 
   // The tank holds zen, and zen does not survive this. Rather than let a full
   // cache evaporate unnoticed, it is banked first: the lifetime counters that
@@ -93,6 +118,11 @@ export function ascend(state, now = Date.now()) {
   // ascension straight after a long run must not lose the run.
   state.stats.totalDepth = (state.stats.totalDepth || 0) + (state.combat.bestDepth || 0);
   state.stats.deepestEver = Math.max(state.stats.deepestEver || 0, state.combat.bestDepth || 0);
+
+  // Ascension takes your rebirths — that is the price, and it is now a stated
+  // one. The count still has to be recoverable afterwards, or "how many times
+  // have you gone round" becomes unanswerable the moment you go round once.
+  state.stats.lifetimeRebirths = (state.stats.lifetimeRebirths || 0) + (state.rebirthCount || 0);
 
   const floor = Math.min(FLOOR_MAX, (state.ascendCount + 1) * FLOOR_PER_ASCENSION);
   const fresh = createState(now);

@@ -32,7 +32,7 @@ import {
 } from '../src/systems/tree.js';
 import { rebirth, rebirthPreview, essenceGainMult, noteWall, deepestStage } from '../src/systems/rebirth.js';
 import {
-  ascend, ascendPreview, ASCEND_MIN_ESSENCE,
+  ascend, ascendPreview, ASCEND_MIN_ESSENCE, ASCEND_MIN_REBIRTHS,
   FLOOR_MAX, FLOOR_PER_ASCENSION, depthFloor, figureEffects, figureStatus,
   lotusFromDepth,
 } from '../src/systems/ascension.js';
@@ -395,6 +395,7 @@ test('ascension is refused below the essence threshold', () => {
 test('ascension takes the essence and the tree but never the collection', () => {
   const s = createState();
   s.lifetimeEssence = ASCEND_MIN_ESSENCE * 40;
+  s.rebirthCount = ASCEND_MIN_REBIRTHS;
   s.essence = 900;
   s.tree.warmStone = 1;
   s.tree.deepRoots = 4;
@@ -435,11 +436,13 @@ test('ascending pays for ground covered as well as for essence', () => {
   // function of how often you pressed Rebirth rather than of how far you got.
   const shallow = readyToRebirth();
   shallow.lifetimeEssence = ASCEND_MIN_ESSENCE * 4;
+  shallow.rebirthCount = ASCEND_MIN_REBIRTHS;
   shallow.stats.totalDepth = 0;
   shallow.combat.bestDepth = 0;
 
   const travelled = readyToRebirth();
   travelled.lifetimeEssence = ASCEND_MIN_ESSENCE * 4;
+  travelled.rebirthCount = ASCEND_MIN_REBIRTHS;
   travelled.stats.totalDepth = 4000;
   travelled.combat.bestDepth = 300;
 
@@ -463,6 +466,7 @@ test('each ascension starts the next run deeper, up to a cap', () => {
   // multipliers, which is a treadmill.
   const s = readyToRebirth();
   s.lifetimeEssence = ASCEND_MIN_ESSENCE * 10;
+  s.rebirthCount = ASCEND_MIN_REBIRTHS;
   assert.equal(depthFloor(s), 0, 'a first-time player should start at the beginning');
 
   assert.equal(ascend(s).ok, true);
@@ -485,6 +489,7 @@ test('the floor stops well short of where an ascending player is walled', () => 
 test('an ascension banks the run it ends, so a long run is never lost', () => {
   const s = readyToRebirth();
   s.lifetimeEssence = ASCEND_MIN_ESSENCE * 10;
+  s.rebirthCount = ASCEND_MIN_REBIRTHS;
   s.combat.bestDepth = 500;
   s.stats.totalDepth = 1000;
   ascend(s);

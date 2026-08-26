@@ -25,7 +25,7 @@ import { HATS } from '../src/data/cosmetics.js';
 import { budget, MAX_TIER } from '../src/data/rarities.js';
 import { statsFor, gearScore, GEAR_BY_ID } from '../src/data/gear.js';
 import { rebirth } from '../src/systems/rebirth.js';
-import { ascend } from '../src/systems/ascension.js';
+import { ascend, ASCEND_MIN_REBIRTHS } from '../src/systems/ascension.js';
 
 /** A save with three companions in the party and a stocked bag. */
 function crewed() {
@@ -364,6 +364,7 @@ test('crew gear survives a rebirth and an ascension', () => {
 
   s.lifetimeEssence = 1e9;
   s.essence = 1e9;
+  s.rebirthCount = ASCEND_MIN_REBIRTHS;
   const ascended = ascend(s);
   assert.equal(ascended.ok, true, 'the ascension should have gone through');
   assert.equal(s.companionGear.length, 1, 'the bag was emptied by an ascension');

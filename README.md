@@ -33,9 +33,10 @@ choose is the kit, the three skills, the elemental stance, and whether to cast b
 Bosses drop summon tickets. Twenty-four capybaras can be summoned, three of them fight alongside
 you, and the pity counter is on screen the whole time.
 
-Eventually a boss will not fall inside thirty seconds, and the game says so out loud. That is
-Rebirth: start the run again, paid in Essence for how deep you got, and spend it on a tree of 210
-nodes that no reset can take back.
+Eventually a boss will not fall inside thirty seconds — and thirty seconds is a real clock, not a
+warning. Run it out and the boss keeps its full health, you go back a whole stage, and the fight
+stops advancing until you press Forward. That is the run over. Rebirth is the answer: start again,
+paid in Essence for how deep you got, and spend it on a tree of 210 nodes no reset can take back.
 
 Beyond that is the Still Point. Ascending takes the Essence and the whole tree and pays Lotus —
 counted from the ground you covered across every run, not only from how often you pressed the

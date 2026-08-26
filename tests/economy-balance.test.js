@@ -54,7 +54,13 @@ test('the rebirth payout rises with depth and never flattens', () => {
   // Two stages deeper is always worth more than one, but a single deep run must
   // not replace several shallow ones.
   assert.ok(B.essenceFromStage(20) < 2 * B.essenceFromStage(10) * 2);
-  assert.equal(B.essenceFromStage(10), 338, 'quoted in docs/BALANCE.md');
+  assert.equal(B.essenceFromStage(10), 400, 'quoted in docs/BALANCE.md');
+  // The point of the steeper curve: going deeper beats going again. A run that
+  // reaches stage 14 must out-pay two runs that stop at 7.
+  assert.ok(
+    B.essenceFromStage(14) > 2 * B.essenceFromStage(7),
+    'one deep run should beat two shallow ones at double the depth',
+  );
 });
 
 test('the daily leaf grant is nearly one case, and never quite one', () => {

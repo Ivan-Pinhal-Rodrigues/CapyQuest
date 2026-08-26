@@ -1697,18 +1697,36 @@ class Game {
     const preview = ascendPreview(this.state);
     if (!preview.canAscend) {
       audio.denied();
+      // Saying which of the two gates is short beats a button that does
+      // nothing. The essence one is on the panel; the rebirth one was not.
+      if (preview.rebirthsShort > 0) {
+        this.toaster.show({
+          title: 'Not yet',
+          body: `${preview.rebirthsShort} more rebirth${preview.rebirthsShort === 1 ? '' : 's'} before the Still Point opens.`,
+          kind: 'info',
+          icon: '🪷',
+        });
+      }
       return;
     }
 
     const body = el('div', 'confirm');
     body.appendChild(el('p', 'confirm__gain', `+${fmtInt(preview.lotus)} lotus`));
     body.appendChild(el('p', 'confirm__lead', 'Ascending takes more than a rebirth. You lose:'));
-    body.appendChild(list(['everything rebirth takes', 'all your essence', 'every rank in the tree']));
+    body.appendChild(list([
+      'everything rebirth takes',
+      'all your essence',
+      'every rank in the tree',
+      // The one the old dialog never said out loud, which is the one that
+      // surprises people: the counter goes back to zero.
+      `all ${fmtInt(preview.rebirths)} of your rebirths — the count starts again`,
+    ]));
     body.appendChild(el('p', 'confirm__lead', 'You keep:'));
-    body.appendChild(list(['all constellations, and the lotus you are about to earn', 'every companion and trophy']));
-    body.appendChild(
-      el('p', 'confirm__warn', 'This layer is still being built. Constellations are strong enough to be worth it.'),
-    );
+    body.appendChild(list([
+      'all constellations, and the lotus you are about to earn',
+      'every companion, every look and every trophy',
+      `a starting depth of stage ${Math.floor(preview.floor / 10) + 1}, so the next run begins deeper`,
+    ]));
 
     openModal({
       title: 'Reach the Still Point?',

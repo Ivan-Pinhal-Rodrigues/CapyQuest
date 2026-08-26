@@ -141,6 +141,43 @@ Bosses start their swing counter part-wound so their second swing telegraphs. Or
 in a handful of seconds and a first heavy on swing four often never arrives — which would mean the
 player first meets bracing under boss pressure.
 
+## The boss clock
+
+Thirty seconds was a figure the wall detector quoted at you. A boss that took fifty seconds still
+died — slowly, while you were on another tab — and the banner suggested you rebirth. **Phase 18
+made it a real clock.**
+
+| | |
+|---|---|
+| Limit | `WALL_SECONDS` = 30, boss levels only |
+| On expiry | back one whole stage, to the previous stage's boss |
+| And then | `combat.holding` — the fight stops advancing until you press Forward |
+| Paid out | nothing; the boss keeps its full health |
+
+What the timer changes, on the same simulated player the wall figures come from:
+
+| Stage | Boss TTK | Before | Now |
+|---|---|---|---|
+| 6 | 21.2s | fine | fine |
+| 7 | 44.3s | slow but dies | **impossible** |
+| 8 | 19.0s | fine | fine |
+| 10 | 30.0s | slow but dies | **impossible** |
+| 11 | 48.9s | slow but dies | **impossible** |
+
+So the sawtooth in the difficulty curve stops being cosmetic: a stage whose boss goes over thirty
+seconds is now a stop, not a slow patch. That is the intent — the wall was always meant to be the
+end of a run, and until now it was a suggestion.
+
+**Two failures, punished differently.** Dying three times walks you back one level
+(`RETREAT_AFTER_LOSSES`); running the clock out costs a whole stage and holds you. They are
+genuinely different situations — one is "this hurts", the other is "this cannot be finished" — and
+a test asserts they stay distinct. The first draft of that test confused them and passed while
+asserting nothing.
+
+**The hold is the part that needed care.** Being sent back is a punishment; being sent back *and*
+walked straight into the same boss again by auto-battle is a loop. So the fight stops advancing
+until you press Forward. Wins still pay while held — it is the ground you lose, not the reward.
+
 ## The rebirth wall
 
 Rebirth unlocks when the current stage's boss cannot be killed inside `WALL_SECONDS = 30`,
@@ -188,17 +225,27 @@ one.
 ## Rebirth payout
 
 ```
-essence = floor(12 · deepestStage^1.45 · gainMult)
+essence = floor(8 · deepestStage^1.70 · gainMult)
 ```
 
 | Deepest stage | 1 | 5 | 10 | 20 | 50 | 100 | 500 |
 |---|---|---|---|---|---|---|---|
-| Essence | 12 | 123 | 338 | 924 | 3,488 | 9,531 | 98,330 |
+| Essence | 8 | 123 | 400 | 1,302 | 6,184 | 20,095 | 309,983 |
 
 Paying off depth rather than currency means the reset rewards the thing that actually
-walled you. The curve is sub-linear per stage and super-linear overall, so going two stages
-deeper is always worth more than going one, but never enough to make a single deep run
-replace several shallow ones.
+walled you.
+
+**The exponent went from 1.45 to 1.70 in phase 18**, and the coefficient from 12 to 8 to
+keep the two curves crossing around stage 5. Shallow rebirths now pay less (stage 3: 51
+against 59) and deep ones a great deal more (stage 20: 1,302 against 924). Under the flatter
+curve, pressing the button again beat pushing one stage further — which is the wrong
+incentive for a reset that exists to reward depth. A run reaching stage 14 now out-pays two
+runs that stop at 7, and a test asserts it.
+
+Rebirth also no longer unlocks below **stage 3** (`REBIRTH_MIN_STAGE`). The measured first
+wall is stage 7, so this never blocks a player who is genuinely stuck; it stops a player who
+bounced off the stage-1 boss learning that the reset is something you do rather than
+something you earn.
 
 ## The tree, and what makes it a build
 
@@ -257,11 +304,32 @@ with no reason to exist that Rebirth did not already provide.
 
 | | |
 |---|---|
-| Opens at | 5,000 lifetime Essence |
-| Lotus from Essence | `floor((lifetime / 5000) ^ 0.7)` |
+| Opens at | **15,000 lifetime Essence *and* 8 rebirths** |
+| Lotus from Essence | `floor(3 · (lifetime / 15000) ^ 0.8)` |
 | Lotus from depth | `floor((total depth / 60) ^ 0.8)` |
 | Depth floor per ascension | **12 levels**, capped at 120 |
 | Constellations | 12, in **4 figures of three** |
+
+**Phase 18 tripled the essence gate and added a rebirth count to it.** The old gate was 5,000
+lifetime essence and nothing else — a number you reached by pressing Rebirth enough times, not by
+going anywhere. Ascension is the *second* reset and it takes the whole tree, so arriving at it by
+repetition made it the cheapest thing in the game to reach and the least interesting to reach.
+
+The payout was rebased on the new gate and roughly doubled at every point, because a harder button
+that paid the same is just a worse button:
+
+| Lifetime essence | 15,000 | 30,000 | 60,000 | 150,000 | 500,000 | 2,000,000 |
+|---|---|---|---|---|---|---|
+| Lotus, before | 2 | 3 | 5 | 10 | 25 | 66 |
+| Lotus, now | **3** | **5** | **9** | **18** | **49** | **150** |
+
+The whole constellation board costs 520 Lotus, so lighting all twelve is a genuine endgame rather
+than something the third ascension pays for.
+
+**Ascending takes your rebirth count, and the dialog now says so.** It always did — `rebirthCount`
+is absent from the keep list in `systems/ascension.js` — but the confirmation listed "everything
+rebirth takes" and left the counter going to zero as a surprise. `stats.lifetimeRebirths` keeps the
+record across the reset, so "how many times have you gone round" stays answerable.
 
 Both halves of the payout are sub-linear and are **added, not multiplied**. Sub-linear so that a
 hundred shallow rebirths never out-pay going deep — if depth paid linearly the optimal play would

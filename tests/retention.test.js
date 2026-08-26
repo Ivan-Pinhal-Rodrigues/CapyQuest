@@ -509,6 +509,7 @@ test('rebirth keeps the streak, quests, chest and pass', () => {
 test('ascension keeps them too', () => {
   const s = createState();
   s.lifetimeEssence = 500000;
+  s.rebirthCount = 20;
   checkLogin(s, TUESDAY);
   s.pass.xp = 900;
   s.codes.yuzu = 1;

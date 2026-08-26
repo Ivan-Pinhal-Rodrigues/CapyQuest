@@ -98,6 +98,15 @@ export class BattlePanel {
     // be under a thumb rather than somewhere below the fold.
     this.fightbar = div('fightbar');
 
+    // The boss clock. Thirty seconds is a rule now, not a figure quoted at you
+    // in a warning banner, so it needs to be visible while it runs down.
+    this.clockRow = div('bossclock');
+    this.clockLabel = div('bossclock__label');
+    this.clockBar = bar('bossclock__track');
+    this.clockRow.append(this.clockLabel, this.clockBar.wrap);
+    this.clockRow.hidden = true;
+    this.fightbar.appendChild(this.clockRow);
+
     this.tellRow = div('tell');
     this.tellLabel = div('tell__label', 'Brace!');
     this.tellBar = bar('tellbar');
@@ -264,6 +273,17 @@ export class BattlePanel {
   updateFight(state, combat) {
     const p = combat.progress();
 
+    // --- the boss clock
+    const onClock = p.bossTime !== null;
+    if (this.clockRow.hidden === onClock) this.clockRow.hidden = !onClock;
+    if (onClock) {
+      const left = p.bossTime;
+      this.clockBar.fill.style.transform = `scaleX(${Math.max(0, left / p.bossLimit)})`;
+      // Under ten seconds it stops being a bar and starts being a number.
+      setText(this.clockLabel, left <= 10 ? `${left.toFixed(1)}s left` : `${Math.ceil(left)}s`);
+      this.clockRow.classList.toggle('is-urgent', left <= 10);
+    }
+
     // --- the wind-up. The bar drains, so it reads as time running out.
     const winding = !!p.winding;
     if (this.tellRow.hidden === winding) this.tellRow.hidden = !winding;
@@ -334,11 +354,27 @@ export class BattlePanel {
   updateWall(state, stats, stage) {
     const report = assess(stage, stats);
     const walled = report.walled && stage >= 1;
+    const held = !!state.combat.holding;
 
-    this.wall.hidden = !walled && report.pressure < 0.55;
+    this.wall.hidden = !walled && !held && report.pressure < 0.55;
     if (this.wall.hidden) return;
 
-    this.wall.classList.toggle('is-walled', walled);
+    this.wall.classList.toggle('is-walled', walled || held);
+
+    // Being held is the more immediate fact — it explains why the fight has
+    // stopped moving, which is the question the player actually has.
+    if (held) {
+      const times = state.combat.bossTimeouts || 0;
+      setText(this.wallTitle, 'Held here');
+      setText(
+        this.wallBody,
+        `A boss ran the clock out${times > 1 ? ` — ${times} times now` : ''}. `
+        + 'Press Forward when you are ready to go back up.',
+      );
+      this.wallFill.style.transform = `scaleX(${Math.min(1, report.ttk / report.seconds)})`;
+      return;
+    }
+
     setText(
       this.wallTitle,
       walled ? 'You are stuck here' : 'This boss is getting slow',
@@ -383,6 +419,10 @@ export class BattlePanel {
         );
       } else if (ev.kind === 'defeat') {
         this.logLine('You went down. Getting back up.', 'lose');
+      } else if (ev.kind === 'timeout') {
+        this.logLine(`${ev.boss.name} outlasted you. Back to level ${ev.depth + 1}.`, 'lose');
+      } else if (ev.kind === 'held') {
+        this.logLine('Held here. Press Forward to go on.', 'lose');
       } else if (ev.kind === 'retreat') {
         this.logLine(`Fell back to level ${ev.depth + 1}.`, 'lose');
       } else if (ev.kind === 'skill') {

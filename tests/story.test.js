@@ -169,6 +169,7 @@ test('every beat is reachable from some state the game can be in', () => {
   s.rebirthUnlocked = true;
   s.rebirthCount = 20;
   s.lifetimeEssence = 50000;
+  s.rebirthCount = 20;
 
   const due = dueBeats(s);
   for (const b of BEATS) {
@@ -210,6 +211,7 @@ test('a rebirth never makes you sit through the story again', () => {
 test('an ascension does not take the story either', () => {
   const s = createState();
   s.lifetimeEssence = 1e6;
+  s.rebirthCount = 20;
   markSeen(s, 'wake');
   s.story.onboarded = true;
   s.profile.name = 'Kettle Jr';

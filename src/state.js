@@ -172,6 +172,9 @@ export function createState(now = Date.now()) {
       chestsOpened: 0,
       rebirths: 0,
       ascensions: 0,
+      // Rebirths across every ascension. `rebirthCount` is wiped by ascending —
+      // that is the price of it — so this is where the record lives.
+      lifetimeRebirths: 0,
 
       // Depth across every run there has ever been. `combat.bestDepth` resets
       // with each rebirth, so without these there is no record of how far the
@@ -201,6 +204,10 @@ export function createState(now = Date.now()) {
       // Skills firing themselves. On by default: turning it off is opting in to
       // work, and must never be something the game does to you.
       autoCast: true,
+      // Set when a boss runs the thirty-second clock out. While it is on, the
+      // fight stops walking you forward on its own — climbing back up is a
+      // press of Forward. Cleared by travelling anywhere on purpose.
+      holding: false,
       unlocked: false,
       // Leaf starts neutral against the first zone. Opening the game at a
       // disadvantage would teach the wrong lesson about a mechanic nobody has
@@ -210,6 +217,7 @@ export function createState(now = Date.now()) {
       shards: 0,
       clears: 0,
       bossKills: 0,
+      bossTimeouts: 0,
       inventory: [], // [{ uid, id, forge }]
       equipped: {}, // slot -> uid
       skills: [], // up to SKILL_SLOTS ids
@@ -500,9 +508,10 @@ export function reconcileState(state, now = Date.now()) {
   delete out.combat.stage;
   delete out.combat.bestStage;
 
-  for (const key of ['depth', 'bestDepth', 'xp', 'shards', 'clears', 'bossKills']) {
+  for (const key of ['depth', 'bestDepth', 'xp', 'shards', 'clears', 'bossKills', 'bossTimeouts']) {
     out.combat[key] = safeNumber(out.combat[key]);
   }
+  out.combat.holding = !!out.combat.holding;
   // You can only be standing somewhere you have actually reached.
   out.combat.depth = Math.min(out.combat.depth, out.combat.bestDepth);
 

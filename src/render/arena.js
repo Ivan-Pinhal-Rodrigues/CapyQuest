@@ -179,6 +179,15 @@ export class Arena {
           this.player.mood = 'blink';
           break;
 
+        // Not a defeat: nothing hit you, you simply ran out of time. The boss
+        // stays standing and unhurt, which is the whole point of it.
+        case 'timeout':
+          this.player.sunk = 1;
+          this.player.mood = 'blink';
+          this.enemyState.flash = 0;
+          this.spawn('enrage', { life: 1.2 });
+          break;
+
         default:
           break;
       }
