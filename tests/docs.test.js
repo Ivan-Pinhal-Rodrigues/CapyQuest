@@ -66,3 +66,50 @@ test('every doc the README points at is actually there', () => {
     assert.doesNotThrow(() => read(path), `README points at ${path}, which does not exist`);
   }
 });
+
+test('the postmortem exists and names the bug it is mostly about', () => {
+  // A postmortem that quietly drops the most embarrassing finding is a
+  // marketing document. This one has to keep naming the generator ladder.
+  const doc = read('docs/POSTMORTEM.md');
+  assert.ok(doc.includes('skyTerrace'), 'the generator bug is not in the postmortem');
+  assert.ok(doc.includes('capySingularity'));
+  assert.ok(/balance pass/i.test(doc), 'the postmortem does not say why the balance pass missed it');
+});
+
+test('the README does not describe the game as unfinished', () => {
+  // Every "coming soon" in this project has been either built or removed. A
+  // stale one in the README is a promise nobody is going to keep.
+  //
+  // Quoted mentions are fine and are excluded: the changelog says the "still
+  // being built" banner is *gone*, which is the opposite of a live claim.
+  const readme = read('README.md').toLowerCase().replace(/["“”][^"“”]*["“”]/g, '');
+  for (const phrase of ['still being built', 'coming soon', 'work in progress', 'v2 in progress']) {
+    assert.ok(!readme.includes(phrase), `README still says "${phrase}"`);
+  }
+});
+
+test('the font stylesheet does not block the first paint', () => {
+  // It did, and it cost 12.6 seconds to the load event when the CDN was
+  // unreachable — against 19ms to interactive. The game is playable in its
+  // fallback fonts; a slow font CDN should cost the typeface, not the page.
+  const html = read('index.html');
+  // Whole tags, not lines — the real one is wrapped across two. And the
+  // <noscript> copy is deliberately blocking: with scripts off the onload
+  // swap cannot fire, so a plain stylesheet is the only thing that works.
+  const withoutNoscript = html.replace(/<noscript>[\s\S]*?<\/noscript>/g, '');
+  const tags = withoutNoscript.match(/<link\b[^>]*>/g) || [];
+  const fontLinks = tags.filter((t) => t.includes('fonts.googleapis.com/css2'));
+
+  assert.equal(fontLinks.length, 1, `expected one font stylesheet, found ${fontLinks.length}`);
+  assert.ok(
+    fontLinks[0].includes('media="print"'),
+    'the font stylesheet is render-blocking again',
+  );
+});
+
+test('the document has exactly one h1, and it is the game', () => {
+  const html = read('index.html');
+  const h1s = html.match(/<h1\b/g) || [];
+  assert.equal(h1s.length, 1, `found ${h1s.length} h1 elements`);
+  assert.ok(/<h1 class="hud__title">CapyQuest<\/h1>/.test(html));
+});

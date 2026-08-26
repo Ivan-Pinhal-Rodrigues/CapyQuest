@@ -88,6 +88,12 @@ export class Tabs {
       btn.classList.toggle('is-active', active);
       btn.setAttribute('aria-selected', active ? 'true' : 'false');
       btn.tabIndex = active ? 0 : -1;
+      // Set here rather than in the markup: a group tab does not control one
+      // fixed panel, it controls whichever of its sections is showing, so a
+      // static id in the HTML would point at something that does not exist.
+      const shown = btn.dataset.tab === group ? section : this.remembered.get(btn.dataset.tab);
+      const panelId = this.panels[shown || this.groups.get(btn.dataset.tab)?.[0]]?.id;
+      if (panelId) btn.setAttribute('aria-controls', panelId);
     }
     // Opening a group clears every badge inside it: you are looking at it now,
     // even if the thing that was waiting is on the sibling section.
@@ -126,6 +132,7 @@ export class Tabs {
       btn.dataset.section = id;
       btn.textContent = this.panels[id]?.dataset.label || id;
       btn.setAttribute('role', 'tab');
+      if (this.panels[id]?.id) btn.setAttribute('aria-controls', this.panels[id].id);
       const on = id === active;
       btn.classList.toggle('is-active', on);
       btn.setAttribute('aria-selected', on ? 'true' : 'false');

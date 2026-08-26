@@ -5,9 +5,13 @@ many upgrades.
 
 Play it at **[ivan-pinhal-rodrigues.github.io/CapyQuest](https://ivan-pinhal-rodrigues.github.io/CapyQuest/)**.
 
-> **v2 in progress.** This repo is the expanded game — infinite stages, rebirth, a 210-node skill
-> tree, a 20-tier rarity ladder, seasons and events. The original finite version lives at
-> [ivan-pinhal-rodrigues.github.io](https://ivan-pinhal-rodrigues.github.io/).
+> This repo is the expanded game — infinite stages, rebirth, a 210-node skill tree with keystones,
+> a 20-rung rarity ladder, seasons, a weekly bracket and events. The original finite version lives
+> at [ivan-pinhal-rodrigues.github.io](https://ivan-pinhal-rodrigues.github.io/).
+>
+> It was built in six phases, audited as a finished game, and then rebuilt in six more from what
+> that audit found. `docs/POSTMORTEM.md` is the honest record — including the six digit-count
+> typos that made a third of the generators unbuyable, and the balance pass that failed to notice.
 >
 > Everything in the shop is **simulated**. Leafs are a fake currency, the price tags are
 > decorative, and nothing anywhere takes real money.
@@ -75,7 +79,7 @@ src/
   systems/          game logic: clicking, income, shop, goldens, audio
   render/           sprites, palettes, canvas rasteriser, particles, scene
   ui/               HUD, shop panels, modals, toasts, tabs
-docs/             EVENTS.md, STORY.md, BALANCE.md
+docs/             BALANCE.md, STORY.md, EVENTS.md, POSTMORTEM.md
 tests/
 ```
 
@@ -145,7 +149,8 @@ asked for, and every purchase surface says so where you cannot miss it.
 
 ## Status
 
-Built in stages. Landed so far:
+Playable and finished. Built in six phases, audited, then rebuilt in six more — see
+`docs/POSTMORTEM.md` for what the audit found and what actually caught the bugs.
 
 - [x] **Core** — game loop, saves, pixel renderer, tap juice (crit, combo, particles, squash),
       18 generators, 52 upgrades, offline Nap Report, Golden Capybara, settings

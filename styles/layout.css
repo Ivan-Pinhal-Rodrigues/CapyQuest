@@ -38,7 +38,11 @@
 
 .hud__logo { font-size: 1.4rem; line-height: 1; }
 
+/* This is the document's only h1 — the game's name is the page's heading, and
+   a document with no h1 is one a screen reader cannot summarise. It is styled
+   to the size it always was, so nothing moves. */
 .hud__title {
+  margin: 0;
   font-weight: 800;
   font-size: 1rem;
   letter-spacing: 0.02em;
