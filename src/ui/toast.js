@@ -18,9 +18,17 @@ export class Toaster {
     this.visible = 0;
   }
 
-  /** kind: 'achievement' | 'buff' | 'info' | 'warn' */
-  show({ title, body = '', kind = 'info', icon = '', ms = DEFAULT_MS }) {
-    this.queue.push({ title, body, kind, icon, ms });
+  /**
+   * kind: 'achievement' | 'buff' | 'info' | 'warn'
+   *
+   * `onClick` turns the card into something you can act on rather than only
+   * dismiss — the update notice needs it, since "a new version is ready" with
+   * no way to take it is just an interruption. `ms: 0` keeps it up until it is
+   * clicked, which is right for the same reason: an update that scrolls past in
+   * four seconds may as well not have been announced.
+   */
+  show({ title, body = '', kind = 'info', icon = '', ms = DEFAULT_MS, onClick = null }) {
+    this.queue.push({ title, body, kind, icon, ms, onClick });
     this.pump();
   }
 
@@ -34,10 +42,11 @@ export class Toaster {
     if (this.queue.length > 8) this.queue.splice(0, this.queue.length - 8);
   }
 
-  render({ title, body, kind, icon, ms }) {
+  render({ title, body, kind, icon, ms, onClick }) {
     const el = document.createElement('div');
     el.className = `toast toast--${kind}`;
     el.setAttribute('role', 'status');
+    if (onClick) el.classList.add('toast--action');
 
     const iconEl = document.createElement('span');
     iconEl.className = 'toast__icon';
@@ -80,7 +89,13 @@ export class Toaster {
       }, 260);
     };
 
-    el.addEventListener('click', dismiss);
-    setTimeout(dismiss, ms);
+    el.addEventListener('click', () => {
+      // The action runs before the dismissal, not instead of it — a card whose
+      // click does something should still go away afterwards.
+      onClick?.();
+      dismiss();
+    });
+    // ms: 0 means it waits. Only used for things that need a decision.
+    if (ms > 0) setTimeout(dismiss, ms);
   }
 }

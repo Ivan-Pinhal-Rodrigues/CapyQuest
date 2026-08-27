@@ -53,7 +53,15 @@ python3 -m http.server 8000
 # then open http://localhost:8000
 ```
 
-Because it is plain static files, pushing to the Pages branch is the whole deploy.
+Because it is plain static files, pushing to the Pages branch is the whole deploy — with one
+rule attached to it. **`VERSION` in `sw.js` must match `version` in `package.json`.** The cache
+name carries that version and a new version is the only thing that makes a deployed change reach
+somebody who already has the app installed. `tests/pwa.test.js` fails if the two drift, because
+forgetting is otherwise completely silent: no error, no warning, just players on last month's
+build indefinitely.
+
+To install it, open it in a browser and use Add to Home Screen or the install button in the
+address bar. It runs offline from the first visit onwards.
 
 ## Tests
 
@@ -171,6 +179,30 @@ bob for a canvas capybara that splashes and blinks.
 The bar is wired to steps that actually happened — pack fetched, save read, game constructed —
 and nothing but the last one reaches 100%. On a warm cache you will see it for a few frames.
 That is the point: it is there for the cold load and the slow connection, not to pad the opening.
+
+### It installs, and it runs offline
+
+`manifest.webmanifest` and `sw.js` make it an app you can add to a phone's home screen. Still no
+build step: both are hand-written files served as-is, and `python3 -m http.server` is unchanged.
+
+The service worker keeps **one cache per version and deletes it whole**, so a page load is always
+entirely one version of the app — never half the old modules and half the new. It never activates
+itself; the page decides, and it decides by asking whether there is anything to interrupt:
+
+| | |
+|---|---|
+| A build waiting **when you open the game** | Taken immediately. The loading screen says "Updating…" and the page reloads into it. Nothing is constructed yet, so it costs you nothing. |
+| A build that lands **while you are playing** | A toast that waits for you. Reloading somebody out of a boss fight to deliver a shop-price change is not a trade anyone would agree to. |
+
+`content/pack.json` is the one thing fetched **network-first**, because the promise of
+`docs/CONTENT.md` is that an admin commits a change and sees it — putting that behind a worker
+version bump would defeat the point of having a pack.
+
+There is no file list to maintain. At install the worker reads `index.html` for the stylesheets
+and the entry module, then follows the import graph, which is how it caches 126 files without
+anybody writing 126 paths down. The first draft skipped this and let the fetch handler collect
+files as they were requested — Chromium reported the result as three entries, no JavaScript and
+no CSS, because *the visit that installs a worker is not controlled by it*.
 
 ### Design notes
 
@@ -306,3 +338,47 @@ Playable and finished. Built in six phases, audited, then rebuilt in six more �
       leaving them alone.
 - [x] **Retention** — daily and weekly quests, a seven-day login streak, a 40-level free Zen Pass,
       a chest that fills every 15 minutes, eight secret codes, and a stats page that grows as you do
+
+### 3.0
+
+- [x] **Content stopped being code** — every shop shelf, price, look, pass reward and event window
+      is a patch in `content/pack.json`, edited in-game with `?admin=1` and exported to commit. A
+      malformed pack is dropped entry by entry with a warning naming the path, and the game boots
+      on its defaults; nothing a pack can say will touch a save, take a look out of a wardrobe or
+      move a number in the simulation. Events gained absolute scheduling, so an event can be told
+      exactly when to stop — and an event that starts and never stops is refused, because petals
+      expire with their event.
+- [x] **A wardrobe** — sixty-two new looks across three new kinds, eighty-nine in total, drawn as
+      layers stamped onto the capybara's own grid: nineteen hand-drawn shapes covering fifty-two
+      items by palette swap. None of it moves a number, and that is asserted rather than promised.
+      The one real bug the phase produced was invisible to both the test suite and a per-item
+      browser probe — every wearable uses the same palette letters, so a red cloak rendered in the
+      sunglasses' colours the moment both were worn. It took a screenshot to see and private-use
+      codepoint remapping to fix.
+- [x] **The pond crew** — your three party companions are in the water beside you on their own lily
+      pads, wearing your hats, carrying their own gear: 24 pieces across charm, collar and trinket,
+      on the same 20-rung ladder as player gear at 45% of the budget, dropped by bosses and never
+      sold. Tapping one opens its sheet and never counts as a tap on the capybara, because the pond
+      is the clicker. What a full set is worth was measured twice — the first answer, +540%,
+      compared geared companions against an ungeared player, which is not a comparison anybody
+      makes. Against a depth-matched player it is about +50%, and `docs/BALANCE.md` records both.
+- [x] **The fight is drawn** — the combat panel's static image of the enemy became an arena with
+      your capybara in it, wearing what you dressed it in: lunges, hit reactions, a white flash,
+      dissolves, a boss entrance, and six skill archetypes derived from the effect a skill declares
+      rather than from a hand-written table, so adding a skill cannot leave it drawing nothing. No
+      combat logic lives in it and none should — the arena reacts, it never decides.
+- [x] **The clock, and both resets** — a boss now has thirty seconds. Run out and it is not a
+      rebirth: you are moved to the stage below and held there until you press Forward yourself,
+      because a timer that silently costs you an hour is a punishment you did not see coming.
+      Rebirth needs real depth before it unlocks and pays more when it does; Ascension needs eight
+      rebirths and fifteen thousand essence, wipes the rebirth count in front of you in the confirm
+      dialog, and pays enough to be worth it. Every number came out of the simulation harness.
+- [x] **A loading screen** — inline in `index.html` so it paints before a stylesheet has landed,
+      taken over by a canvas capybara that splashes and blinks, with a bar tied to steps that
+      actually happened. Nine backdrops an event can pick from, drawn as tiles like everything
+      else. Seven of the nine started out as two shapes in different colours; the browser probe
+      compared the baked images and called all nine distinct, which was true and useless.
+- [x] **An app** — installable to a phone's home screen and fully playable offline, with an updater
+      that reloads at boot and asks mid-session. Still no build step and no dependencies: a
+      hand-written manifest, a hand-written service worker, and icons generated from the same
+      capybara grid the game draws.

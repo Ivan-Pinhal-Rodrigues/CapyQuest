@@ -38,8 +38,27 @@ the viewport and centres it.
 
 ## `assets/icons/` — app icons
 
-Added in the PWA phase. The web app manifest needs real raster icons for the
-installed-app tile, and there is no way around that one.
+The manifest needs real raster icons for the installed-app tile, and iOS needs
+an `apple-touch-icon` on top of that. There is no way around either: a home
+screen icon cannot be a character grid, and iOS will not take an SVG.
+
+| File | Used by |
+|---|---|
+| `icon-192.png` | the manifest, `purpose: any` |
+| `icon-512.png` | the manifest, `purpose: any` — splash screens and app listings |
+| `icon-maskable-512.png` | the manifest, `purpose: maskable` — Android crops this to its own shape |
+| `apple-touch-icon.png` | iOS Add to Home Screen, 180×180, referenced from `index.html` |
+
+They are **generated from the game's own `CAPY` grid and `CAPY_SKINS.classic`
+palette**, not drawn separately, so the icon cannot drift from the capybara. The
+maskable one keeps everything inside the middle 56% — Android may crop to a
+circle inscribed in the middle 80%, and a capybara with its ears cut off is
+worse than a smaller capybara — and is the only one not pre-rounded, because the
+platform applies its own shape and a rounded icon shows its corners inside the
+mask.
+
+`tests/pwa.test.js` reads each PNG's IHDR chunk and fails if a file is missing
+or is not the size the manifest claims.
 
 ## Adding something here
 

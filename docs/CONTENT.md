@@ -194,6 +194,25 @@ Nothing dramatic, which is the point.
 - A pack cannot introduce a field nobody validates. Only known fields are copied through, so
   writing `"clickMult": 1000` onto a cosmetic does exactly nothing.
 
+## The pack and the installed app
+
+CapyQuest installs as an app and caches itself, which would normally mean a
+committed pack change sat behind a cache until the next release. It does not:
+`sw.js` serves `content/pack.json` **network-first**, and only falls back to the
+cached copy when the network is not there.
+
+So the workflow holds exactly as described above — commit the JSON, and the next
+time anybody opens the game they have it, installed app or not. A player who is
+offline keeps playing on the last pack they saw, and a player who has never
+managed to fetch one gets the built-in defaults, which is a state the loader is
+built to handle.
+
+The one thing that *is* held behind a version is code. If a pack needs a change
+to `src/` to work — a new cosmetic kind, say — the pack alone will not do it,
+and `VERSION` in `sw.js` has to be bumped along with the code. Adding, pricing,
+hiding, removing and scheduling all work with no code change at all, which is
+the whole point.
+
 ## Where the code is
 
 | File | What it does |

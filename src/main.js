@@ -41,6 +41,7 @@ import { buyCosmetic, checkUnlocks, equipCosmetic, equipped, owns } from './syst
 import { boostById, cosmeticById, leafPackById } from './content/registry.js';
 import { loadContent } from './content/load.js';
 import { BootScreen } from './ui/bootScreen.js';
+import { registerUpdates } from './systems/updater.js';
 import { adminRequested, openAdminPanel } from './ui/adminPanel.js';
 import { ticketsPerBoss } from './systems/meta.js';
 import { COMPANIONS_BY_ID, PARTY_SIZE } from './data/companions.js';
@@ -2504,6 +2505,38 @@ const boot = new BootScreen();
 boot.setBackground(activeEvent()?.background);
 boot.step('content');
 
+// Whether a waiting build interrupts you depends entirely on whether there is
+// anything to interrupt. `booting` is that question, and it is true for exactly
+// as long as the boot screen is up.
+//
+// While it is true, a waiting build is taken on the spot: nothing is
+// constructed, nothing is unsaved, and the player sees a loading screen for a
+// moment longer instead of running a version we know is stale. Once the game is
+// up it becomes a toast, because reloading somebody out of a boss fight to
+// deliver a shop-price change is not a trade anyone would agree to.
+let booting = true;
+
+registerUpdates({
+  onWaiting: (apply) => {
+    if (booting) {
+      boot.step('updating');
+      apply();
+      return;
+    }
+    window.capyquest?.toaster.show({
+      title: 'A new version is ready',
+      body: 'Tap to reload — your pond is saved',
+      kind: 'info',
+      icon: '⬆',
+      ms: 0, // waits for a decision rather than scrolling past
+      onClick: () => {
+        window.capyquest?.save();
+        apply();
+      },
+    });
+  },
+});
+
 loadContent()
   .then(() => {
     // Now the pack is in, ask again: an admin may have scheduled a different
@@ -2516,6 +2549,7 @@ loadContent()
     boot.step('game');
     window.capyquest = new Game();
     window.capyquest.boot = boot;
+    booting = false;
     // One frame of the real game behind the overlay before it lifts, so the
     // fade reveals the pond rather than an empty canvas.
     requestAnimationFrame(() => boot.finish());
@@ -2524,6 +2558,7 @@ loadContent()
     // Nothing in the boot path is allowed to leave a player staring at a
     // loading screen forever. If the game genuinely cannot start, say so.
     console.error('[capyquest] the game failed to start', err);
+    booting = false;
     boot.step('ready');
     boot.finish();
     throw err;

@@ -24,6 +24,29 @@ The currency is **Petals** (🌸). Two rules give them their whole character:
 A currency you can hoard forever is just a slower coin. The window closing is
 the thing that makes an event an event.
 
+### Running one on the calendar instead
+
+The rotation is the default, not the only option. An event given `startsAt` and
+`endsAt` in `content/pack.json` runs between exactly those two moments and takes
+precedence over the rotation — which is how you run something for a real-world
+holiday rather than for whatever day of the season it happens to be.
+
+Both dates or neither. **An event that starts and never stops is refused**, for
+the reason above: petals expire with their event, and an event that never closes
+is a currency that never expires. `docs/CONTENT.md` has the format.
+
+### Each event has a face
+
+An event carries a `background`, painted behind the capybara on the loading
+screen for as long as it runs. All ten point at one of the nine tiles drawn in
+`src/render/backdrops.js` — Yuzu Harvest gets falling fruit, Moonlit Bathhouse a
+starfield, Reed Rush its reeds. There are ten events and nine tiles, so one pair
+shares: Capybara Cup and Founders' Week both take `petals`.
+
+A pack can point an event at a real picture in `assets/events/` instead. Nothing
+shipped does, and the honest reason is in `assets/README.md`: a photograph behind
+a 32×32 capybara looks like two games stapled together.
+
 Each live event has a four-row exchange: the same three staples at the same
 prices across all of them — 90 leafs, 2,400 shards, 6 tickets — plus **one
 cosmetic unique to that event**, buyable once, gone when the window shuts.

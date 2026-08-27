@@ -460,6 +460,19 @@
 .toast--buff { border-color: var(--gold); background: linear-gradient(180deg, rgba(240, 166, 61, 0.2), rgba(43, 32, 53, 0.97)); }
 .toast--warn { border-color: var(--danger); }
 
+/* Every toast is clickable, but most only dismiss. This one does something, so
+   it says so — otherwise "tap to update" reads as decoration on a card that
+   looks identical to the four before it. */
+.toast--action {
+  border-color: var(--accent, var(--zen));
+  box-shadow: var(--shadow-md), 0 0 0 1px rgba(247, 201, 72, 0.25);
+}
+
+.toast--action .toast__body::after {
+  content: ' ›';
+  font-weight: 800;
+}
+
 .toast__icon { font-size: 1.2rem; flex-shrink: 0; }
 .toast__text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
 .toast__title { font-size: 0.85rem; font-weight: 800; }
