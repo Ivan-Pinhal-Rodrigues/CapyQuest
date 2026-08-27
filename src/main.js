@@ -334,6 +334,9 @@ class Game {
       if (hit === 'golden') this.catchGolden(x, y);
       else if (hit === 'capy') this.tapCapy();
       else if (hit?.startsWith('companion:')) this.inspectCompanion(hit.slice('companion:'.length));
+      // Tapping something on the bank takes you to its row in the shop, so the
+      // pond is a way into the game rather than only a picture of it.
+      else if (hit?.startsWith('building:')) this.showBuilding(hit.slice('building:'.length));
     };
 
     // Pointer events cover mouse, touch and pen in one path, and preventing the
@@ -919,6 +922,11 @@ class Game {
   updateUi(now) {
     this.hud.update(this.state, this.derived, this.combo, now);
     this.buildingList.update(this.state, this.derived);
+    // The pond shows what you have built. Here rather than in render(): this
+    // runs at ~15Hz instead of 60, and setBuildings early-returns unless what
+    // you own has actually changed, so the layout is rebuilt on a purchase and
+    // never on a frame.
+    this.scene.setBuildings(this.state.buildings);
     this.upgradeGrid.update(this.state);
     this.updateQuestVisibility();
     this.updateMetaVisibility();
@@ -977,6 +985,29 @@ class Game {
     this.tabs.badge('store', dailyLeafsReady(this.state, now) ? 1 : 0);
     this.tabs.badge('season', unclaimedPassLevels(this.state));
     this.tabs.badge('rivals', activeEvent(now) ? 1 : 0);
+  }
+
+  /**
+   * Tapping something on the bank takes you to its row in the shop.
+   *
+   * The pond used to be scenery you could only tap in one place. Now that it
+   * shows what you have built, the obvious thing to do with a building you can
+   * see is buy another one — so the picture is wired to the list.
+   */
+  showBuilding(id) {
+    this.tabs.select('generators');
+    const row = this.buildingList.rows.get(id)?.row;
+    if (!row) return;
+
+    // Repaint before scrolling: the row may have been hidden a moment ago.
+    this.buildingList.update(this.state, this.derived);
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // A brief highlight, because a smooth scroll that lands on an unremarkable
+    // row leaves you wondering whether anything happened.
+    row.classList.remove('is-found');
+    void row.offsetWidth;
+    row.classList.add('is-found');
+    audio.click(0.4);
   }
 
   summonUnlocked() {

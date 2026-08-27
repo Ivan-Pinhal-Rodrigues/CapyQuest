@@ -10,6 +10,28 @@ import { ParticleField } from './particles.js';
 const YUZU_COUNT = 3;
 const STEAM_COUNT = 5;
 
+/** Draw order for the banks: the order they unlock in, cheapest first. */
+const BUILDING_ORDER = Object.keys(BUILDING_ART);
+/** No single generator may take over the pond, however many you own. */
+const MAX_PER_BUILDING = 6;
+
+/**
+ * A small deterministic hash, so a building sits in the same spot every time.
+ *
+ * Math.random would scatter them freshly on every rebuild, and a pond that
+ * rearranges itself whenever you buy something is a pond you cannot learn the
+ * shape of. FNV-1a: short, no dependencies, and good enough to decorrelate
+ * "lilypad:0" from "lilypad:1".
+ */
+function hash(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0);
+}
+
 export class Scene {
   constructor(canvas) {
     this.canvas = canvas;
@@ -50,6 +72,21 @@ export class Scene {
     this.party = [];
     this.crewBoxes = [];
 
+    /**
+     * What you have built, standing around the pond.
+     *
+     * Eighteen generators, thirty-six tiers, three hundred and six purchasable
+     * upgrades — and for three versions the pond looked exactly the same at
+     * minute one and at hour fifty. The art was already there: BUILDING_ART has
+     * a shape and a palette for every one of them, and this file already
+     * imported it to draw the crew's lily pads. Nothing drew the buildings.
+     *
+     * An idle game is a place you tend. If tending it never changes the place,
+     * the numbers are all there is.
+     */
+    this.buildings = [];
+    this.buildingBoxes = [];
+
     this.golden = null; // { x, y, vx, vy, bornAt, ttl }
     // Both are recomputed in draw(); seeded here so a hitTest before the first
     // frame does not read undefined.
@@ -80,6 +117,62 @@ export class Scene {
       blinkAt: 1 + i * 1.7 + Math.random() * 3,
       blinking: false,
     }));
+  }
+
+  /**
+   * What you own, as `state.buildings` — `{ id: count }`.
+   *
+   * HOW MANY GET DRAWN. Not one per building: the late game owns thousands and
+   * a pond with three thousand lily pads in it is not a pond. The count is
+   * logarithmic — 1 gives one, 2 gives two, 4 gives three, 1024 gives eleven —
+   * so early purchases visibly change the place and later ones keep adding
+   * without ever flooding it. Capped per type as well, so no single generator
+   * can take over.
+   *
+   * WHERE. Along the banks, left and right, ordered by the generator's own
+   * index so the cheap things stay near the front and the expensive ones sit
+   * further back. Positions come from a seeded hash of the id, not from
+   * Math.random, so the pond looks the same every time you open it — a pond
+   * that rearranges itself on every frame is a slot machine.
+   */
+  setBuildings(owned = {}) {
+    // Rebuilding the layout every frame would make it crawl; only re-seed when
+    // what is owned actually changes.
+    const key = Object.entries(owned).filter(([, n]) => n > 0).map(([id, n]) => `${id}:${n}`).join(',');
+    if (key === this.buildingsKey) return;
+    this.buildingsKey = key;
+
+    const placed = [];
+    for (const [index, def] of BUILDING_ORDER.entries()) {
+      const count = owned[def] || 0;
+      if (count <= 0) continue;
+      const many = Math.min(MAX_PER_BUILDING, 1 + Math.floor(Math.log2(count)));
+      for (let i = 0; i < many; i++) {
+        const seed = hash(`${def}:${i}`);
+        placed.push({
+          id: def,
+          // Alternate banks so the two sides fill evenly rather than the whole
+          // catalogue piling up on the left.
+          side: (index + i) % 2 === 0 ? -1 : 1,
+          // Where along the bank, as 0..1 across the band that is left once the
+          // capybara has its clearance — NOT an absolute fraction of the
+          // stage. The first draft used absolute fractions and then clamped
+          // them outward past the capybara, which collapsed almost every one of
+          // them onto the same x: the late-game pond rendered as two vertical
+          // walls of sprites. The browser showed it immediately; the numbers
+          // (nothing overlapping, nothing off-canvas) were perfectly happy.
+          out: ((seed % 100) / 100) * 0.82 + (i % 3) * 0.06,
+          up: -0.06 + (((seed >> 7) % 100) / 100) * 0.30,
+          depth: index, // used for draw order and size
+          phase: (seed % 628) / 100,
+        });
+      }
+    }
+
+    // Furthest-back first, so nearer things overlap them rather than the other
+    // way round.
+    placed.sort((a, b) => b.depth - a.depth);
+    this.buildings = placed;
   }
 
   /** What the capybara has on. Unknown ids simply draw nothing. */
@@ -167,6 +260,13 @@ export class Scene {
     for (const box of this.crewBoxes) {
       if ((px - box.x) ** 2 + (py - box.y) ** 2 <= box.r * box.r) return `companion:${box.id}`;
     }
+
+    // The banks come last, for the same reason the crew do: the pond is the
+    // clicker, and scenery that ate a tap would be scenery costing you zen.
+    // Nearest first, so the front row wins where two overlap.
+    for (const box of [...this.buildingBoxes].reverse()) {
+      if ((px - box.x) ** 2 + (py - box.y) ** 2 <= box.r * box.r) return `building:${box.id}`;
+    }
     return null;
   }
 
@@ -226,6 +326,9 @@ export class Scene {
     this.goldenScale = Math.max(2, Math.round(scale * 0.55));
 
     this.drawSteam(ctx, width, height, scale);
+    // The banks go first, behind everything: they are scenery. The capybara is
+    // the thing you tap and nothing may sit in front of it.
+    this.drawBuildings(ctx, cx, cy, scale, width, height);
     // The crew go behind the capybara: it is the thing being tapped, and a
     // companion overlapping in front of it would eat the hitbox visually even
     // though hitTest puts the capybara first.
@@ -320,6 +423,54 @@ export class Scene {
    * entirely behind it. Drawn wider, the green rim shows around the little pool
    * and the two read as one object — a companion in its own pond.
    */
+  /**
+   * The banks.
+   *
+   * Everything is pushed outside the capybara's tap circle, measured — the
+   * first draft used a fixed fraction of the half-width and the browser said
+   * thirty-four of sixty-three were inside it, crowding the silhouette. The
+   * capybara is still tapped first by hitTest, so nothing was broken; it simply
+   * looked cramped, and the comment claiming otherwise was wrong. The clearance
+   * is computed from the real radius now, and a test asserts it.
+   *
+   * Further-back generators are drawn smaller and dimmer. It is not real
+   * perspective, just enough of it that eighteen kinds of thing on two banks
+   * read as depth rather than as a list.
+   */
+  drawBuildings(ctx, cx, cy, scale, width, height) {
+    this.buildingBoxes = [];
+    if (!this.buildings.length) return;
+
+    const half = width / 2;
+    const waterY = cy + CAPY.h * scale * 0.34;
+
+    for (const b of this.buildings) {
+      const art = BUILDING_ART[b.id];
+      if (!art) continue;
+
+      // Later generators are further away: smaller, paler, higher up the bank.
+      const distance = b.depth / Math.max(1, BUILDING_ORDER.length - 1);
+      const size = Math.max(1, Math.round(scale * (0.34 - distance * 0.14)));
+      const alpha = 0.92 - distance * 0.34;
+
+      // The band runs from just outside the capybara's tap circle to the edge
+      // of the stage. Placing within the band rather than clamping into it is
+      // what keeps the spread — see the note in setBuildings.
+      const iconR = (ICONS[art.shape].w * size) / 2;
+      const near = this.capyBox.r + iconR;
+      const band = Math.max(0, half - near - iconR);
+      const x = cx + b.side * (near + b.out * band);
+      const bob = this.reducedMotion ? 0 : Math.sin(this.time * 0.6 + b.phase) * 1.2;
+      const y = waterY + height * b.up + bob - distance * height * 0.06;
+
+      const baked = bake(ICONS[art.shape], art.palette, `pond:${b.id}`);
+      blit(ctx, baked, x, y, size, { alpha });
+
+      // Tappable, so the pond is a way into the shop and not only a picture.
+      this.buildingBoxes.push({ id: b.id, x, y, r: (ICONS[art.shape].w * size) / 2.2 });
+    }
+  }
+
   drawPad(ctx, x, y, scale) {
     const baked = bake(ICONS.pad, BUILDING_ART.lilypad.palette, 'crewpad');
     blit(ctx, baked, x, y, Math.max(1, Math.round(scale * 1.7)), { alpha: 0.85 });

@@ -697,3 +697,19 @@
   transform-origin: left center;
   background: linear-gradient(90deg, #4b8fb5, #6fc0d8);
 }
+
+/* Tapping a building on the pond bank scrolls to its row. A smooth scroll that
+   lands on an unremarkable row leaves you wondering whether anything happened,
+   so the row says "here". */
+.building.is-found {
+  animation: row-found 1.1s ease;
+}
+
+@keyframes row-found {
+  0%   { background: rgba(247, 201, 72, 0.28); }
+  100% { background: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .building.is-found { animation: none; outline: 2px solid var(--zen); }
+}
