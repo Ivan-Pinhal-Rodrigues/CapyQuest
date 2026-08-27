@@ -2461,8 +2461,51 @@ class Game {
     });
   }
 
+  /**
+   * Persist, and say so when it does not work.
+   *
+   * saveState() has always returned a boolean and this method has always thrown
+   * it away — at all twenty-six call sites. Storage can be unavailable for
+   * reasons that have nothing to do with the player doing anything wrong:
+   * Safari in private mode exposes localStorage and throws on every write, an
+   * iOS home-screen app can have its storage evicted under pressure, a quota
+   * can fill. In every one of those the game kept running perfectly, saved
+   * nothing, and never said a word. Somebody could play for six hours and lose
+   * all of it.
+   *
+   * For an idle game that is the worst possible bug: the entire proposition is
+   * that progress accumulates while you are not looking.
+   */
   save() {
-    saveState(this.state);
+    const ok = saveState(this.state);
+    if (ok) {
+      // Recovered. Arm the warning again so a second outage is also reported —
+      // but say nothing now, because "saving works" is not news.
+      this.saveFailures = 0;
+      this.warnedAboutSaving = false;
+      return true;
+    }
+
+    this.saveFailures = (this.saveFailures || 0) + 1;
+    if (this.warnedAboutSaving) return false;
+    this.warnedAboutSaving = true;
+
+    // Sticky, and it opens the way out rather than only naming the problem: a
+    // save code is the one thing that gets this run onto a device that can
+    // keep it. ms: 0 means it waits for the player instead of scrolling past
+    // — this is the rare case that justifies it.
+    // Optional: the very first save happens inside the constructor, and a
+    // warning that throws because the toaster does not exist yet would take
+    // down the boot it was trying to report on.
+    this.toaster?.show({
+      title: 'Your progress is not being saved',
+      body: 'Tap to copy a save code before you lose it',
+      kind: 'warn',
+      icon: '⚠',
+      ms: 0,
+      onClick: () => this.openSettings(),
+    });
+    return false;
   }
 }
 

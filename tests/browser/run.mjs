@@ -65,8 +65,8 @@ function chromiumPath() {
 }
 
 const failures = [];
-const counts = { smallText: 0, smallTaps: 0, overflow: 0, consoleErrors: 0 };
-const detail = { smallText: [], smallTaps: [], overflow: [], consoleErrors: [] };
+const counts = { smallText: 0, smallTaps: 0, overflow: 0, clipped: 0, consoleErrors: 0 };
+const detail = { smallText: [], smallTaps: [], overflow: [], clipped: [], consoleErrors: [] };
 
 const fail = (what) => failures.push(what);
 const record = (key, what) => {
@@ -118,11 +118,20 @@ for (const vp of VIEWPORTS) {
     await page.evaluate(() => { for (const m of document.querySelectorAll('.modal')) m.remove(); });
 
     const found = await page.evaluate(({ minFont, minTap }) => {
-      const out = { overflow: null, text: [], taps: [] };
+      const out = { overflow: null, text: [], taps: [], clipped: [] };
 
       if (document.documentElement.scrollWidth > window.innerWidth + 1) {
         out.overflow = `${document.documentElement.scrollWidth}px in a ${window.innerWidth}px viewport`;
       }
+
+      /** Can the player scroll this element into view? */
+      const scrollableAncestor = (el) => {
+        for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+          const o = getComputedStyle(p).overflowX;
+          if ((o === 'auto' || o === 'scroll') && p.scrollWidth > p.clientWidth + 1) return true;
+        }
+        return false;
+      };
 
       const seen = new Set();
       for (const el of document.querySelectorAll('#app *')) {
@@ -146,6 +155,28 @@ for (const vp of VIEWPORTS) {
             const key = `tap:${el.className}|${Math.round(r.height)}`;
             if (!seen.has(key)) { seen.add(key); out.taps.push(`${el.className || el.tagName} @ ${Math.round(r.height)}px`); }
           }
+
+          // Clipped by the viewport edge.
+          //
+          // The overflow check above cannot see this: the app now sets
+          // `overflow-x: clip`, so content wider than the screen is cut off
+          // rather than scrolling the page — the document width stays correct
+          // and the count stays zero while a control is sliced in half. The
+          // settings button was 16px off the right edge at 320px, tappable and
+          // visibly wrong, and only a screenshot showed it.
+          //
+          // Something inside a scrollable container is not clipped, it is
+          // scrolled to — the 210-node rebirth tree is a wide pannable board
+          // and most of it is off screen on purpose. Only flag a control the
+          // player has no way to bring into view.
+          const offScreen = r.width > 0 && (r.right > window.innerWidth + 1 || r.left < -1);
+          if (offScreen && !scrollableAncestor(el)) {
+            const key = `clip:${el.className}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              out.clipped.push(`${el.id || el.className || el.tagName} runs to ${Math.round(r.right)}px in a ${window.innerWidth}px viewport`);
+            }
+          }
         }
       }
       return out;
@@ -154,6 +185,7 @@ for (const vp of VIEWPORTS) {
     if (found.overflow) record('overflow', `${vp.name}/${tab}: ${found.overflow}`);
     for (const t of found.text) record('smallText', `${vp.name}/${tab}: ${t}`);
     for (const t of found.taps) record('smallTaps', `${vp.name}/${tab}: ${t}`);
+    for (const t of found.clipped) record('clipped', `${vp.name}/${tab}: ${t}`);
   }
 
   await ctx.close();
@@ -166,7 +198,7 @@ await site.close();
 
 const baseline = existsSync(BASELINE)
   ? JSON.parse(readFileSync(BASELINE, 'utf8'))
-  : { smallText: 0, smallTaps: 0, overflow: 0, consoleErrors: 0 };
+  : { smallText: 0, smallTaps: 0, overflow: 0, clipped: 0, consoleErrors: 0 };
 
 let improved = false;
 for (const [key, now] of Object.entries(counts)) {

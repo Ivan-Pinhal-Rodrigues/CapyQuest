@@ -275,7 +275,7 @@
 /* -------------------------------------------------------------- story log */
 
 .profile__story-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
-.profile__story-count { font-family: var(--font-pixel); font-size: 0.4rem; color: var(--text-faint); }
+.profile__story-count { font-family: var(--font-pixel); font-size: var(--text-2xs); color: var(--text-faint); }
 
 .story-log { display: flex; flex-direction: column; gap: 0.5rem; }
 
@@ -299,7 +299,7 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-faint);
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
 }
 
 .story-beat.is-seen { color: var(--who, var(--text)); border-color: var(--who, var(--border-bright)); }

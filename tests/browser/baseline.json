@@ -1,6 +1,7 @@
 {
-  "smallText": 404,
-  "smallTaps": 40,
+  "smallText": 0,
+  "smallTaps": 0,
   "overflow": 0,
-  "consoleErrors": 0
+  "consoleErrors": 0,
+  "clipped": 0
 }

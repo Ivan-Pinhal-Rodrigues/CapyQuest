@@ -7,8 +7,22 @@
 .hud__meta {
   display: flex;
   gap: 0.45rem;
-  flex-shrink: 0;
+  /*
+   * The chips give way before the settings button does.
+   *
+   * They were `flex-shrink: 0`, which at 320px pushed the gear 16px off the
+   * right edge — still tappable, but visibly sliced, and behind a notch it
+   * would be worse. Four currencies at a readable size do not fit next to a
+   * zen total on the narrowest phone, so the row scrolls: everything stays
+   * reachable and the control that opens the settings keeps its place.
+   */
+  min-width: 0;
+  overflow-x: auto;
+  /* No visible scrollbar eating 15px of a HUD that is 62px tall. */
+  scrollbar-width: none;
 }
+
+.hud__meta::-webkit-scrollbar { display: none; }
 
 .hud__meta-item {
   display: flex;
@@ -19,7 +33,7 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   font-family: var(--font-pixel);
-  font-size: 0.46rem;
+  font-size: var(--text-2xs);
   white-space: nowrap;
 }
 
@@ -39,7 +53,7 @@
   gap: 0.6rem;
 }
 
-.summon__tickets { font-family: var(--font-pixel); font-size: 0.62rem; color: var(--water); }
+.summon__tickets { font-family: var(--font-pixel); font-size: var(--text-xs); color: var(--water); }
 .summon__pulls { font-size: 0.74rem; color: var(--text-faint); }
 
 /* The pity meter. Both counters and the live rate are always on screen —
@@ -58,7 +72,7 @@
 
 .pity__label {
   font-family: var(--font-pixel);
-  font-size: 0.44rem;
+  font-size: var(--text-2xs);
   color: var(--text-dim);
   white-space: nowrap;
   min-width: 4.4rem;
@@ -118,7 +132,7 @@
 .party__icon { width: 36px; height: 36px; }
 
 .party__name {
-  font-size: 0.66rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-align: center;
   line-height: 1.15;
@@ -152,13 +166,13 @@
 .capy-card__icon { width: 32px; height: 32px; }
 
 .capy-card__name {
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-align: center;
   line-height: 1.1;
 }
 
-.capy-card__level { font-family: var(--font-pixel); font-size: 0.4rem; color: var(--text-faint); }
+.capy-card__level { font-family: var(--font-pixel); font-size: var(--text-2xs); color: var(--text-faint); }
 
 /* Star rarity colours, shared by roster cards, party slots and pull results. */
 .is-three { --star: #4d8fd9; }
@@ -213,7 +227,7 @@
 
 .pull-card__tag {
   font-family: var(--font-pixel);
-  font-size: 0.38rem;
+  font-size: var(--text-2xs);
   color: var(--text-faint);
 }
 
@@ -318,9 +332,9 @@
 
 .relic__side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.12rem; }
 
-.relic__cost { font-family: var(--font-pixel); font-size: 0.5rem; }
+.relic__cost { font-family: var(--font-pixel); font-size: var(--text-xs); }
 .relic__cost--lotus { color: var(--lotus); }
-.relic__ranks { font-size: 0.66rem; color: var(--text-faint); }
+.relic__ranks { font-size: var(--text-xs); color: var(--text-faint); }
 
 .relic.is-owned { border-color: var(--border-bright); }
 .relic.is-affordable { background: var(--surface-2); border-color: var(--zen); }
@@ -368,7 +382,7 @@
   .roster { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); }
   .talent-tier { gap: 0.25rem; }
   .talent { min-height: 46px; }
-  .talent__name { font-size: 0.55rem; }
+  .talent__name { font-size: var(--text-xs); }
 }
 
 /* -------------------------------------------------------------- crew kit */
@@ -385,7 +399,7 @@
 .crew-kit__head {
   margin: 0;
   font-family: var(--font-pixel);
-  font-size: 0.45rem;
+  font-size: var(--text-2xs);
   color: var(--text-dim);
   letter-spacing: 0.06em;
 }
@@ -410,9 +424,9 @@
 .crew-slot.is-filled { border-style: solid; }
 .crew-slot:disabled { cursor: default; opacity: 0.7; }
 
-.crew-slot__label { font-size: 0.62rem; color: var(--text-faint); }
+.crew-slot__label { font-size: var(--text-xs); color: var(--text-faint); }
 /* Names are long and the slots are narrow; truncating beats reflowing the row. */
 .crew-slot__name { font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.crew-slot__stars { font-size: 0.6rem; color: var(--zen); letter-spacing: 0.1em; }
+.crew-slot__stars { font-size: var(--text-xs); color: var(--zen); letter-spacing: 0.1em; }
 
 .crew-kit__hat { align-self: flex-start; }
