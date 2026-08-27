@@ -6,7 +6,14 @@
   "type": "module",
   "scripts": {
     "test": "node --experimental-vm-modules --test \"tests/*.test.js\"",
+    "test:browser": "node tests/browser/run.mjs",
+    "test:all": "npm test && npm run test:browser",
+    "version:check": "node tools/version.mjs --check",
     "serve": "python3 -m http.server 8000"
   },
-  "//": "There are no dependencies and no build step. This file exists so Node treats src/ as ES modules when running the test suite; the game itself is served as plain static files. The vm-modules flag is for tests/modules.test.js, which parses every source file \u2014 including main.js, which needs a DOM and so is never imported by anything else."
+  "//": "The GAME has no dependencies and no build step: it is plain static files, and nothing in src/ imports anything from node_modules. This file exists so Node treats src/ as ES modules when running the test suite; the vm-modules flag is for tests/modules.test.js, which parses every source file — including main.js, which needs a DOM and so is never imported by anything else.",
+  "//devDependencies": "playwright-core drives tests/browser/run.mjs, which opens the real page and checks what the console prints and what size things come out — the class of bug that shipped past a green unit suite four times in v3. It is a test harness, not a runtime dependency: `npm test` and the game itself both work with node_modules deleted.",
+  "devDependencies": {
+    "playwright-core": "^1.62.1"
+  }
 }

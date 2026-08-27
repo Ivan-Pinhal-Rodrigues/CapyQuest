@@ -56,9 +56,16 @@ python3 -m http.server 8000
 Because it is plain static files, pushing to the Pages branch is the whole deploy — with one
 rule attached to it. **`VERSION` in `sw.js` must match `version` in `package.json`.** The cache
 name carries that version and a new version is the only thing that makes a deployed change reach
-somebody who already has the app installed. `tests/pwa.test.js` fails if the two drift, because
-forgetting is otherwise completely silent: no error, no warning, just players on last month's
-build indefinitely.
+somebody who already has the app installed. Forgetting is otherwise completely silent: no error,
+no warning, just players on last month's build indefinitely.
+
+**You do not have to remember.** `tests/pwa.test.js` fails if the two drift, and
+`.github/workflows/version.yml` bumps them for you: push a change to anything a player actually
+receives — `src/`, `styles/`, `content/`, `index.html`, `sw.js`, `manifest.webmanifest` — without
+touching the version, and CI bumps the patch in both files and commits it. A README or docs edit
+does not, because it does not reach anybody's browser and should not make every installed app
+re-download itself. `node tools/version.mjs patch|minor|major` is the same code, for when you want
+to choose.
 
 To install it, open it in a browser and use Add to Home Screen or the install button in the
 address bar. It runs offline from the first visit onwards.
@@ -66,7 +73,9 @@ address bar. It runs offline from the first visit onwards.
 ## Tests
 
 ```sh
-npm test    # node --experimental-vm-modules --test "tests/*.test.js"
+npm test            # 683 assertions, node's built-in runner, no framework
+npm run test:browser # opens the real page in Chromium and looks at it
+npm run test:all     # both, which is what CI runs
 ```
 
 Node's built-in runner, no test framework installed. The suite covers the balance formulas, the
@@ -77,6 +86,23 @@ nothing else imports because it needs a DOM — so a syntax error in the file th
 cannot hide behind a green suite again. Another checks the documentation against the code it
 describes — four rows of the beat table in `docs/STORY.md` were wrong on the first draft, written
 from memory and entirely plausible-looking, so the tables that can be verified mechanically are.
+
+**And a suite that opens the page.** `tests/browser/` drives the real game in Chromium at 320,
+390, 768 and 1280, walks every tab, and checks what a unit test structurally cannot: what the
+console actually prints, what size the text actually comes out, whether anything overflows
+sideways, and whether every tap target clears 24px. It exists because four bugs in v3 shipped past
+a green unit suite and a headless probe — a cloak painted in the sunglasses' palette, a loading
+screen that faded out mid-sentence, a loading screen *underneath* the game, and nine event
+backdrops that were secretly two. Each one needed something to look at the page.
+
+Two of its checks run as a **ratchet**: the type scale has real debt, so `tests/browser/baseline.json`
+records what is wrong today and the suite fails when a count goes up. Regression is blocked
+immediately; the debt is paid down separately. The only permitted direction is down — the suite
+rewrites the file when a number improves.
+
+This is the one place the project has dependencies. `playwright-core` drives that browser and
+nothing else: `npm test` and the game itself both work with `node_modules` deleted, and nothing
+in `src/` imports anything that is not in `src/`.
 
 ## How it is put together
 
