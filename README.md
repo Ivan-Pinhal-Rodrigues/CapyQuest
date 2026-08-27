@@ -391,8 +391,11 @@ asked for, and every purchase surface says so where you cannot miss it.
 
 ## Status
 
-Playable and finished. Built in six phases, audited, then rebuilt in six more — see
-`docs/POSTMORTEM.md` for what the audit found and what actually caught the bugs.
+Playable and finished, at **4.0**. Built in six phases, audited, rebuilt in six more, extended by
+seven for 3.0, audited again, and extended by seven more for 4.0 — see `docs/POSTMORTEM.md` for
+what both audits found and what actually caught the bugs. The short version of the pattern: every
+system passed its tests and several were wrong anyway, and the tool that found each one was
+whatever did not share its assumptions.
 
 - [x] **Core** — game loop, saves, pixel renderer, tap juice (crit, combo, particles, squash),
       18 generators, 52 upgrades, offline Nap Report, Golden Capybara, settings
@@ -520,3 +523,49 @@ Playable and finished. Built in six phases, audited, then rebuilt in six more �
       that reloads at boot and asks mid-session. Still no build step and no dependencies: a
       hand-written manifest, a hand-written service worker, and icons generated from the same
       capybara grid the game draws.
+
+### 4.0
+
+v3 shipped, was audited the same way v2 had been, and the findings were in different places than
+last time. The engineering held: 16.7ms median frames with combat running, zero heap growth over
+four hundred taps and ten tab switches, no `innerHTML` anywhere in `src/`, every poisoned save
+value scrubbed to zero. What the audit found was two things a player would have hit and one the
+project would have.
+
+- [x] **A pipeline, so shipping stops depending on remembering** — there was no `.github/`
+      directory, and `VERSION` in `sw.js` had to be hand-bumped every deploy or installed apps
+      never updated, silently. Three workflows now: the unit suite and the browser suite on every
+      push, a version check before deploy, and one that bumps the patch itself when a
+      player-facing file changes and the version does not. `tools/version.mjs` is the same code a
+      human runs, so the workflow and the developer cannot disagree.
+- [x] **Text you can read, and a save that tells you when it fails** — fifty-two CSS declarations
+      were under 8px, the smallest at 4.8px on a 20px tap target, and worse offline because the
+      font CDN is deliberately uncached. A token scale with an 11px floor replaced them. And
+      `saveState()` returned `false` on failure to twenty-six call sites that all discarded it —
+      measured with writes blocked, the game reported no saved value, no warning, and full
+      playability. It is a sticky toast with the export code one tap away now. Raising the type
+      then broke the 320px layout, and the cause was a latent bug the small type had been hiding:
+      grid items default to `min-width: auto`.
+- [x] **Gear that is a decision again** — six sets of six, with 2-piece and 4-piece bonuses. The
+      first draft was strictly dominated: a full set cost 24–29% of best-in-slot power for a bonus
+      worth about 2%, so nobody would ever wear one. The bonuses came from the measured gap. One
+      set then scored *exactly* 0.0%, which was not a probe bug — it was the best-in-slot loadout,
+      so choosing it meant nothing. `docs/BALANCE.md` also names the two sets that remain
+      undistinguished, because a tank set is not measurable with the harnesses this project has.
+- [x] **An optional backend** — a Cloudflare Worker and a D1 database: cloud save behind an opaque
+      device id, and real players on the leaderboard beside the simulated rivals. Off by default,
+      no personal data, and the game boots, plays, saves and exports exactly as before with the
+      Worker down, unreachable, or never configured — verified by pulling its plug. D1 rather than
+      KV because KV's free tier allows a thousand writes a day, which is about thirty players.
+- [x] **A way onto a phone** — a QR code of the page's own address in Settings, drawn by a QR
+      encoder written for it, with the URL printed underneath for when a camera will not focus.
+      The encoder wrote its format information least-significant bit first and every check agreed
+      it was fine, including a decoder written alongside it, which read the bits back in the same
+      wrong order and got the right answer. `jsqr` found it. Plus the DNS records for a custom
+      domain, and the itch.io caveat measured rather than assumed.
+- [x] **Forty-eight generators, and a pond that grows into them** — the ladder continues past Capy
+      Singularity with thirty more and sixty more tier upgrades, the original eighteen untouched.
+      The pond draws exactly one of each, in a habitat that belongs to it; buying units grows it,
+      and buying a tier upgrade changes what it is — a different drawing and a different name, in
+      the shop as well as on the water. Ten families of three drawings make that possible, and the
+      stage is read off tier upgrades a save already has, so nothing needed migrating.
