@@ -9,6 +9,7 @@ import { TIER_UPGRADES } from '../data/tierUpgrades.js';
 import { openModal, el } from './modal.js';
 import { exportSave, importSave } from '../save.js';
 import { configured as cloudConfigured, forgetIdentity } from '../systems/cloud.js';
+import { drawQr } from '../render/qr.js';
 import { collectionProgress } from '../systems/gacha.js';
 
 // ------------------------------------------------------------- achievements
@@ -344,6 +345,16 @@ export function openSettings(state, { onChange, onReset, onCode, toaster, onRest
     }
   }
 
+  // Play on your phone.
+  //
+  // The single most useful thing this dialog can offer somebody sitting at a
+  // desktop: the game is installable, and typing a URL into a phone by hand is
+  // the step where people give up. The code is generated from the page's own
+  // address, so it is right on github.io, right on a custom domain, and right
+  // in an itch.io iframe with nothing to regenerate.
+  body.appendChild(el('hr', 'settings__rule'));
+  body.appendChild(phoneRow());
+
   const saveRow = el('div', 'settings__row');
   saveRow.appendChild(el('span', 'settings__label', 'Save data'));
 
@@ -476,4 +487,50 @@ function confirmReset(onReset) {
 
 function setText(node, value) {
   if (node.textContent !== value) node.textContent = value;
+}
+
+/**
+ * The "play on your phone" block: a QR of this page, and the URL as text.
+ *
+ * Both, deliberately. The code is faster when it works and useless when the
+ * camera will not focus, when the screen is too dim, or when somebody is
+ * reading this over a screen share. The URL underneath costs one line and
+ * covers every one of those.
+ */
+function phoneRow() {
+  const wrap = el('div', 'phone');
+  wrap.appendChild(el('p', 'settings__label', 'Play on your phone'));
+
+  // The page's own address, minus any query — `?admin=1` should not travel to
+  // somebody's phone, and neither should a hash pointing at a panel.
+  const url = `${location.origin}${location.pathname}`;
+
+  const canvas = document.createElement('canvas');
+  canvas.className = 'phone__qr';
+  canvas.setAttribute('role', 'img');
+  canvas.setAttribute('aria-label', `QR code for ${url}`);
+
+  try {
+    drawQr(canvas, url, { target: 180 });
+    wrap.appendChild(canvas);
+  } catch (err) {
+    // A URL too long for version 6, or a canvas that will not give a context.
+    // The link below still works, so this is a missing convenience rather than
+    // a broken dialog.
+    console.info('[capyquest] could not draw the install code', err);
+  }
+
+  const link = el('a', 'phone__url', url);
+  link.href = url;
+  link.rel = 'noopener';
+  wrap.appendChild(link);
+
+  wrap.appendChild(el(
+    'p',
+    'phone__hint',
+    'Open it on your phone, then use Add to Home Screen (Safari) or Install (Chrome). '
+    + 'It runs offline once it has loaded.',
+  ));
+
+  return wrap;
 }

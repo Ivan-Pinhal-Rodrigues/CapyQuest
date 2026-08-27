@@ -74,7 +74,22 @@ const record = (key, what) => {
   if (detail[key].length < 6) detail[key].push(what);
 };
 
-const site = await serve(new URL('.', ROOT).pathname);
+/**
+ * Two embedding hosts, served over http rather than built with `setContent`.
+ *
+ * The iframe src is relative because these come from the same server the game
+ * does, which is also what makes them a fair stand-in for a real embed.
+ */
+const framePage = (sandbox) =>
+  `<!doctype html><meta charset=utf-8><title>host</title><body style="margin:0">
+   <iframe width=880 height=660 sandbox="${sandbox}" src="/"></iframe>`;
+
+const HOSTS = {
+  '/__frame-open': framePage('allow-scripts allow-same-origin allow-popups allow-modals'),
+  '/__frame-opaque': framePage('allow-scripts allow-popups allow-modals'),
+};
+
+const site = await serve(new URL('.', ROOT).pathname, HOSTS);
 const browser = await chromium.launch({ executablePath: chromiumPath() });
 
 for (const vp of VIEWPORTS) {
@@ -189,6 +204,73 @@ for (const vp of VIEWPORTS) {
   }
 
   await ctx.close();
+}
+
+// ----------------------------------------------------------- embedded hosts
+//
+// itch.io serves an HTML5 game from an <iframe sandbox=…> on its own domain,
+// and that is the free distribution route Phase F is for. The sandbox list is
+// the host's choice, not ours, and there are two shapes it can take. Both are
+// checked here because the difference is not cosmetic:
+//
+//   with allow-same-origin — the document keeps its real origin, module
+//     scripts load, storage works, the service worker registers. Full game.
+//
+//   without it — the origin is opaque, module scripts are fetched in CORS
+//     mode against origin 'null', and src/main.js is refused outright. Not a
+//     degraded game: a permanently blank loading screen. The plan for this
+//     phase assumed the worst case was "playable without offline support",
+//     and that assumption was wrong; this is the measurement that corrected
+//     it, so it stays in the suite rather than in a paragraph somewhere.
+//
+// The second case cannot be fixed from inside the page — there is no module
+// loader left to fix it with — so what is asserted is that the player is told,
+// by the classic-script watchdog at the bottom of index.html.
+{
+  // A context each, because the first one registers a service worker at scope
+  // '/' and it would then answer the second navigation out of the cached shell
+  // — the host page would come back as the game itself, with no iframe in it,
+  // and the check would report a missing warning that was never missing. That
+  // is a harness bug wearing a finding's clothes; a fresh context has no
+  // worker.
+  const open = await (async () => {
+    const ctx = await browser.newContext({ viewport: { width: 900, height: 700 } });
+    const page = await ctx.newPage();
+    await page.goto(site.url + '/__frame-open', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+    const framed = page.frames().find((f) => f !== page.mainFrame());
+    const got = await framed?.evaluate(() => ({
+    booted: !!window.capyquest,
+      storage: (() => { try { localStorage.setItem('_p', '1'); localStorage.removeItem('_p'); return true; } catch { return false; } })(),
+    })).catch((e) => ({ booted: false, storage: false, why: e.message.slice(0, 80) }));
+    await ctx.close();
+    return got ?? { booted: false, storage: false, why: 'no iframe on the host page' };
+  })();
+  if (!open.booted) fail(`sandboxed iframe with allow-same-origin: the game did not start${open.why ? ` (${open.why})` : ''}`);
+  else if (!open.storage) fail('sandboxed iframe with allow-same-origin: saves would be lost');
+
+  const shut = await (async () => {
+    const ctx = await browser.newContext({ viewport: { width: 900, height: 700 } });
+    const page = await ctx.newPage();
+    await page.goto(site.url + '/__frame-opaque', { waitUntil: 'domcontentloaded' });
+    // Past the watchdog's grace period in index.html, which is deliberately
+    // long enough not to accuse a slow phone of being broken.
+    await page.waitForTimeout(13500);
+    const framed = page.frames().find((f) => f !== page.mainFrame());
+    const got = await framed?.evaluate(() => ({
+      booted: !!window.capyquest,
+      said: document.getElementById('bootStatus')?.textContent ?? '',
+    })).catch((e) => ({ booted: false, said: `could not be read: ${e.message.slice(0, 80)}` }));
+    await ctx.close();
+    return got ?? { booted: false, said: 'no iframe on the host page' };
+  })();
+  if (shut.booted) {
+    // Not a failure — it would mean the platform stopped requiring CORS for
+    // module scripts, and the comment above is what needs updating.
+    console.log('note: modules now load from an opaque origin; the watchdog case may be obsolete');
+  } else if (!/could not start/i.test(shut.said)) {
+    fail(`opaque-origin iframe: the boot screen never explains itself (it says "${shut.said}")`);
+  }
 }
 
 await browser.close();

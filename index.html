@@ -306,5 +306,46 @@
 </noscript>
 
 <script type="module" src="src/main.js"></script>
+
+<!--
+  The watchdog.
+  =============
+  Classic, not a module, and that is the entire point: it runs in exactly the
+  case where the line above does not.
+
+  Measured, not guessed. Dropped into an <iframe sandbox="allow-scripts"> —
+  no allow-same-origin — the document gets an opaque origin, module scripts
+  are fetched in CORS mode, and `src/main.js` is refused with "from origin
+  'null' has been blocked by CORS policy". The boot screen sits there saying
+  "Warming the water…" forever, and the player has no idea why. That is a
+  plausible shape for an embedded host to use, so it is worth a message.
+
+  A classic script has no such requirement, so this one always runs. It says
+  what happened and offers the direct link, which works from anywhere.
+-->
+<script>
+  (function () {
+    var GRACE = 12000; // slow phone, cold cache, everything still loading
+    setTimeout(function () {
+      if (window.capyquest) return;
+      var status = document.getElementById('bootStatus');
+      if (!status) return;
+      status.textContent = 'CapyQuest could not start here.';
+
+      var p = document.createElement('p');
+      p.className = 'boot__status';
+      var a = document.createElement('a');
+      a.href = location.href;
+      // _blank needs allow-popups and _top needs allow-top-navigation, and an
+      // embedding host grants neither reliably — so the link text is the URL
+      // itself. When the click does nothing, it can still be read and typed.
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = location.href;
+      p.appendChild(a);
+      status.parentNode.appendChild(p);
+    }, GRACE);
+  })();
+</script>
 </body>
 </html>

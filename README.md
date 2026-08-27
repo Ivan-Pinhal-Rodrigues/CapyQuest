@@ -230,6 +230,91 @@ anybody writing 126 paths down. The first draft skipped this and let the fetch h
 files as they were requested — Chromium reported the result as three entries, no JavaScript and
 no CSS, because *the visit that installs a worker is not controlled by it*.
 
+### Getting it onto a phone
+
+Settings has a QR code of the page's own address, drawn by `src/render/qr.js` — a small encoder
+written for this, byte mode at error-correction level M, versions 1 through 6. Point a camera at
+it, open the link, and use **Add to Home Screen** (Safari) or **Install** (Chrome). That is the
+whole install path, and it needs no store and no developer account.
+
+The URL is printed underneath in full, deliberately. A code is faster when it works and useless
+when the camera will not focus, the screen is too dim, or somebody is reading this over a screen
+share.
+
+A QR encoder is unusually easy to get wrong in a way that looks right — the grid has finder
+patterns in the corners and a plausible spray of modules whether or not it decodes. Ours drew a
+beautiful, unreadable code for a while: the format information was written least-significant bit
+first. Every structural check passed, the Reed-Solomon output matched the specification's own
+published vector, and a decoder written alongside the encoder read `HELLO` back perfectly, because
+it shared the mistake. `tests/qr.test.js` therefore decodes every code with **jsqr**, somebody
+else's implementation, and that is the entire reason the second devDependency exists.
+
+The size is chosen in JavaScript rather than pinned in CSS, for the same class of reason: the grid
+is 21 modules across at version 1 and 41 at version 6, so a canvas fixed at one width in the
+stylesheet gets resampled by whatever ratio falls out, and a fractional module is one a camera
+reads as grey.
+
+#### A custom domain, when you want one
+
+Pages will serve this from your own domain for nothing. **There is no `CNAME` file in this repo on
+purpose** — adding one points the site at a domain that may not exist yet and takes it offline
+until DNS agrees. Do the DNS first, then add it.
+
+For an apex domain (`capyquest.example`), four `A` records and four `AAAA`:
+
+```
+A     @   185.199.108.153      AAAA  @  2606:50c0:8000::153
+A     @   185.199.109.153      AAAA  @  2606:50c0:8001::153
+A     @   185.199.110.153      AAAA  @  2606:50c0:8002::153
+A     @   185.199.111.153      AAAA  @  2606:50c0:8003::153
+```
+
+For a subdomain (`play.capyquest.example`), one record instead:
+
+```
+CNAME  play   ivan-pinhal-rodrigues.github.io.
+```
+
+Then Settings → Pages → Custom domain in the repository, wait for the check to pass, and tick
+*Enforce HTTPS*. The `domainDNS` error this project hit the first time round is DNS not resolving
+yet, not a problem with the repository — the certificate cannot be issued until the records
+propagate, which is usually minutes and occasionally a day.
+
+#### itch.io
+
+Free, no developer account, and an audience that is already there for games. Upload a zip of the
+repository, tick **This file will be played in the browser**, and set the frame to about 960×720.
+
+One caveat, and it is measured rather than assumed. itch serves HTML5 games from an `<iframe
+sandbox=…>` on its own domain, and the sandbox list is theirs to choose. `tests/browser/run.mjs`
+loads the game in both shapes it can take:
+
+| Sandbox | What happens |
+|---|---|
+| with `allow-same-origin` | The document keeps its real origin. Modules load, saves work, the service worker registers. The full game. |
+| without it | The origin is opaque. Module scripts are fetched in CORS mode against origin `null` and `src/main.js` is **refused outright** — a loading screen that never finishes. |
+
+The plan for this work assumed the worst case was "playable, without offline support". It is not,
+and there is no fix available from inside the page, because the thing that would apply the fix is
+the module loader that failed to load. So `index.html` ends with a **classic** script — not a
+module, which is the entire point — that says so after twelve seconds and prints the direct URL.
+The suite asserts that message appears; deleting it turns the check red.
+
+Whether itch itself passes `allow-same-origin` could not be verified from here, so it is written
+down as unverified. If the embed comes up as a permanent loading screen, that is the reason, and
+the game still works from its own URL.
+
+#### The stores, if you ever want them
+
+Not done, because both cost money, and listed here so the choice is informed rather than
+rediscovered:
+
+- **Google Play** — $25 once. [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap) or
+  [PWABuilder](https://www.pwabuilder.com/) wrap the installed PWA in a Trusted Web Activity. The
+  manifest and service worker this already ships are the inputs; no game code changes.
+- **App Store** — $99 a year, and iOS will not accept a plain PWA wrapper, so it needs a real
+  shell. Considerably more work than the fee.
+
 ### Design notes
 
 - **Fixed-step simulation.** Income ticks on a fixed 100ms step so a dropped frame never loses or

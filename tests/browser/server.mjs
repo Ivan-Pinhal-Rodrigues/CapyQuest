@@ -25,10 +25,26 @@ const TYPES = {
   '.woff2': 'font/woff2',
 };
 
-/** Serve `root` on a free port. Resolves to { url, close }. */
-export function serve(root) {
+/**
+ * Serve `root` on a free port. Resolves to { url, close }.
+ *
+ * `extra` maps a path to a string of HTML to serve there, for pages a test
+ * needs that are not part of the site. It exists for the embedded-host checks:
+ * an iframe host written with `page.setContent` lands on `about:blank`, and
+ * Chromium refuses storage to a frame under an opaque top-level document — so
+ * the harness reports a game that cannot save when the game is fine. Serving
+ * the host over http, like a real embedding page, removes that difference.
+ */
+export function serve(root, extra = {}) {
   const server = createServer(async (req, res) => {
     try {
+      const only = req.url.split('?')[0];
+      if (Object.hasOwn(extra, only)) {
+        res.writeHead(200, { 'Content-Type': TYPES['.html'], 'Cache-Control': 'no-cache' });
+        res.end(extra[only]);
+        return;
+      }
+
       // normalize collapses `..`, and the prefix check refuses anything that
       // still points outside the folder. A test server is still a server.
       const url = new URL(req.url, 'http://localhost');

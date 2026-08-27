@@ -713,3 +713,45 @@
 @media (prefers-reduced-motion: reduce) {
   .building.is-found { animation: none; outline: 2px solid var(--zen); }
 }
+
+/* ------------------------------------------------------- play on your phone */
+
+.phone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+}
+
+/* White, always. A QR is read by contrast, and a code tinted to match a dark
+   theme is a code that does not scan. */
+.phone__qr {
+  /* No width here on purpose. The canvas comes out of `drawQr` at a whole
+     number of pixels per module, and any CSS size that is not that number
+     resamples the grid — which is how a code ends up looking fine and
+     scanning like nothing at all. `max-width` only ever kicks in below
+     ~200px of dialog, where a slightly soft code beats one running off the
+     side. */
+  max-width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+.phone__url {
+  font-family: var(--font-pixel);
+  font-size: var(--text-2xs);
+  color: var(--water);
+  word-break: break-all;
+  text-align: center;
+}
+
+.phone__hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  text-align: center;
+  max-width: 34ch;
+}
