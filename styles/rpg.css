@@ -692,3 +692,60 @@
 .bossclock.is-urgent .bossclock__track__fill {
   background: linear-gradient(90deg, var(--danger), #ff8a9c);
 }
+
+/* ------------------------------------------------------------- gear sets
+   Directly under the equipment slots, because that is where the decision to
+   commit to a set is actually made. */
+
+.set-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.5rem 0 0.2rem;
+}
+
+.set-strip__hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.set-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+/* An inactive set is a note; an active one is a thing you did. */
+.set-row.is-active {
+  border-color: var(--zen);
+  background: linear-gradient(180deg, rgba(247, 201, 72, 0.12), var(--surface));
+}
+
+.set-row__name { font-weight: 700; font-size: var(--text-xs); }
+.set-row.is-active .set-row__name { color: var(--zen); }
+
+.set-row__count {
+  font-family: var(--font-pixel);
+  font-size: var(--text-2xs);
+  color: var(--text-faint);
+}
+
+.set-row__what {
+  font-size: var(--text-2xs);
+  color: var(--text-dim);
+  text-align: right;
+  min-width: 0;
+}
+
+.item-detail__set {
+  margin: 0.2rem 0 0;
+  font-size: var(--text-xs);
+  color: var(--zen);
+}

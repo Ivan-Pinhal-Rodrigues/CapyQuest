@@ -11,6 +11,7 @@
 import { GEAR_BY_ID, SLOT_IDS, statsFor, gearScore } from '../data/gear.js';
 import { rarityFor, clampTier, clampStars } from '../data/rarities.js';
 import { SKILLS_BY_ID } from '../data/skills.js';
+import { GEAR_SETS_BY_ID, bonusesAt, setOf } from '../data/gearSets.js';
 
 /** Resolve an inventory entry to its definition plus its instance numbers. */
 export function resolveItem(entry) {
@@ -65,5 +66,31 @@ export function equippedBonuses(state) {
     const skill = SKILLS_BY_ID[id];
     if (skill?.bonus) out.push(skill.bonus);
   }
+  for (const { set, count } of equippedSets(state)) {
+    out.push(...bonusesAt(set, count));
+  }
   return out;
+}
+
+/**
+ * Which sets you are wearing, and how many pieces of each.
+ *
+ * Counted from what is EQUIPPED, not owned — a set sitting in the bag is a
+ * collection, not a build. Sorted most-worn first so the Kit panel can lead
+ * with the set you have actually committed to.
+ *
+ * Every set you have any piece of is reported, including one-piece sets that
+ * grant nothing yet: "1 / 2" on a card is what tells somebody the mechanic
+ * exists and that they are one slot away from it.
+ */
+export function equippedSets(state) {
+  const counts = new Map();
+  for (const item of equippedItems(state)) {
+    const set = setOf(item.id);
+    if (!set) continue;
+    counts.set(set.id, (counts.get(set.id) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([id, count]) => ({ set: GEAR_SETS_BY_ID[id], count }))
+    .sort((a, b) => b.count - a.count);
 }

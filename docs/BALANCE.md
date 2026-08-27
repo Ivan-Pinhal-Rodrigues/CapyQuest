@@ -400,6 +400,68 @@ something you set out to do — which is the whole point of it being a side chan
 There is no forge, no fuse and no refine for crew gear. One upgrade path in the game is enough;
 two would make the Kit tab a second job.
 
+## Gear sets
+
+Six sets of six, thirty-six of the forty-two pieces. Six stay setless on purpose —
+Bamboo Helm, Ember Seal, Ember Brand, Market Silk, Cloud Walkers, Moonlit Staff —
+because a set bonus has to beat *something* to be a decision.
+
+Bonuses land at **2 and 4 equipped pieces**, cumulative. Not six: at six the last
+two slots are spoken for by definition, which is the collapse sets exist to fix.
+
+### What each one is worth
+
+Measured at rung 14, +12 forge, 1★ on every piece, level 93, sixty of every
+generator — against a **best-in-slot baseline**: the highest-tier piece in each
+slot, which is what optimising slot by slot actually gives you.
+
+| Set | Stage reached | Income | Offline cap | Golden | Tickets/boss |
+|---|---|---|---|---|---|
+| *best-in-slot* | **15** | — | 12h | ×1.00 | +0 |
+| Reedwater | 13 | **+24%** | 12h | ×1.00 | +0 |
+| Yuzu Grove | 13 | −24% | 12h | **×2.96** | **+2** |
+| Bathhouse | 14 | −54% | 12h | ×1.00 | +0 |
+| Tideglass | 14 | −68% | 12h | ×1.00 | +0 |
+| Dreamlight | 14 | −21% | **31h** | ×1.00 | +0 |
+| The Still Point | **15** | −19% | 12h | ×1.00 | +0 |
+
+Reedwater wins income, Yuzu Grove wins drops, Dreamlight wins offline, The Still
+Point matches the deepest run. That is four of six with a clear reason to exist.
+
+### Two things this table does not say, and one it gets wrong
+
+**Bathhouse and Tideglass do not decisively beat best-in-slot at anything.** They
+sit one stage back with their own character — bulk and crit respectively — and
+that is the honest state of them. They are not traps: within a stage of the best
+loadout is playable. They are not triumphs either.
+
+**The reason is that the game cannot measure them.** Both of its own metrics have
+blind spots that this phase walked straight into:
+
+- `combatStats().power` is `atk*3 + def*2.5 + hp*0.5 + spd*2`. It **ignores crit
+  and crit damage entirely**, so Tideglass's whole identity is invisible to it.
+- `reachableStage()` is pure DPS against boss HP. DEF and HP do not appear, so a
+  survival set reads as a straight downgrade however tanky it actually is.
+
+Bathhouse's four-piece therefore carries real attack alongside the bulk — not
+because a tank should hit hard, but because a set nothing in the game can measure
+is a set nobody can tell is working. Giving combat a survival metric would be the
+proper fix and is not in this version.
+
+### What the first draft measured at, and why it was thrown away
+
+Worth recording, because it read perfectly well on paper:
+
+- A full set cost **24–29% combat power and 55–64% income** against best-in-slot,
+  while the set bonus returned about **2%**. Every set was strictly dominated.
+- The Still Point scored exactly **0.0%** — because its six pieces *were* the
+  best-in-slot baseline. Committing to it cost nothing and decided nothing. The
+  Endless Bath moved to Bathhouse (where it reads better anyway) and The Still
+  Point took a rung-4 bucket as the price of the largest power bonus in the game.
+
+A test now asserts no set equals the best-in-slot loadout, and that the four
+measurable identities still win at their own axis.
+
 ## The leaf economy
 
 | | |
