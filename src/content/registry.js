@@ -232,3 +232,14 @@ function structuredCopy(value) {
 }
 
 export { cosmeticKey };
+
+/**
+ * Where the optional backend lives, per the pack. Null when there is none.
+ *
+ * The registry is pure — no fetch, no storage — so it reports the endpoint
+ * rather than configuring anything with it. systems/cloud.js is told by
+ * content/load.js, which is the half that already touches the browser.
+ */
+export function cloudEndpoint() {
+  return pack.cloud?.endpoint || null;
+}

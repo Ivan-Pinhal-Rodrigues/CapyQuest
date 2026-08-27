@@ -9,6 +9,8 @@ import { resolveItem, equippedItem } from '../systems/combatStats.js';
 import { forgePrice, refinePrice, MAX_FORGE } from '../systems/loot.js';
 import { spriteDataUrl } from './icons.js';
 import { openModal, el } from './modal.js';
+import { setOf, SET_THRESHOLDS } from '../data/gearSets.js';
+import { equippedSets } from '../systems/equipment.js';
 
 /** The rung supplies the palette, so a piece visibly changes as it climbs. */
 function gearPalette(rarity) {
@@ -130,6 +132,16 @@ export class GearPanel {
     }
     r.appendChild(this.slotGrid);
 
+    // --- sets
+    //
+    // Directly under the slots, because that is where the decision is made.
+    // Rebuilt rather than mutated in place: it holds at most six short rows and
+    // only changes when you equip something, so the cost is nothing and the
+    // alternative is a diffing routine nobody will ever need.
+    this.setStrip = document.createElement('div');
+    this.setStrip.className = 'set-strip';
+    r.appendChild(this.setStrip);
+
     // --- skills
     r.appendChild(heading('Skills'));
     this.skillBar = document.createElement('div');
@@ -167,6 +179,43 @@ export class GearPanel {
     r.appendChild(this.bagEmpty);
   }
 
+  /**
+   * What you are wearing, set-wise, and what the next threshold pays.
+   *
+   * Shows sets you have ONE piece of as well. Two is where the first bonus
+   * lands, so a player holding one piece needs to be told the mechanic exists
+   * and that they are a single slot away from it — otherwise sets are a system
+   * you only find by accident.
+   */
+  updateSets(state) {
+    const worn = equippedSets(state);
+    const key = worn.map((w) => `${w.set.id}:${w.count}`).join(',');
+    if (key === this.setKey) return;
+    this.setKey = key;
+
+    this.setStrip.replaceChildren();
+    if (!worn.length) {
+      this.setStrip.appendChild(el('p', 'set-strip__hint',
+        'Gear comes in sets. Wear two pieces of one for a bonus, four for a real one.'));
+      return;
+    }
+
+    for (const { set, count } of worn) {
+      const next = SET_THRESHOLDS.find((t) => count < t);
+      const active = SET_THRESHOLDS.filter((t) => count >= t);
+
+      const row = el('div', `set-row${active.length ? ' is-active' : ''}`);
+      row.appendChild(el('span', 'set-row__name', set.name));
+      row.appendChild(el('span', 'set-row__count', `${count} / ${next ?? SET_THRESHOLDS.at(-1)}`));
+      row.appendChild(el(
+        'span',
+        'set-row__what',
+        active.length ? set.identity : `${next - count} more for ${set.identity.toLowerCase()}`,
+      ));
+      this.setStrip.appendChild(row);
+    }
+  }
+
   summaryRow(label, value) {
     let node = this.summaryRows.get(label);
     if (!node) {
@@ -195,6 +244,8 @@ export class GearPanel {
     this.summaryRow('Crit', `${fmtPct(stats.crit)} / ${fmtMult(stats.critMult)}`);
     this.summaryRow('Luck', fmtInt(stats.luck));
     this.summaryRow('XP', `${fmtInt(stats.xpIntoLevel)} / ${fmtInt(stats.xpForNext)}`);
+
+    this.updateSets(state);
 
     // --- slots
     for (const slot of SLOTS) {
@@ -313,6 +364,15 @@ export function itemDetailBody(item, { equipped, shards, leafs = 0, fodder = 0 }
 
   const bonus = bonusLine(item);
   if (bonus) body.appendChild(el('p', 'item-detail__bonus', bonus));
+
+  // Which set this belongs to, and what the set is for. A piece whose set
+  // membership is invisible until you happen to equip a second one is a
+  // mechanic nobody discovers.
+  const set = setOf(item.id);
+  if (set) {
+    const line = el('p', 'item-detail__set', `${set.name} set — ${set.identity}`);
+    body.appendChild(line);
+  }
 
   body.appendChild(el('p', 'item-detail__blurb', item.blurb));
 

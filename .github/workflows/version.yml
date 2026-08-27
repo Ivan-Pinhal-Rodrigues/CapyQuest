@@ -1,0 +1,115 @@
+# Bump the version automatically when the game changes.
+#
+# WHY THIS EXISTS
+#
+# The service worker's cache is named after the version, and a new cache name
+# is the ONLY thing that makes a deployed change reach somebody who already has
+# CapyQuest installed. Ship without bumping and the update pipeline is silently
+# a no-op — no error, no warning, just players on an old build indefinitely.
+#
+# tests/pwa.test.js fails when package.json and sw.js disagree, which catches
+# half the mistake. It cannot catch the other half: bumping neither. A human
+# remembering a manual step before every deploy is not a process, it is a bug
+# waiting for a busy day. So the pipeline does it.
+#
+# WHAT COUNTS AS A CHANGE
+#
+# Only files a player actually receives: src/, styles/, index.html, sw.js,
+# manifest.webmanifest and content/. A README edit or a new test does not reach
+# anybody's browser and does not deserve to invalidate every installed cache —
+# that would make every player re-download the app to read a typo fix.
+#
+# WHY IT CANNOT LOOP
+#
+# The bump commit touches package.json and sw.js. sw.js is on the watched list,
+# so the run it triggers checks the next question too: did the version change
+# in this push? It did — this commit is the change — so that run bumps nothing
+# and stops. The `github-actions[bot]` guard below is a second, independent
+# stop, because relying on one subtle condition to prevent an infinite loop of
+# commits is not a thing to be clever about.
+
+name: Version
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  # Never two bumps at once — they would race to write the same two lines.
+  group: version-main
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Two commits, so the push can be diffed against what came before it.
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Decide whether a bump is owed
+        id: decide
+        run: |
+          decide() {
+            echo "bump=$1" >> "$GITHUB_OUTPUT"
+            echo "reason=$2" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          changed=$(git diff --name-only HEAD^ HEAD || true)
+          echo "changed files:"; echo "$changed"
+
+          # Did this push change anything a player actually receives?
+          if ! echo "$changed" | grep -qE '^(src/|styles/|content/|index\.html|sw\.js|manifest\.webmanifest)'; then
+            decide no "nothing players receive changed"
+          fi
+
+          # Did it already move the version? If so the author did it on purpose
+          # — a release, or a minor/major they chose — and this must not
+          # second-guess them. Matching the changed LINES, not just the files,
+          # because a package.json edit is usually something else entirely.
+          if git diff HEAD^ HEAD -- package.json sw.js \
+             | grep -qE '^\+\s*("version"\s*:|const VERSION =)'; then
+            decide no "the version was already changed in this push"
+          fi
+
+          decide yes "shipped files changed and the version did not"
+
+      - name: Bump the patch version
+        if: steps.decide.outputs.bump == 'yes'
+        run: |
+          before=$(node tools/version.mjs)
+          node tools/version.mjs patch
+          after=$(node tools/version.mjs)
+          echo "VERSION_BEFORE=$before" >> "$GITHUB_ENV"
+          echo "VERSION_AFTER=$after" >> "$GITHUB_ENV"
+
+      - name: Commit and push
+        if: steps.decide.outputs.bump == 'yes'
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json sw.js
+          git commit -m "Bump to ${VERSION_AFTER}
+
+          ${VERSION_BEFORE} → ${VERSION_AFTER}, so installed apps pick this build up.
+          The service worker's cache is named after the version; without a new
+          name a deployed change never reaches anybody who already has the app."
+          git push
+
+      - name: Say what happened
+        run: |
+          if [ "${{ steps.decide.outputs.bump }}" = "yes" ]; then
+            echo "::notice::Bumped ${VERSION_BEFORE} → ${VERSION_AFTER} — ${{ steps.decide.outputs.reason }}"
+          else
+            echo "::notice::No bump — ${{ steps.decide.outputs.reason }}"
+          fi

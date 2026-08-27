@@ -3,6 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createState, reconcileState, SAVE_VERSION } from '../src/state.js';
 import { exportSave, importSave, saveState, loadState, migrate, SAVE_KEY } from '../src/save.js';
@@ -268,4 +269,57 @@ test('achievement rewards feed straight back into derived stats', () => {
   s.lifetimeClicks = 1;
   checkAchievements(s);
   assert.ok(recomputeDerived(s).globalMult > before, 'First Contact should boost income');
+});
+
+// ------------------------------------------------- when saving does not work
+
+test('a blocked write is reported, not swallowed', () => {
+  // saveState has always returned a boolean and Game.save() threw it away, at
+  // all twenty-six call sites. Storage can be unavailable through no fault of
+  // the player — Safari in private mode exposes localStorage and throws on
+  // every write, an installed iOS app can have its storage evicted, a quota can
+  // fill — and in every one of those the game kept running, saved nothing, and
+  // said nothing. Measured in Chromium with writes blocked: the save was null,
+  // no warning appeared anywhere on screen, and play continued.
+  //
+  // For an idle game that is the worst bug available: the whole proposition is
+  // that progress accumulates.
+  const blocked = {
+    getItem: () => null,
+    setItem: () => { throw new DOMException('QuotaExceededError', 'QuotaExceededError'); },
+    removeItem: () => {},
+  };
+  assert.equal(saveState(createState(), blocked), false,
+    'a failed write must report itself');
+});
+
+test('a working write says so', () => {
+  const store = new Map();
+  const ok = {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, v),
+    removeItem: (k) => store.delete(k),
+  };
+  assert.equal(saveState(createState(), ok), true);
+  assert.ok(store.get(SAVE_KEY), 'and actually write something');
+});
+
+test('the game acts on the boolean rather than dropping it', () => {
+  // The fix has to be in the caller: saveState reporting failure to nobody is
+  // the same as not reporting it. Game.save() warns once, offers the export
+  // code as the way out, and re-arms when storage recovers so a second outage
+  // is also reported.
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const save = main.slice(main.indexOf('  save() {'));
+  const body = save.slice(0, save.indexOf('\n  }'));
+
+  assert.ok(/const ok = saveState/.test(body), 'the result must be kept');
+  assert.ok(body.includes('ms: 0'),
+    'the warning must wait for the player rather than scroll past in four seconds');
+  assert.ok(body.includes('openSettings'),
+    'it must offer the save code, not just name the problem');
+  assert.ok(body.includes('this.warnedAboutSaving = false'),
+    'recovery must re-arm the warning so a second outage is also reported');
+  assert.ok(body.includes('this.toaster?.'),
+    'the first save happens in the constructor — the toaster may not exist yet');
 });

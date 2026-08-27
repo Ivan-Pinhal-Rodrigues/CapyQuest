@@ -1,15 +1,23 @@
 # Postmortem
 
-CapyQuest was built in twenty phases. Six of them built the game; the seventh was a design audit
-of the finished thing; the six after it were the audit's findings; and the seven after those are
-v3.0 — a wardrobe, the crew in the water, a fight you can watch, a real boss clock, editable
-content, and an app you can install.
+CapyQuest was built in twenty-seven phases and audited twice.
 
-This is the record of what the audit found, what it cost, and what actually caught the bugs. It
+Six phases built the game. The seventh was a design audit of the finished thing, and the six after
+it were what that audit found. Seven more are v3.0 — a wardrobe, the crew in the water, a fight
+you can watch, a real boss clock, editable content, and an app you can install. Then a second
+audit, of v3 this time, and the seven phases that answers it are v4.0: a pipeline, text you can
+read, a save that tells you when it fails, gear that is a decision again, an optional backend, a
+way onto a phone, and forty-eight generators standing around a pond that grows into them.
+
+This is the record of what both audits found, what it cost, and what actually caught the bugs. It
 is written down because the pattern in it is more useful than any individual fix: **every system
-passed its tests, and several of them were wrong anyway.** v3 said it again, in a new accent:
-four bugs shipped past green suites and headless probes, and it took a screenshot to see each
-one.
+passed its tests, and several of them were wrong anyway.**
+
+Each version said it again in a new accent. v2: a model is a claim that needs checking before its
+output is treated as a finding. v3: four bugs shipped past green suites and headless probes, and
+it took a screenshot to see each one. v4: a check that shares the thing's assumptions is not a
+check — a decoder written beside its encoder read a broken QR code back perfectly, because it read
+the bits in the same wrong order they were written in.
 
 ---
 
@@ -253,22 +261,188 @@ order.
 
 ---
 
+## v4.0 — a second audit, and the seven phases it produced
+
+v3 shipped as a finished game and was audited the same way v2 was: run it, stress it, read it as
+somebody who did not write it. The engineering held up — 16.7ms median frames with combat running,
+zero heap growth over four hundred taps, no `innerHTML` anywhere in `src/`, every poisoned save
+value scrubbed to zero. The findings were elsewhere, and two of them were embarrassing.
+
+### 🔴 A save that failed silently
+
+`saveState()` returns `false` when the write fails, and **all twenty-six call sites in `main.js`
+discarded it.** Measured with writes blocked — Safari private mode, a full quota, an installed iOS
+app whose storage had been evicted — the game reported `savedValue: null`, `stillPlayable: true`,
+`anyWarningOnScreen: false`. A player plays for hours, loses everything, and is never told.
+
+For an idle game, whose entire proposition is that progress accumulates, that is the worst bug in
+the codebase, and it had been there since the first commit. It is a sticky warning toast now, with
+the export code one tap away.
+
+### 🔴 The text was too small to read
+
+Not a judgement — a count. **Fifty-two CSS declarations under 8px**, ninety-six under 11px, the
+smallest at `0.3rem` = 4.8px on a 20px-tall tap target. WCAG 2.2 sets the floor at 24px. Worse
+offline: the service worker deliberately does not cache the font CDN, so an installed app always
+renders in the `ui-monospace` fallback, whose metrics the scale was never tuned for.
+
+The fix is a token scale with an 11px floor. Raising the type then broke the 320px layout — nine
+horizontal overflows appeared — and the cause was not the type at all: grid items default to
+`min-width: auto`, so a long word could push a column wider than its track. A latent bug the old
+type was too small to expose.
+
+### 🟠 No CI, and a version nobody could forget by accident
+
+There was no `.github/` directory. 673 tests ran when somebody remembered, and `VERSION` in
+`sw.js` had to be hand-bumped every deploy or installed apps never updated — silently. Three
+workflows now: tests and the browser suite on every push; a version check before deploy; and one
+that bumps the patch itself when player-facing files change and the version does not.
+
+### What v4 added
+
+| | |
+|---|---|
+| A | The pipeline, and `tools/version.mjs` |
+| B | The save warning, the type scale, the accessibility pass |
+| C | The pond, first cut — superseded by H |
+| D | Gear sets, so the endgame is a decision again |
+| E | A Cloudflare Worker and D1: cloud save, and real players on the board |
+| F | A QR install code and the free distribution routes |
+| H | Eighteen generators to forty-eight, and a pond that grows into them |
+
+### The lesson that was new: a self-check is not a check
+
+The QR encoder wrote its format information least-significant bit first. Everything agreed it was
+fine. Every structural assertion passed — finder patterns, timing pattern, dark module, correct
+size for the version. The Reed-Solomon output matched the specification's own published test
+vector, exactly. And a decoder written alongside the encoder read `"HELLO"` back perfectly.
+
+That last one is the point. **A decoder written by the same hand as the encoder shares its
+assumptions, so it cannot find them.** It read the bits back in the same wrong order they were
+written in and got the right answer, which is exactly what a broken pair does. The bug was found
+by `jsqr` — somebody else's implementation, added as a devDependency for precisely this — and it
+is the second dependency in the project because a QR code verified by nothing is worse than a
+second devDependency.
+
+The same shape appears in the v2 and v3 sections under a different name. The general rule is
+sharper now: *a check that shares the thing's assumptions is not a check.* An independent
+implementation, a real browser, a real database, somebody else's decoder.
+
+### Measurement found design failures, not just bugs
+
+Twice the numbers said a finished-looking feature did not work:
+
+- **Gear sets were strictly dominated on the first draft.** Wearing a full set cost 24–29% of the
+  best-in-slot power and 55–64% of its income; the set bonus returned about 2%. Nobody would ever
+  wear one. The bonuses were raised several-fold from the measured gap rather than from taste.
+- **The Still Point scored exactly 0.0%**, which looked like a bug in the probe and was not: the
+  set *was* the best-in-slot loadout, so choosing it cost nothing and meant nothing. A piece moved
+  to another set, and a test now asserts no set equals best-in-slot.
+
+`docs/BALANCE.md` also records the two sets that remain genuinely undistinguished, because `power`
+ignores crit and `reachableStage` is pure DPS — a tank set is not measurable with the harnesses
+this project has, and writing "six clean identities" would have been a claim rather than a
+finding.
+
+### And the browser, again, four more times
+
+A pattern with no sign of stopping. Every one of these passed the unit suite:
+
+1. **The pond rendered as two vertical walls.** Clamping each sprite outward past the capybara
+   collapsed almost all of them onto the same x. Nothing overlapped, nothing was off-canvas, every
+   number was content.
+2. **The settings button was sliced by the viewport edge at 320px** while the overflow count read
+   zero, because `overflow-x: clip` hides exactly that. A separate check counts controls that run
+   past the edge with no scrollable ancestor.
+3. **Thirty-four of sixty-three sprites sat on top of the capybara**, under a comment asserting
+   that was impossible by construction.
+4. **Five of the twenty new pond drawings did not read as what they were** — and the fountain took
+   three attempts: invisible at one pixel wide, then a tent pitched on the basin, then an arrow
+   pointing down into the water.
+
+### The probes were wrong before the code was, seven more times
+
+Recorded because the reflex to blame the code first is the expensive one:
+
+- Three of four accessibility findings were the probe. `!img.alt` treats `alt=""` — the correct
+  markup for a decorative image — as missing; the scene canvas already had a label; the arena
+  canvas gets one when a fight starts. Only the 210-tab-stop tree was real.
+- "The capybara still earns: false" — zen was 1e18, and `1e18 + 1 === 1e18` in float64.
+- Six gear ids in a test were written from display names and did not exist. `onsenBasin` is a
+  *building*.
+- An iframe host built with `setContent` lands on `about:blank`, and Chromium refuses storage
+  under an opaque top-level document — so the harness reported a game that could not save when the
+  game was fine.
+- A service worker registered by the first iframe check answered the second navigation out of its
+  cached shell, returning the game where the host page should have been.
+- The pond's size check asserted three distinct sprite sizes and failed against correct code:
+  sprites blit at whole-number scales and a 320px canvas has room for two. The measured truth — 2
+  at 320, 3 at 768, 5 at 1280 — went into the check.
+- A dev harness silently dropped the D1 schema, because splitting the file on `;` left chunks
+  beginning with a `--` comment that swallowed the statement after them.
+
+### One assumption in the plan, corrected by measuring it
+
+The plan said the worst case for embedding the game on itch.io was "a playable game without
+offline support". It is not. Loaded in an `<iframe sandbox>` without `allow-same-origin`, the
+document gets an opaque origin, module scripts are fetched in CORS mode against origin `null`, and
+`src/main.js` is refused outright — a loading screen that never finishes. Nothing inside the page
+can fix it, because the thing that would apply the fix is the module loader that failed to load.
+
+Hence the classic script at the bottom of `index.html`: twelve seconds after the module should
+have arrived, it says so and prints the direct URL. Whether itch itself passes `allow-same-origin`
+could not be verified from the sandbox this was built in, and is written down as unverified rather
+than guessed at.
+
+### A rule that could not survive the thing it guarded
+
+`docs/BALANCE.md` carried "every generator repays inside a year", added after the six digit-count
+typos that made a third of the ladder unbuyable. At eighteen rungs, ending at 181 days, it was a
+reasonable proxy. At forty-eight it is arithmetically impossible, and keeping it would have meant
+flattening payback until thirty new rungs were one blurred purchase.
+
+It was also never the check that would have caught the bug it was written for. That bug produced a
+payback **step** of ×3,120 between adjacent rungs. The step is what is bounded now — and the
+absolute question is asked properly instead, against a multiplier computed from the real code
+rather than assumed: rung 48's thirteen-year raw payback is 118 seconds for a player who has
+actually got there.
+
+A guard that has to be deleted to ship is worth reading twice: sometimes it is protecting
+something, and sometimes it is a proxy that outlived its range.
+
+---
+
 ## What is still open
 
-Ranked by what a player would notice. The first three survive from v2 unchanged.
+Ranked by what a player would notice.
 
-1. **Gear is still the only system with a real tradeoff, and it collapses late.** Any piece can
-   be carried to rung 20, so eventually there is one correct answer per slot. Set bonuses, or a
-   rung ceiling per piece, would keep the decision alive. Crew gear inherited the same shape.
-2. **The seven unbuilt events.** `docs/EVENTS.md` designs ten; three are live. The content pack
-   makes the *scheduling* of them a JSON edit now, but the mechanics still need code.
-3. **Seventy-one enemies share fourteen silhouettes.** Palette-swapping is the pipeline's whole
-   premise and it earns its keep — but five variants per shape is where the seams start to show
-   across eighteen terrains. More hand-drawn shapes is the cheapest variety in the project, and
-   the wardrobe proved it again: nineteen shapes became fifty-two items.
-4. **No cloud save.** Export codes work and are honest about being the only option, but a lost
-   browser profile is a lost save. This gets worse as an installed app, where the profile is
-   easier to lose track of than a bookmarked tab.
-5. **The admin panel writes to one browser.** Edits live in `localStorage` until somebody exports
-   the JSON and commits it. That is the honest design for a static site with no backend, and it
-   does mean two admins cannot collaborate, and an export can be lost by clearing site data.
+### Closed by v4
+
+- ~~**Gear is the only system with a real tradeoff, and it collapses late.**~~ Six sets of six
+  with 2-piece and 4-piece bonuses, measured against best-in-slot rather than eyeballed. Two of
+  the six remain undistinguished for reasons `docs/BALANCE.md` states plainly.
+- ~~**No cloud save.**~~ Opt-in, off by default, an opaque device id and no personal data. The
+  game boots, plays, saves and exports exactly as before with the Worker down, unreachable, or
+  never configured — checked by pulling its plug.
+
+### Still open
+
+1. **The seven unbuilt events.** `docs/EVENTS.md` designs ten; three are live. The content pack
+   makes the *scheduling* of them a JSON edit, but the mechanics still need code. This is the
+   oldest item on the list and the one a returning player would notice first.
+2. **Seventy-one enemies share fourteen silhouettes.** Palette-swapping is the pipeline's whole
+   premise and it earns its keep — but five variants per shape is where the seams show across
+   eighteen terrains. Phase H proved the point again in the other direction: ten families of three
+   drawings now cover forty-eight generators, and the pond stopped looking repetitive the moment
+   the shapes stopped repeating.
+3. **The pond's sprite sizes quantise badly on a phone.** Sprites blit at whole-number scales and
+   `fitScale` measures the CSS box rather than the backing store, so a 320px screen gets two
+   distinct sizes where a desktop gets five — and a retina screen does not help, it just draws the
+   same two more sharply. Taking the scale from the backing store would give phones the full range
+   for free, but it moves every sprite in the scene and wanted its own change.
+4. **The admin panel writes to one browser.** Edits live in `localStorage` until somebody exports
+   the JSON and commits it. The Worker added in v4 stores saves and scores and deliberately does
+   not store content: a pack that could be edited remotely is a pack that can be broken remotely,
+   and the static-file promise is worth more than the convenience.
+5. **Two admins still cannot collaborate**, for the same reason, and an unexported pack can be
+   lost by clearing site data.

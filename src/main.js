@@ -5,14 +5,14 @@
 // ~15Hz because nobody can read a number that changes sixty times a second.
 
 import { createState } from './state.js';
-import { loadState, saveState, clearSave, freshState } from './save.js';
+import { loadState, saveState, clearSave, freshState, importSave } from './save.js';
 import { recomputeDerived } from './systems/stats.js';
 import { ComboTracker, resolveClick } from './systems/clicker.js';
 import { GoldenSpawner, windfallAmount } from './systems/golden.js';
 import { checkAchievements, describeReward } from './systems/achievements.js';
 import { buyBuilding, buyUpgrade } from './systems/shop.js';
 import { audio } from './systems/audio.js';
-import { offlineEarnings } from './balance.js';
+import { offlineEarnings, splitLevel } from './balance.js';
 import { Combat } from './systems/combat.js';
 import { combatStats, xpForStage, resolveItem } from './systems/combatStats.js';
 import {
@@ -42,6 +42,9 @@ import { boostById, cosmeticById, leafPackById } from './content/registry.js';
 import { loadContent } from './content/load.js';
 import { BootScreen } from './ui/bootScreen.js';
 import { registerUpdates } from './systems/updater.js';
+import {
+  configured as cloudConfigured, pushSave, pushScore, pullSave, forgetIdentity,
+} from './systems/cloud.js';
 import { adminRequested, openAdminPanel } from './ui/adminPanel.js';
 import { ticketsPerBoss } from './systems/meta.js';
 import { COMPANIONS_BY_ID, PARTY_SIZE } from './data/companions.js';
@@ -60,6 +63,7 @@ import {
   checkRollover, claimPassLevel, unclaimedPassLevels, passTrack,
   passXpForClear, addPassXp, unlockPremium,
 } from './systems/season.js';
+import { seasonAt } from './data/seasons.js';
 import { SeasonPanel } from './ui/seasonPanel.js';
 import { LeaderboardPanel, rivalBody } from './ui/leaderboardPanel.js';
 import { Dialogue } from './ui/dialogue.js';
@@ -70,7 +74,7 @@ import { nextStep, markStep } from './systems/onboarding.js';
 import { displayName, setName } from './systems/profile.js';
 import { nextBeat, markSeen, beat as storyBeat } from './systems/story.js';
 import { HOSTILE_CAPYBARAS } from './data/capybaras.js';
-import { leaderboard, rivalsFor } from './systems/leaderboard.js';
+import { leaderboard, rivalsFor, realEntries, playerEntry } from './systems/leaderboard.js';
 import { activeEvent, syncEvent, addPetals, petalsForClear, exchange } from './systems/events.js';
 import { PREMIUM_PRICE, PREMIUM_LEAFS } from './data/pass.js';
 import { grantReward, describeGrant } from './systems/rewards.js';
@@ -334,6 +338,9 @@ class Game {
       if (hit === 'golden') this.catchGolden(x, y);
       else if (hit === 'capy') this.tapCapy();
       else if (hit?.startsWith('companion:')) this.inspectCompanion(hit.slice('companion:'.length));
+      // Tapping something on the bank takes you to its row in the shop, so the
+      // pond is a way into the game rather than only a picture of it.
+      else if (hit?.startsWith('building:')) this.showBuilding(hit.slice('building:'.length));
     };
 
     // Pointer events cover mouse, touch and pen in one path, and preventing the
@@ -880,6 +887,10 @@ class Game {
     this.saveTimer += dtMs;
     if (this.saveTimer >= SAVE_INTERVAL_MS) {
       this.save();
+      // Rides on the local save rather than a timer of its own, and rate-limits
+      // itself to once a minute inside. Deliberately not awaited: the loop must
+      // not know or care whether there is a server.
+      this.syncCloud();
       this.saveTimer = 0;
     }
   }
@@ -919,6 +930,11 @@ class Game {
   updateUi(now) {
     this.hud.update(this.state, this.derived, this.combo, now);
     this.buildingList.update(this.state, this.derived);
+    // The pond shows what you have built. Here rather than in render(): this
+    // runs at ~15Hz instead of 60, and setBuildings early-returns unless what
+    // you own has actually changed, so the layout is rebuilt on a purchase and
+    // never on a frame.
+    this.scene.setBuildings(this.state);
     this.upgradeGrid.update(this.state);
     this.updateQuestVisibility();
     this.updateMetaVisibility();
@@ -977,6 +993,72 @@ class Game {
     this.tabs.badge('store', dailyLeafsReady(this.state, now) ? 1 : 0);
     this.tabs.badge('season', unclaimedPassLevels(this.state));
     this.tabs.badge('rivals', activeEvent(now) ? 1 : 0);
+  }
+
+  // -------------------------------------------------------------- the cloud
+
+  /**
+   * Push the save and this run's board row, and take back whatever the board
+   * says. Off unless the player asked for it AND a backend is configured.
+   *
+   * Nothing here is awaited by anything. It is called on a timer and after a
+   * rebirth, both of which carry on regardless of what it returns — a server
+   * that is slow, down or absent costs the player nothing at all.
+   */
+  syncCloud() {
+    if (!this.state.settings.cloud || !cloudConfigured()) return;
+
+    const now = Date.now();
+    // Not more than once a minute, however often this is called. The free tier
+    // is generous, not infinite, and a save every few seconds would be rude to
+    // a server somebody else is paying nothing for.
+    if (this.lastCloudAt && now - this.lastCloudAt < 60e3) return;
+    this.lastCloudAt = now;
+
+    pushSave(this.state, now).then((res) => {
+      if (!res.ok && res.reason !== 'off') {
+        console.info('[capyquest] cloud save did not go through:', res.reason);
+      }
+    });
+
+    const rank = playerEntry(this.state, now);
+    pushScore({
+      season: seasonAt(now).index,
+      name: displayName(this.state),
+      depth: rank.depth,
+      rebirths: rank.rebirths,
+      passLevel: rank.passLevel,
+    }).then((res) => {
+      // The board comes back from the same call that reported the score, so
+      // one request keeps both halves current.
+      if (res.ok && Array.isArray(res.data?.rows)) {
+        this.realRows = realEntries(res.data.rows);
+        this.boardCache = null; // re-rank on the next paint
+      }
+    });
+  }
+
+  /**
+   * Tapping something on the bank takes you to its row in the shop.
+   *
+   * The pond used to be scenery you could only tap in one place. Now that it
+   * shows what you have built, the obvious thing to do with a building you can
+   * see is buy another one — so the picture is wired to the list.
+   */
+  showBuilding(id) {
+    this.tabs.select('generators');
+    const row = this.buildingList.rows.get(id)?.row;
+    if (!row) return;
+
+    // Repaint before scrolling: the row may have been hidden a moment ago.
+    this.buildingList.update(this.state, this.derived);
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // A brief highlight, because a smooth scroll that lands on an unremarkable
+    // row leaves you wondering whether anything happened.
+    row.classList.remove('is-found');
+    void row.offsetWidth;
+    row.classList.add('is-found');
+    audio.click(0.4);
   }
 
   summonUnlocked() {
@@ -2067,7 +2149,17 @@ class Game {
     if (!this.boardCache || this.boardCache.day !== day) {
       this.boardCache = { day, rivals: rivalsFor(now) };
     }
-    const out = leaderboard(this.state, now, this.boardCache.rivals);
+
+    // Real players, when there is a backend and it answered. `this.realRows` is
+    // whatever the last successful fetch left behind and starts empty, so this
+    // is a no-op with no server, an unreachable one, or one that has not
+    // replied yet — the board is simply the sixty simulated rivals, exactly as
+    // it has always been.
+    const rivals = this.realRows?.length
+      ? { ...this.boardCache.rivals, rows: [...this.boardCache.rivals.rows, ...this.realRows] }
+      : this.boardCache.rivals;
+
+    const out = leaderboard(this.state, now, rivals);
     // Hand the cached rivals along so the bracket does not rebuild all sixty
     // loadouts a second time on the same frame.
     out.cached = this.boardCache.rivals;
@@ -2432,9 +2524,86 @@ class Game {
     });
   }
 
+  /**
+   * Pull the cloud copy down and offer to swap this run for it.
+   *
+   * The one genuinely destructive thing the backend can do, so it asks first
+   * and says what it costs in the dialog rather than afterwards in a toast.
+   * The server is never allowed to decide this on its own — a device that has
+   * been played on today must not lose that to a copy from a device that has
+   * not, just because the copy happens to be newer by a clock nobody trusts.
+   */
+  restoreFromCloud() {
+    pullSave().then((res) => {
+      if (!res.ok) {
+        this.toaster.show({
+          title: 'Could not reach the cloud copy',
+          body: res.reason === 'http 404'
+            ? 'Nothing has been saved from this device yet.'
+            : 'The server did not answer. Your pond here is untouched.',
+          kind: 'warn',
+          icon: '☁',
+        });
+        return;
+      }
+
+      let incoming;
+      try {
+        incoming = importSave(res.data.code);
+      } catch (err) {
+        this.toaster.show({
+          title: 'That copy could not be read',
+          body: 'Nothing has changed here.',
+          kind: 'warn',
+        });
+        console.warn('[capyquest] cloud save was unreadable', err);
+        return;
+      }
+
+      const when = new Date(res.data.updatedAt || Date.now()).toLocaleString();
+      const body = el('div', 'confirm');
+      body.appendChild(el('p', 'confirm__lead', `Saved ${when}.`));
+      body.appendChild(list([
+        `That copy: stage ${splitLevel(incoming.combat?.bestDepth || 0).stage + 1}, `
+        + `${incoming.rebirthCount || 0} rebirths`,
+        `This device: stage ${splitLevel(this.state.combat?.bestDepth || 0).stage + 1}, `
+        + `${this.state.rebirthCount || 0} rebirths`,
+      ]));
+      body.appendChild(el('p', 'confirm__warn',
+        'Loading it replaces everything here. There is no undo — copy your save code first if you are unsure.'));
+
+      openModal({
+        title: 'Load the cloud copy?',
+        bodyNode: body,
+        actions: [
+          { label: 'Keep this one' },
+          {
+            label: 'Load it',
+            variant: 'danger',
+            onClick: () => {
+              this.state = incoming;
+              this.combo.reset();
+              this.scene.particles.clear();
+              this.applySettings();
+              this.afterMetaChange();
+              this.save();
+              this.toaster.show({
+                title: 'Loaded from the cloud',
+                body: 'This is the pond from your other device.',
+                kind: 'info',
+                icon: '☁',
+              });
+            },
+          },
+        ],
+      });
+    });
+  }
+
   openSettings() {
     openSettingsModal(this.state, {
       toaster: this.toaster,
+      onRestoreCloud: () => this.restoreFromCloud(),
       onCode: (input) => this.redeemSecretCode(input),
       onChange: (loaded) => {
         if (loaded) {
@@ -2461,8 +2630,51 @@ class Game {
     });
   }
 
+  /**
+   * Persist, and say so when it does not work.
+   *
+   * saveState() has always returned a boolean and this method has always thrown
+   * it away — at all twenty-six call sites. Storage can be unavailable for
+   * reasons that have nothing to do with the player doing anything wrong:
+   * Safari in private mode exposes localStorage and throws on every write, an
+   * iOS home-screen app can have its storage evicted under pressure, a quota
+   * can fill. In every one of those the game kept running perfectly, saved
+   * nothing, and never said a word. Somebody could play for six hours and lose
+   * all of it.
+   *
+   * For an idle game that is the worst possible bug: the entire proposition is
+   * that progress accumulates while you are not looking.
+   */
   save() {
-    saveState(this.state);
+    const ok = saveState(this.state);
+    if (ok) {
+      // Recovered. Arm the warning again so a second outage is also reported —
+      // but say nothing now, because "saving works" is not news.
+      this.saveFailures = 0;
+      this.warnedAboutSaving = false;
+      return true;
+    }
+
+    this.saveFailures = (this.saveFailures || 0) + 1;
+    if (this.warnedAboutSaving) return false;
+    this.warnedAboutSaving = true;
+
+    // Sticky, and it opens the way out rather than only naming the problem: a
+    // save code is the one thing that gets this run onto a device that can
+    // keep it. ms: 0 means it waits for the player instead of scrolling past
+    // — this is the rare case that justifies it.
+    // Optional: the very first save happens inside the constructor, and a
+    // warning that throws because the toaster does not exist yet would take
+    // down the boot it was trying to report on.
+    this.toaster?.show({
+      title: 'Your progress is not being saved',
+      body: 'Tap to copy a save code before you lose it',
+      kind: 'warn',
+      icon: '⚠',
+      ms: 0,
+      onClick: () => this.openSettings(),
+    });
+    return false;
   }
 }
 

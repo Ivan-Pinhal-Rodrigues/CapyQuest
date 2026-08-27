@@ -56,9 +56,22 @@ python3 -m http.server 8000
 Because it is plain static files, pushing to the Pages branch is the whole deploy — with one
 rule attached to it. **`VERSION` in `sw.js` must match `version` in `package.json`.** The cache
 name carries that version and a new version is the only thing that makes a deployed change reach
-somebody who already has the app installed. `tests/pwa.test.js` fails if the two drift, because
-forgetting is otherwise completely silent: no error, no warning, just players on last month's
-build indefinitely.
+somebody who already has the app installed. Forgetting is otherwise completely silent: no error,
+no warning, just players on last month's build indefinitely.
+
+**You do not have to remember.** `tests/pwa.test.js` fails if the two drift, and
+`.github/workflows/version.yml` bumps them for you: push a change to anything a player actually
+receives — `src/`, `styles/`, `content/`, `index.html`, `sw.js`, `manifest.webmanifest` — without
+touching the version, and CI bumps the patch in both files and commits it. A README or docs edit
+does not, because it does not reach anybody's browser and should not make every installed app
+re-download itself. `node tools/version.mjs patch|minor|major` is the same code, for when you want
+to choose.
+
+Once the version moves on `main`, `.github/workflows/release.yml` tags it and cuts a GitHub
+Release with the commits since the last tag. There is no deploy workflow and there should not be:
+Pages serves this branch directly, so the merge *is* the deploy, and a workflow that re-uploaded
+the same files would only be a second thing to go wrong. What was actually missing was the record
+of which build is live, and that is what the release is.
 
 To install it, open it in a browser and use Add to Home Screen or the install button in the
 address bar. It runs offline from the first visit onwards.
@@ -66,7 +79,9 @@ address bar. It runs offline from the first visit onwards.
 ## Tests
 
 ```sh
-npm test    # node --experimental-vm-modules --test "tests/*.test.js"
+npm test            # 741 assertions, node's built-in runner, no framework
+npm run test:browser # opens the real page in Chromium and looks at it
+npm run test:all     # both, which is what CI runs
 ```
 
 Node's built-in runner, no test framework installed. The suite covers the balance formulas, the
@@ -77,6 +92,23 @@ nothing else imports because it needs a DOM — so a syntax error in the file th
 cannot hide behind a green suite again. Another checks the documentation against the code it
 describes — four rows of the beat table in `docs/STORY.md` were wrong on the first draft, written
 from memory and entirely plausible-looking, so the tables that can be verified mechanically are.
+
+**And a suite that opens the page.** `tests/browser/` drives the real game in Chromium at 320,
+390, 768 and 1280, walks every tab, and checks what a unit test structurally cannot: what the
+console actually prints, what size the text actually comes out, whether anything overflows
+sideways, and whether every tap target clears 24px. It exists because four bugs in v3 shipped past
+a green unit suite and a headless probe — a cloak painted in the sunglasses' palette, a loading
+screen that faded out mid-sentence, a loading screen *underneath* the game, and nine event
+backdrops that were secretly two. Each one needed something to look at the page.
+
+Two of its checks run as a **ratchet**: the type scale has real debt, so `tests/browser/baseline.json`
+records what is wrong today and the suite fails when a count goes up. Regression is blocked
+immediately; the debt is paid down separately. The only permitted direction is down — the suite
+rewrites the file when a number improves.
+
+This is the one place the project has dependencies. `playwright-core` drives that browser and
+nothing else: `npm test` and the game itself both work with `node_modules` deleted, and nothing
+in `src/` imports anything that is not in `src/`.
 
 ## How it is put together
 
@@ -154,9 +186,9 @@ export const YUZU = sprite([
 ]);
 ```
 
-They rasterise to an offscreen canvas once and blit with smoothing off. Ten hand-drawn 16×16
-shapes cover all eighteen generators by swapping the palette underneath them; nineteen more
-cover fifty-two wearables. Sound effects and all three music loops are synthesised with WebAudio
+They rasterise to an offscreen canvas once and blit with smoothing off. Thirty hand-drawn 16×16
+shapes — ten families of three growth stages — cover all forty-eight generators by swapping the
+palette underneath them; nineteen more cover fifty-two wearables. Sound effects and all three music loops are synthesised with WebAudio
 oscillators, so there are no audio files either.
 
 The advantage is not smallness, it is that **art reviews as a diff**. A pull request that shifts
@@ -204,6 +236,118 @@ anybody writing 126 paths down. The first draft skipped this and let the fetch h
 files as they were requested — Chromium reported the result as three entries, no JavaScript and
 no CSS, because *the visit that installs a worker is not controlled by it*.
 
+### The pond is the progress bar
+
+Forty-eight generators, and the pond draws **one of each** — not one per unit, and not the six-odd
+copies an earlier version scattered on the banks. Each has a habitat it belongs to (water,
+shallows, bank, ridge, sky), and the five bands stack from the water up to the sky so the place has
+depth rather than being a list.
+
+Two things change it, and they are deliberately different kinds of change:
+
+| | |
+|---|---|
+| **Buying units** | grows the thing, continuously and logarithmically. The eleventh Lily Pad is visibly more pad than the tenth; the ten-thousandth has not eaten the pond. |
+| **Buying a tier upgrade** | changes what the thing *is* — a different drawing and a different name, in the shop as well as on the water. A Lily Pad becomes a Lily Spread becomes a Lily Field. |
+
+That split is the whole design. A pond where everything only ever swells is a pond where nothing
+ever arrives; a pond that only ever changes at upgrades sits still for the hundreds of purchases in
+between. `src/render/sprites.js` carries ten families of three drawings each to make the second
+half possible, and the stage is read off the tier upgrades a save already has, so a 3.0 save needs
+no migration to arrive at the right one.
+
+The clearance around the capybara is solved rather than assumed — at any height, the horizontal
+gap is `sqrt(r² - dy²)`, which is zero level with the top of its head and widest across its middle,
+so a sky terrace passes over it and a lily pad goes round. Two earlier drafts used a fixed
+fraction of the half-width instead. The first put thirty-four of sixty-three sprites on top of the
+capybara; the second pushed everything to one distance and rendered the late-game pond as two
+vertical walls. Every numeric check passed both times.
+
+### Getting it onto a phone
+
+Settings has a QR code of the page's own address, drawn by `src/render/qr.js` — a small encoder
+written for this, byte mode at error-correction level M, versions 1 through 6. Point a camera at
+it, open the link, and use **Add to Home Screen** (Safari) or **Install** (Chrome). That is the
+whole install path, and it needs no store and no developer account.
+
+The URL is printed underneath in full, deliberately. A code is faster when it works and useless
+when the camera will not focus, the screen is too dim, or somebody is reading this over a screen
+share.
+
+A QR encoder is unusually easy to get wrong in a way that looks right — the grid has finder
+patterns in the corners and a plausible spray of modules whether or not it decodes. Ours drew a
+beautiful, unreadable code for a while: the format information was written least-significant bit
+first. Every structural check passed, the Reed-Solomon output matched the specification's own
+published vector, and a decoder written alongside the encoder read `HELLO` back perfectly, because
+it shared the mistake. `tests/qr.test.js` therefore decodes every code with **jsqr**, somebody
+else's implementation, and that is the entire reason the second devDependency exists.
+
+The size is chosen in JavaScript rather than pinned in CSS, for the same class of reason: the grid
+is 21 modules across at version 1 and 41 at version 6, so a canvas fixed at one width in the
+stylesheet gets resampled by whatever ratio falls out, and a fractional module is one a camera
+reads as grey.
+
+#### A custom domain, when you want one
+
+Pages will serve this from your own domain for nothing. **There is no `CNAME` file in this repo on
+purpose** — adding one points the site at a domain that may not exist yet and takes it offline
+until DNS agrees. Do the DNS first, then add it.
+
+For an apex domain (`capyquest.example`), four `A` records and four `AAAA`:
+
+```
+A     @   185.199.108.153      AAAA  @  2606:50c0:8000::153
+A     @   185.199.109.153      AAAA  @  2606:50c0:8001::153
+A     @   185.199.110.153      AAAA  @  2606:50c0:8002::153
+A     @   185.199.111.153      AAAA  @  2606:50c0:8003::153
+```
+
+For a subdomain (`play.capyquest.example`), one record instead:
+
+```
+CNAME  play   ivan-pinhal-rodrigues.github.io.
+```
+
+Then Settings → Pages → Custom domain in the repository, wait for the check to pass, and tick
+*Enforce HTTPS*. The `domainDNS` error this project hit the first time round is DNS not resolving
+yet, not a problem with the repository — the certificate cannot be issued until the records
+propagate, which is usually minutes and occasionally a day.
+
+#### itch.io
+
+Free, no developer account, and an audience that is already there for games. Upload a zip of the
+repository, tick **This file will be played in the browser**, and set the frame to about 960×720.
+
+One caveat, and it is measured rather than assumed. itch serves HTML5 games from an `<iframe
+sandbox=…>` on its own domain, and the sandbox list is theirs to choose. `tests/browser/run.mjs`
+loads the game in both shapes it can take:
+
+| Sandbox | What happens |
+|---|---|
+| with `allow-same-origin` | The document keeps its real origin. Modules load, saves work, the service worker registers. The full game. |
+| without it | The origin is opaque. Module scripts are fetched in CORS mode against origin `null` and `src/main.js` is **refused outright** — a loading screen that never finishes. |
+
+The plan for this work assumed the worst case was "playable, without offline support". It is not,
+and there is no fix available from inside the page, because the thing that would apply the fix is
+the module loader that failed to load. So `index.html` ends with a **classic** script — not a
+module, which is the entire point — that says so after twelve seconds and prints the direct URL.
+The suite asserts that message appears; deleting it turns the check red.
+
+Whether itch itself passes `allow-same-origin` could not be verified from here, so it is written
+down as unverified. If the embed comes up as a permanent loading screen, that is the reason, and
+the game still works from its own URL.
+
+#### The stores, if you ever want them
+
+Not done, because both cost money, and listed here so the choice is informed rather than
+rediscovered:
+
+- **Google Play** — $25 once. [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap) or
+  [PWABuilder](https://www.pwabuilder.com/) wrap the installed PWA in a Trusted Web Activity. The
+  manifest and service worker this already ships are the inputs; no game code changes.
+- **App Store** — $99 a year, and iOS will not accept a plain PWA wrapper, so it needs a real
+  shell. Considerably more work than the fee.
+
 ### Design notes
 
 - **Fixed-step simulation.** Income ticks on a fixed 100ms step so a dropped frame never loses or
@@ -229,7 +373,7 @@ no CSS, because *the visit that installs a worker is not controlled by it*.
 
 | | |
 |---|---|
-| Purchasable upgrades | **306** — 16 tap, 18 generators, 36 generator tiers, 210 tree nodes, 14 keystones, 12 constellations |
+| Purchasable upgrades | **396** — 16 tap, 48 generators, 96 generator tiers, 210 tree nodes, 14 keystones, 12 constellations |
 | Gear | 42 pieces across 6 slots, on a 20-rung rarity ladder, 1–5 stars, enhanceable +0 → +15 |
 | Wardrobe | 89 looks across 6 kinds — skins, ponds, titles, hats, outfits, extras — none of which moves a number |
 | Companions | 24, summoned, three in the party — visible in the pond, wearing your hats and their own gear |
@@ -253,8 +397,11 @@ asked for, and every purchase surface says so where you cannot miss it.
 
 ## Status
 
-Playable and finished. Built in six phases, audited, then rebuilt in six more — see
-`docs/POSTMORTEM.md` for what the audit found and what actually caught the bugs.
+Playable and finished, at **4.0**. Built in six phases, audited, rebuilt in six more, extended by
+seven for 3.0, audited again, and extended by seven more for 4.0 — see `docs/POSTMORTEM.md` for
+what both audits found and what actually caught the bugs. The short version of the pattern: every
+system passed its tests and several were wrong anyway, and the tool that found each one was
+whatever did not share its assumptions.
 
 - [x] **Core** — game loop, saves, pixel renderer, tap juice (crit, combo, particles, squash),
       18 generators, 52 upgrades, offline Nap Report, Golden Capybara, settings
@@ -382,3 +529,49 @@ Playable and finished. Built in six phases, audited, then rebuilt in six more �
       that reloads at boot and asks mid-session. Still no build step and no dependencies: a
       hand-written manifest, a hand-written service worker, and icons generated from the same
       capybara grid the game draws.
+
+### 4.0
+
+v3 shipped, was audited the same way v2 had been, and the findings were in different places than
+last time. The engineering held: 16.7ms median frames with combat running, zero heap growth over
+four hundred taps and ten tab switches, no `innerHTML` anywhere in `src/`, every poisoned save
+value scrubbed to zero. What the audit found was two things a player would have hit and one the
+project would have.
+
+- [x] **A pipeline, so shipping stops depending on remembering** — there was no `.github/`
+      directory, and `VERSION` in `sw.js` had to be hand-bumped every deploy or installed apps
+      never updated, silently. Three workflows now: the unit suite and the browser suite on every
+      push, a version check before deploy, and one that bumps the patch itself when a
+      player-facing file changes and the version does not. `tools/version.mjs` is the same code a
+      human runs, so the workflow and the developer cannot disagree.
+- [x] **Text you can read, and a save that tells you when it fails** — fifty-two CSS declarations
+      were under 8px, the smallest at 4.8px on a 20px tap target, and worse offline because the
+      font CDN is deliberately uncached. A token scale with an 11px floor replaced them. And
+      `saveState()` returned `false` on failure to twenty-six call sites that all discarded it —
+      measured with writes blocked, the game reported no saved value, no warning, and full
+      playability. It is a sticky toast with the export code one tap away now. Raising the type
+      then broke the 320px layout, and the cause was a latent bug the small type had been hiding:
+      grid items default to `min-width: auto`.
+- [x] **Gear that is a decision again** — six sets of six, with 2-piece and 4-piece bonuses. The
+      first draft was strictly dominated: a full set cost 24–29% of best-in-slot power for a bonus
+      worth about 2%, so nobody would ever wear one. The bonuses came from the measured gap. One
+      set then scored *exactly* 0.0%, which was not a probe bug — it was the best-in-slot loadout,
+      so choosing it meant nothing. `docs/BALANCE.md` also names the two sets that remain
+      undistinguished, because a tank set is not measurable with the harnesses this project has.
+- [x] **An optional backend** — a Cloudflare Worker and a D1 database: cloud save behind an opaque
+      device id, and real players on the leaderboard beside the simulated rivals. Off by default,
+      no personal data, and the game boots, plays, saves and exports exactly as before with the
+      Worker down, unreachable, or never configured — verified by pulling its plug. D1 rather than
+      KV because KV's free tier allows a thousand writes a day, which is about thirty players.
+- [x] **A way onto a phone** — a QR code of the page's own address in Settings, drawn by a QR
+      encoder written for it, with the URL printed underneath for when a camera will not focus.
+      The encoder wrote its format information least-significant bit first and every check agreed
+      it was fine, including a decoder written alongside it, which read the bits back in the same
+      wrong order and got the right answer. `jsqr` found it. Plus the DNS records for a custom
+      domain, and the itch.io caveat measured rather than assumed.
+- [x] **Forty-eight generators, and a pond that grows into them** — the ladder continues past Capy
+      Singularity with thirty more and sixty more tier upgrades, the original eighteen untouched.
+      The pond draws exactly one of each, in a habitat that belongs to it; buying units grows it,
+      and buying a tier upgrade changes what it is — a different drawing and a different name, in
+      the shop as well as on the water. Ten families of three drawings make that possible, and the
+      stage is read off tier upgrades a save already has, so nothing needed migrating.

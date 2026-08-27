@@ -1,0 +1,81 @@
+# Every push and every pull request.
+#
+# Two gates, in cost order. The unit suite is ~1.5s and catches the things it
+# is good at — invariants, reset keep-lists, save migrations. The browser suite
+# is slower and catches the things unit tests structurally cannot: what the
+# console actually prints, what size things actually come out, whether the
+# layout actually fits. Four bugs in v3 shipped past a green unit suite; each
+# one needed something to open the page and look.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# Read-only. The bump lives in version.yml, which is the only workflow allowed
+# to write to the repository.
+permissions:
+  contents: read
+
+concurrency:
+  # A second push supersedes the first — no point finishing a run for a commit
+  # nobody will deploy.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # The game has no runtime dependencies and no build step. This installs
+      # playwright-core, which drives the browser suite and nothing else — see
+      # the note in package.json.
+      - name: Install dev dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: The version is in both places and agrees
+        run: node tools/version.mjs --check
+
+      - name: Unit suite
+        run: npm test
+
+      # GitHub's Ubuntu runners ship Chrome, so there is no browser to
+      # download. If that ever stops being true this step says so in one line
+      # rather than the suite failing with a confusing launch error.
+      - name: Locate a browser
+        id: browser
+        run: |
+          for candidate in /usr/bin/google-chrome /usr/bin/chromium-browser /usr/bin/chromium; do
+            if [ -x "$candidate" ]; then
+              echo "path=$candidate" >> "$GITHUB_OUTPUT"
+              echo "using $candidate"
+              exit 0
+            fi
+          done
+          echo "::error::No Chrome or Chromium on the runner. Add a step that installs one and set CHROMIUM_PATH."
+          exit 1
+
+      - name: Browser suite
+        env:
+          CHROMIUM_PATH: ${{ steps.browser.outputs.path }}
+        run: node tests/browser/run.mjs
+
+      # The suite rewrites baseline.json when a count improves. In CI that is
+      # information, not an action — it means somebody paid down debt and
+      # should commit the smaller number.
+      - name: Baseline moved?
+        if: always()
+        run: |
+          if ! git diff --quiet tests/browser/baseline.json; then
+            echo "::notice::The browser baseline improved. Run the suite locally and commit tests/browser/baseline.json."
+            git diff tests/browser/baseline.json
+          fi

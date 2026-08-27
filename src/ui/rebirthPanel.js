@@ -103,6 +103,20 @@ export class RebirthPanel {
       for (const [, ref] of this.keystoneRefs) ref.cell.hidden = ref.branch !== id;
     }
     this.applyBranchChrome();
+
+    // The grid holds one tab stop, and switching branch hides the column that
+    // held it — so it has to move, or the tree becomes unreachable from the
+    // keyboard entirely. Set, not focused: arriving on this tab should not
+    // yank focus out of whatever the player was doing.
+    // Selected by the column's own hidden flag rather than by offsetParent:
+    // the whole panel is hidden when the tree is first built, so every node
+    // reports offsetParent null and the grid would end up with no tab stop at
+    // all until the player happened to change branch.
+    if (this.treeGrid) {
+      for (const n of this.treeGrid.querySelectorAll('.tree-node')) n.tabIndex = -1;
+      const first = this.treeGrid.querySelector('.tree__column:not([hidden]) .tree-node');
+      if (first) first.tabIndex = 0;
+    }
   }
 
   applyBranchChrome() {
@@ -186,6 +200,12 @@ export class RebirthPanel {
 
           cell.append(name, rank, cost);
           cell.addEventListener('click', () => this.h.onBuyNode(node.id));
+          // Roving tabindex: the tree is ONE tab stop, not two hundred and ten.
+          // Tab reached the first node and then needed 210 more presses to get
+          // past the panel, which makes the keyboard route through this screen
+          // unusable. Arrow keys move within the grid instead — the pattern a
+          // grid widget is supposed to use.
+          cell.tabIndex = -1;
           cells.appendChild(cell);
           this.nodeRefs.set(node.id, { cell, rank, cost, node, column, branch: branch.id });
         }
@@ -197,7 +217,54 @@ export class RebirthPanel {
       this.nodeRefs.set(`column:${branch.id}`, { column, branch: branch.id });
     }
     this.treeWrap.appendChild(this.treeGrid);
+    this.wireTreeKeyboard();
     this.setBranch(this.branch);
+  }
+
+  /**
+   * Arrow keys move around the tree; Tab leaves it.
+   *
+   * Two hundred and ten buttons in a row is two hundred and ten Tab presses
+   * between the top of this panel and the bottom of it, which is not a
+   * keyboard route anybody would use. So the grid holds exactly one tab stop
+   * and the arrows do the moving, which is what a grid widget is for.
+   *
+   * One listener on the container rather than 210 on the cells: they are
+   * rebuilt whenever the branch changes, and per-cell listeners would have to
+   * be rebuilt with them.
+   */
+  wireTreeKeyboard() {
+    const visible = () =>
+      [...this.treeGrid.querySelectorAll('.tree__column:not([hidden]) .tree-node')];
+
+    this.treeGrid.addEventListener('keydown', (e) => {
+      const keys = ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'];
+      if (!keys.includes(e.key)) return;
+      const cells = visible();
+      const at = cells.indexOf(document.activeElement);
+      if (at < 0) return;
+
+      // Down and up move a whole tier rather than one cell, because a tier is
+      // the row the eye reads. Falling back to one step keeps the ends usable.
+      const perRow = this.treeGrid.querySelector('.tree-tier__cells')?.children.length || 1;
+      const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: perRow, ArrowUp: -perRow }[e.key];
+
+      let next;
+      if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = cells.length - 1;
+      else next = Math.min(cells.length - 1, Math.max(0, at + step));
+
+      e.preventDefault();
+      this.focusTreeNode(cells[next]);
+    });
+  }
+
+  /** Move the single tab stop to `cell` and put focus on it. */
+  focusTreeNode(cell) {
+    if (!cell) return;
+    for (const n of this.treeGrid.querySelectorAll('.tree-node')) n.tabIndex = -1;
+    cell.tabIndex = 0;
+    cell.focus();
   }
 
   buildStars() {

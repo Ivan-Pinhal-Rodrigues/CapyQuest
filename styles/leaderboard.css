@@ -19,7 +19,7 @@
 
 .event-card__head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
 .event-card__name { font-size: 1rem; color: var(--event, var(--text)); }
-.event-card__clock { font-family: var(--font-pixel); font-size: 0.38rem; color: var(--text-faint); }
+.event-card__clock { font-family: var(--font-pixel); font-size: var(--text-2xs); color: var(--text-faint); }
 .event-card__blurb { font-size: 0.8rem; color: var(--text-dim); line-height: 1.4; }
 .event-card__hook { font-size: 0.74rem; color: var(--text-faint); line-height: 1.4; font-style: italic; }
 
@@ -31,8 +31,8 @@
   border-top: 1px solid var(--border);
 }
 
-.event-card__petal-count { font-family: var(--font-pixel); font-size: 0.55rem; color: var(--event, var(--zen)); }
-.event-card__petal-note { font-size: 0.68rem; color: var(--text-faint); }
+.event-card__petal-count { font-family: var(--font-pixel); font-size: var(--text-xs); color: var(--event, var(--zen)); }
+.event-card__petal-note { font-size: var(--text-xs); color: var(--text-faint); }
 
 /* ------------------------------------------------------------ the exchange */
 
@@ -52,7 +52,7 @@
 }
 
 .exchange__text { font-size: 0.76rem; color: var(--text-dim); }
-.exchange__cost { font-family: var(--font-pixel); font-size: 0.4rem; color: var(--text-faint); }
+.exchange__cost { font-family: var(--font-pixel); font-size: var(--text-2xs); color: var(--text-faint); }
 
 .exchange__row.is-affordable { border-color: var(--event, var(--zen)); background: var(--surface-3); }
 .exchange__row.is-affordable .exchange__text { color: var(--text); }
@@ -65,7 +65,7 @@
 
 .board-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
 .board-head__title { font-size: 1rem; font-weight: 800; }
-.board-head__rank { font-family: var(--font-pixel); font-size: 0.4rem; color: var(--zen); }
+.board-head__rank { font-family: var(--font-pixel); font-size: var(--text-2xs); color: var(--zen); }
 
 .board { display: flex; flex-direction: column; gap: 0.2rem; }
 
@@ -84,11 +84,11 @@
 
 .board-row:hover { background: var(--surface-2); }
 
-.board-row__rank { font-family: var(--font-pixel); font-size: 0.42rem; color: var(--text-faint); }
+.board-row__rank { font-family: var(--font-pixel); font-size: var(--text-2xs); color: var(--text-faint); }
 .board-row__main { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; }
 .board-row__name { font-size: 0.82rem; }
-.board-row__sub { font-size: 0.68rem; color: var(--text-faint); }
-.board-row__power { font-family: var(--font-pixel); font-size: 0.4rem; color: var(--text-dim); }
+.board-row__sub { font-size: var(--text-xs); color: var(--text-faint); }
+.board-row__power { font-family: var(--font-pixel); font-size: var(--text-2xs); color: var(--text-dim); }
 
 /* You are highlighted rather than pinned: seeing the two rivals either side of
    you is the whole reason to look at a leaderboard. */
@@ -121,7 +121,7 @@
   background: var(--surface-2);
 }
 
-.rival__stat-label { font-size: 0.62rem; color: var(--text-faint); }
+.rival__stat-label { font-size: var(--text-xs); color: var(--text-faint); }
 .rival__stat-value { font-size: 0.82rem; }
 
 .rival__kit { display: flex; flex-direction: column; gap: 0.25rem; }
@@ -141,7 +141,7 @@
 .rival__icon { width: 28px; height: 28px; }
 .rival__piece-text { display: flex; flex-direction: column; gap: 0.05rem; }
 .rival__piece-name { font-size: 0.78rem; }
-.rival__piece-rarity { font-family: var(--font-pixel); font-size: 0.34rem; }
+.rival__piece-rarity { font-family: var(--font-pixel); font-size: var(--text-2xs); }
 
 /* ============================================================= the bracket
    The one thing on this screen you can act on, so it sits above the board. */

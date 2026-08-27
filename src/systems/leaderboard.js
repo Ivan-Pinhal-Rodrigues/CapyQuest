@@ -167,3 +167,57 @@ export function leaderboard(state, now = Date.now(), cached = null) {
 export function playerRank(state, now = Date.now(), cached = null) {
   return leaderboard(state, now, cached).you;
 }
+
+// ------------------------------------------------------- real players, if any
+
+/**
+ * Turn rows from the optional backend into board entries.
+ *
+ * They rank through exactly the same rivalScore() the simulated rivals and the
+ * player do — a real player who is behind a simulated one places behind them.
+ * Anything else would mean two boards pretending to be one.
+ *
+ * `real: true` is carried so the panel can mark them. A board that mixes real
+ * and simulated players without saying which is which is a board that lies, and
+ * this project has said "these rivals are simulated" out loud since they were
+ * added; that promise does not get quietly weakened now some of them are not.
+ *
+ * Defensive throughout: these rows crossed a network from a server that is
+ * explicitly not authoritative. Anything missing or malformed is clamped rather
+ * than trusted, and a row that cannot be made sense of is dropped rather than
+ * allowed to poison a sort.
+ */
+export function realEntries(rows, { limit = 100 } = {}) {
+  if (!Array.isArray(rows)) return [];
+
+  const out = [];
+  for (const row of rows.slice(0, limit)) {
+    if (!row || typeof row !== 'object') continue;
+    const depth = safeCount(row.depth);
+    if (depth === null) continue;
+
+    out.push({
+      id: `real:${out.length}`,
+      name: String(row.name ?? '').trim().slice(0, 24) || 'A capybara',
+      archetype: null,
+      depth,
+      stage: B.splitLevel(depth).stage,
+      rebirths: safeCount(row.rebirths) ?? 0,
+      passLevel: Math.min(999, safeCount(row.passLevel) ?? 0),
+      premium: false,
+      // No gear: the board deliberately does not ship anybody's loadout across
+      // the network. Tapping a real player shows what they reached, not what
+      // they are wearing.
+      gear: [],
+      power: 0,
+      real: true,
+    });
+  }
+  return out;
+}
+
+function safeCount(value) {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.min(n, 1e6);
+}

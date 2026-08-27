@@ -13,6 +13,25 @@
   min-height: 100dvh;
   /* Respect notches and home indicators. */
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+
+  /*
+   * The grid is never wider than the screen, whatever is inside it.
+   *
+   * A grid item's default `min-width: auto` means it refuses to shrink below
+   * its own min-content — so one unbreakable row (a long capybara name, a
+   * fourteen-digit zen total, four buy-amount buttons) silently widened the
+   * whole app and pushed the page sideways. It surfaced when the type scale
+   * went up, but the type scale was not the bug: the layout had always been
+   * one long word away from it.
+   */
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* Every direct child of the grid may shrink. Without this the widest thing on
+   any tab decides how wide the game is. */
+.app > * {
+  min-width: 0;
 }
 
 /* ------------------------------------------------------------------- hud */
@@ -77,7 +96,7 @@
   flex-shrink: 0;
 }
 
-.hud__rate { font-size: 0.56rem; color: var(--water); }
+.hud__rate { font-size: var(--text-xs); color: var(--water); }
 .hud__rate--dim { color: var(--text-faint); }
 
 .combo {
@@ -234,7 +253,7 @@
 
   .hud { gap: 0.6rem; padding: 0 0.6rem; }
   .hud__title { display: none; }
-  .stage__hint { bottom: 0.4rem; font-size: 0.65rem; }
+  .stage__hint { bottom: 0.4rem; font-size: var(--text-xs); }
 }
 
 @media (max-width: 560px) {
@@ -258,7 +277,7 @@
   flex: 1;
   padding: 0.35rem 0.4rem;
   font-family: var(--font-pixel);
-  font-size: 0.36rem;
+  font-size: var(--text-2xs);
   color: var(--text-faint);
   background: transparent;
   border: none;

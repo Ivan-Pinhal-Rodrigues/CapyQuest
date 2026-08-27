@@ -36,6 +36,31 @@
   --font-ui: 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-pixel: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
 
+  /*
+   * Type.
+   *
+   * There used to be forty-three distinct font sizes across these stylesheets
+   * and no scale at all — every one a number somebody typed once. Fifty-one of
+   * them were under 8px and the smallest was 4.8px, on tap targets 20px tall.
+   * Measured in the running game that came to 404 elements below a readable
+   * size at 320–1280.
+   *
+   * TWO STEPS, AND A FLOOR. 11px is the smallest thing here, because below
+   * that nobody is reading it, they are recognising the shape of it. Anything
+   * that was already 11.2px or larger is untouched — it was not the problem,
+   * and changing it would be churn with a layout risk attached.
+   *
+   * A note on the pixel font: Press Start 2P is roughly twice as wide per
+   * character as the fallback, so a size that fits in one does not necessarily
+   * fit in the other. That matters more than it looks, because the service
+   * worker deliberately does not cache the font CDN — every offline player is
+   * ALWAYS seeing the fallback. Small labels therefore favour --font-ui, which
+   * is legible small and narrow in both cases; the pixel face is kept for
+   * headline numbers where its width is affordable.
+   */
+  --text-2xs: 0.6875rem;  /* 11px — the floor. Dense labels, counters, costs. */
+  --text-xs: 0.75rem;     /* 12px — small print you are still expected to read. */
+
   --hud-h: 62px;
   --panel-w: 380px;
 }

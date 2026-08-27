@@ -6,7 +6,7 @@
 // cancel the click you were halfway through making.
 
 import { fmt, fmtInt, fmtShort } from './numbers.js';
-import { BUILDINGS } from '../data/buildings.js';
+import { BUILDINGS, buildingStage, buildingName } from '../data/buildings.js';
 import { quoteBuilding, availableUpgrades, visibleBuildings } from '../systems/shop.js';
 import { describeRequirement } from '../data/requirements.js';
 import { buildingIconUrl, upgradeIconUrl, iconImg } from './icons.js';
@@ -76,9 +76,26 @@ export class BuildingList {
     if (after) this.root.insertBefore(row, after);
     else this.root.appendChild(row);
 
-    const entry = { row, cost, owned, rate, name };
+    const entry = { row, cost, owned, rate, name, icon, stage: -1 };
     this.rows.set(building.id, entry);
     return entry;
+  }
+
+  /**
+   * Follow a line through its three stages.
+   *
+   * A tier upgrade renames the thing and redraws it — that is the visible half
+   * of what an upgrade buys, and the reason it happens here rather than only in
+   * the pond. Guarded on the stage actually changing: `update` runs several
+   * times a second and reassigning an <img> src is not free.
+   */
+  applyStage(building, entry, state) {
+    const stage = buildingStage(building.id, state);
+    if (stage === entry.stage) return;
+    entry.stage = stage;
+    setText(entry.name, buildingName(building, state));
+    entry.icon.src = buildingIconUrl(building.id, stage);
+    entry.row.title = building.blurb;
   }
 
   update(state, derived) {
@@ -87,6 +104,7 @@ export class BuildingList {
 
     for (const building of visible) {
       const entry = this.ensureRow(building);
+      this.applyStage(building, entry, state);
       const quote = quoteBuilding(state, building, state.settings.buyAmount, derived.costDiscount);
       const count = state.buildings[building.id] || 0;
 

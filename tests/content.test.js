@@ -5,16 +5,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { BUILDINGS, BUILDINGS_BY_ID } from '../src/data/buildings.js';
+import { BUILDINGS, BUILDINGS_BY_ID, HABITATS } from '../src/data/buildings.js';
 import { CLICK_UPGRADES } from '../src/data/clickUpgrades.js';
 import { TIER_UPGRADES } from '../src/data/tierUpgrades.js';
 import { ACHIEVEMENTS } from '../src/data/achievements.js';
 import { BUILDING_ART, CAPY_SKINS, PROP_PALETTE } from '../src/render/palettes.js';
 import {
-  ICONS, ALL_SPRITES, validateSprite, spriteChars,
+  ICONS, ALL_SPRITES, validateSprite, spriteChars, SHAPE_FAMILIES, familyShape,
   CAPY, EYES, GOLDEN_CAPY, YUZU, STEAM, SPARKLE,
 } from '../src/render/sprites.js';
 import { describeReward } from '../src/systems/achievements.js';
+import { recomputeDerived } from '../src/systems/stats.js';
+import { createState } from '../src/state.js';
+import { fmt } from '../src/ui/numbers.js';
 
 const KNOWN_EFFECTS = new Set([
   'clickFlat', 'clickMult', 'zpsMult', 'globalMult', 'buildingMult', 'allBuildingMult',
@@ -32,9 +35,9 @@ function assertUniqueIds(entries, label) {
 }
 
 test('the promised content counts are actually there', () => {
-  assert.equal(BUILDINGS.length, 18, 'generators');
+  assert.equal(BUILDINGS.length, 48, 'generators');
   assert.equal(CLICK_UPGRADES.length, 16, 'tap upgrades');
-  assert.equal(TIER_UPGRADES.length, 36, 'generator tier upgrades');
+  assert.equal(TIER_UPGRADES.length, 96, 'generator tier upgrades');
   assert.equal(ACHIEVEMENTS.length, 232, 'achievements');
 
   const upgradeTotal = CLICK_UPGRADES.length + TIER_UPGRADES.length;
@@ -101,17 +104,9 @@ test('the generator cost ladder climbs at a steady slope', () => {
   }
 });
 
-test('every generator pays for itself in a length of time a player would accept', () => {
-  // Payback is the number that decides whether a generator is content or
-  // decoration. The last one is a long-term goal bought across rebirths; none
-  // of them may be a goal measured in geological time.
-  for (const b of BUILDINGS) {
-    const days = b.cost / b.rate / 86400;
-    assert.ok(days < 365, `${b.id} takes ${days.toFixed(0)} days to repay itself`);
-  }
-
-  // And payback must rise down the list, so later generators are a bigger
-  // commitment rather than a strictly better deal.
+test('payback rises down the ladder, and never jumps', () => {
+  // Payback must rise, so a later generator is a bigger commitment rather than
+  // a strictly better deal.
   //
   // The Lily Pad is exempt. It and the Yuzu Sapling both repay in 100s, which
   // is the one place payback does not rise: the opening purchase is a tutorial
@@ -121,25 +116,111 @@ test('every generator pays for itself in a length of time a player would accept'
     const prev = BUILDINGS[i - 1].cost / BUILDINGS[i - 1].rate;
     const here = BUILDINGS[i].cost / BUILDINGS[i].rate;
     assert.ok(here > prev, `${BUILDINGS[i].id} repays faster than the generator before it`);
+
+    // The bound that catches the original bug, and the one that survived the
+    // ladder growing to forty-eight. A "payback under a year" cap used to stand
+    // here; at eighteen rungs it was a fine proxy and at forty-eight it is
+    // arithmetically impossible, because eighteen already ends at 181 days.
+    // What actually went wrong in the bug was the STEP: six digit-count typos
+    // in a row, one of which multiplied payback by 3,120 between adjacent
+    // rungs. A designed curve never does that.
+    //
+    // The bound is 5 because the shipped curve's own largest step is 2.93, at
+    // the Hot Spring Resort, and a limit set just above the real data is a
+    // limit that fails the next time anybody tunes anything. Five leaves the
+    // curve room and still sits three orders of magnitude below the bug.
+    assert.ok(here / prev < 5,
+      `${BUILDINGS[i].id} takes x${(here / prev).toFixed(0)} the payback of the rung before it`);
   }
+
+  // The first eighteen keep their original absolute cap, unchanged. Nothing
+  // about them moved, so nothing about the rule that measured them should.
+  for (const b of BUILDINGS.slice(0, 18)) {
+    const days = b.cost / b.rate / 86400;
+    assert.ok(days < 365, `${b.id} takes ${days.toFixed(0)} days to repay itself`);
+  }
+});
+
+test('the whole ladder is reachable with the multipliers the game hands out', () => {
+  // The absolute check, done properly rather than by proxy.
+  //
+  // Raw cost/rate ignores every multiplier, and past the eighteenth rung the
+  // multipliers ARE the game — generator 48 repays in 13 years at ×1 and in
+  // about two minutes for a player who has actually got there. So this measures
+  // the multiplier from the real code instead of guessing at it: if a later
+  // change nerfs essence scaling or the achievement rewards, the deep end of
+  // the ladder silently drifts out of reach and this is what notices.
+  const deep = createState();
+  deep.lifetimeEssence = Math.floor(8 * 60 ** 1.7) * 50; // 50 rebirths, deepest stage 60
+  for (const a of ACHIEVEMENTS) deep.achievements[a.id] = true;
+  for (const u of TIER_UPGRADES) deep.tierUpgrades[u.id] = true;
+
+  const { globalMult } = recomputeDerived(deep, { now: Date.UTC(2030, 0, 1) });
+  // Plus the ×2 and ×3 a line's own two tier upgrades give it.
+  const mult = globalMult * 6;
+  assert.ok(mult > 1e5, `a deep player only reaches x${mult.toExponential(1)} — the ladder needs more`);
+
+  for (const b of BUILDINGS) {
+    const seconds = b.cost / b.rate / mult;
+    assert.ok(seconds < 86400,
+      `${b.id} still takes ${(seconds / 3600).toFixed(1)}h to repay at x${mult.toExponential(1)}`);
+  }
+});
+
+test('the deep end of the ladder stays inside the numbers the game can hold', () => {
+  // Thirty more generators multiply late income by an enormous factor, and
+  // three things downstream read that number: the float ceiling, the offline
+  // tank, and `fmt`. Measured rather than reasoned about — "probably fine" is
+  // what a balance pass says right before an idle game starts printing ∞.
+  const deep = createState();
+  deep.lifetimeEssence = Math.floor(8 * 60 ** 1.7) * 50;
+  for (const a of ACHIEVEMENTS) deep.achievements[a.id] = true;
+  for (const u of TIER_UPGRADES) deep.tierUpgrades[u.id] = true;
+  for (const b of BUILDINGS) deep.buildings[b.id] = 100;
+
+  const d = recomputeDerived(deep, { now: Date.UTC(2030, 0, 1) });
+  assert.ok(Number.isFinite(d.zps), 'income at 100 of everything is not a finite number');
+
+  // 245 orders of magnitude of headroom when this was written. Asserting 60 is
+  // enough to catch a change that eats most of it while leaving room to tune.
+  const headroom = 300 - Math.log10(d.zps);
+  assert.ok(headroom > 60, `only ${headroom.toFixed(0)} orders of magnitude below VALUE_CEILING`);
+
+  // The offline tank is the largest single number a player is ever shown, and
+  // fmt() has a finite suffix ladder — a number past the end of it renders as
+  // something meaningless rather than failing loudly.
+  const tank = d.zps * d.offlineRate * (d.offlineCapMs / 1000);
+  assert.ok(Number.isFinite(tank));
+  const shown = fmt(tank);
+  assert.ok(/^[\d.]+[A-Za-z]+$/.test(shown), `a full offline tank renders as "${shown}"`);
+  assert.ok(!/e\+|Infinity|NaN/.test(shown), `a full offline tank renders as "${shown}"`);
 });
 
 test('every generator has complete art and copy', () => {
   for (const b of BUILDINGS) {
     assert.ok(b.name, `${b.id}: missing name`);
     assert.ok(b.blurb, `${b.id}: missing blurb`);
+    assert.equal(b.stages?.length, 2, `${b.id}: needs two later stage names`);
+    for (const n of b.stages) assert.ok(n, `${b.id}: blank stage name`);
+    assert.ok(HABITATS.includes(b.habitat), `${b.id}: unknown habitat "${b.habitat}"`);
     const art = BUILDING_ART[b.id];
     assert.ok(art, `${b.id}: no art mapping`);
-    assert.ok(ICONS[art.shape], `${b.id}: unknown icon shape "${art.shape}"`);
+    assert.ok(SHAPE_FAMILIES[b.family], `${b.id}: unknown family "${b.family}"`);
   }
 });
 
 test('generator icon palettes cover every character their shape uses', () => {
-  for (const [id, art] of Object.entries(BUILDING_ART)) {
-    const shape = ICONS[art.shape];
-    for (const row of shape.rows) {
-      for (const ch of row) {
-        assert.ok(ch in art.palette, `${id}: palette has no entry for "${ch}"`);
+  // All three stages, because a palette missing a character renders holes and
+  // the second and third drawings are only reached after an upgrade — the
+  // slowest possible place to find out.
+  for (const b of BUILDINGS) {
+    const palette = BUILDING_ART[b.id].palette;
+    for (const stage of [0, 1, 2]) {
+      const shape = ICONS[familyShape(b.family, stage)];
+      for (const row of shape.rows) {
+        for (const ch of row) {
+          assert.ok(ch in palette, `${b.id} stage ${stage}: palette has no entry for "${ch}"`);
+        }
       }
     }
   }

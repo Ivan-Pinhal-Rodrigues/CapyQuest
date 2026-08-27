@@ -190,6 +190,10 @@ export function createState(now = Date.now()) {
       music: false,
       volume: 0.5,
       reducedMotion: false,
+      // Cloud save. Off until the player asks for it, and inert unless a
+      // backend is configured — see systems/cloud.js. Opt-in because sending
+      // somebody's save anywhere is not a default anybody consented to.
+      cloud: false,
       theme: 'dusk',
       buyAmount: 1, // 1 | 10 | 100 | 'max'
       notation: 'short',

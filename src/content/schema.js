@@ -61,6 +61,11 @@ export function validatePack(raw) {
     if (pass) pack.pass = pass;
   }
 
+  if (raw.cloud !== undefined) {
+    const cloud = validateCloud(raw.cloud, warnings);
+    if (cloud) pack.cloud = cloud;
+  }
+
   if (raw.version !== undefined) {
     const version = Number(raw.version);
     if (Number.isFinite(version)) pack.version = version;
@@ -381,4 +386,35 @@ function isNonEmptyString(value) {
 
 function stringList(value) {
   return Array.isArray(value) ? value.filter(isNonEmptyString) : [];
+}
+
+// --------------------------------------------------------------------- cloud
+
+/**
+ * Where the optional backend lives. See server/worker.js and systems/cloud.js.
+ *
+ * In the pack rather than in the source because it is deployment configuration
+ * — the same reason shop prices live here. An operator points it at their own
+ * Worker and commits the JSON; nothing needs rebuilding.
+ *
+ * **https only, and refused otherwise.** A save blob over plain http is a save
+ * blob anybody on the network can read and replace, and an endpoint that is
+ * quietly wrong is worse than one that is absent — absent is a state the whole
+ * client is designed around.
+ */
+function validateCloud(raw, warnings) {
+  if (!isObject(raw)) {
+    warnings.push('cloud: not an object, ignored');
+    return null;
+  }
+
+  const endpoint = String(raw.endpoint ?? '').trim();
+  if (!endpoint) return null; // an empty section simply means "no backend"
+
+  if (!/^https:\/\/[^\s]+$/.test(endpoint)) {
+    warnings.push(`cloud.endpoint: "${endpoint}" is not an https URL, ignored`);
+    return null;
+  }
+
+  return { endpoint: endpoint.replace(/\/+$/, '') };
 }

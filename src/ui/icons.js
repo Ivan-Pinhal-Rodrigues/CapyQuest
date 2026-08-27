@@ -5,8 +5,9 @@
 // per row, no redraw when the list re-renders.
 
 import { bake, bakeLayered } from '../render/canvas.js';
-import { ICONS, YUZU, GOLDEN_CAPY, SPARKLE, CAPY, EYES, EYE_OVERLAY_ORIGIN } from '../render/sprites.js';
+import { ICONS, YUZU, GOLDEN_CAPY, SPARKLE, CAPY, EYES, EYE_OVERLAY_ORIGIN, familyShape } from '../render/sprites.js';
 import { BUILDING_ART, PROP_PALETTE, CAPY_SKINS } from '../render/palettes.js';
+import { BUILDINGS_BY_ID } from '../data/buildings.js';
 import { wornKey, wornLayers } from '../render/wearables.js';
 
 const urlCache = new Map();
@@ -42,10 +43,20 @@ export function capyLookUrl({ skin = 'classic', hat, outfit, accessory } = {}) {
   return url;
 }
 
-export function buildingIconUrl(buildingId) {
+/**
+ * The shop row's icon, at the stage that line has reached.
+ *
+ * The stage is passed in rather than read from a global, because this is called
+ * from the shop's in-place update: the row re-renders on every purchase, and it
+ * has the state to hand. The cache key carries the stage, so the three drawings
+ * of one generator are three cached URLs rather than one that goes stale the
+ * moment an upgrade lands.
+ */
+export function buildingIconUrl(buildingId, stage = 0) {
   const art = BUILDING_ART[buildingId];
-  if (!art) return '';
-  return spriteDataUrl(ICONS[art.shape], art.palette, `building:${buildingId}`);
+  const shape = familyShape(BUILDINGS_BY_ID[buildingId]?.family, stage);
+  if (!art || !shape) return '';
+  return spriteDataUrl(ICONS[shape], art.palette, `building:${buildingId}:${stage}`);
 }
 
 export function yuzuIconUrl() {

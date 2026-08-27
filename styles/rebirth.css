@@ -42,7 +42,7 @@
   border-radius: var(--radius-sm);
   background: rgba(201, 160, 255, 0.14);
   border: 1px solid rgba(201, 160, 255, 0.4);
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
   color: #c9a0ff;
 }
 
@@ -88,7 +88,7 @@
 
 .tree__essence {
   font-family: var(--font-pixel);
-  font-size: 0.5rem;
+  font-size: var(--text-xs);
   color: var(--zen);
 }
 
@@ -124,7 +124,7 @@
 
 .tree-branch-btn__spend {
   font-family: var(--font-pixel);
-  font-size: 0.38rem;
+  font-size: var(--text-2xs);
   color: var(--text-faint);
 }
 
@@ -152,7 +152,7 @@
 
 .tree-tier__gate {
   font-family: var(--font-pixel);
-  font-size: 0.38rem;
+  font-size: var(--text-2xs);
   text-align: center;
   color: var(--branch, var(--text-faint));
 }
@@ -180,7 +180,7 @@
 }
 
 .tree-node__name {
-  font-size: 0.55rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-align: center;
   line-height: 1.1;
@@ -193,8 +193,8 @@
   overflow: hidden;
 }
 
-.tree-node__rank { font-family: var(--font-pixel); font-size: 0.34rem; color: var(--text-faint); }
-.tree-node__cost { font-family: var(--font-pixel); font-size: 0.34rem; color: var(--zen); opacity: 0.75; }
+.tree-node__rank { font-family: var(--font-pixel); font-size: var(--text-2xs); color: var(--text-faint); }
+.tree-node__cost { font-family: var(--font-pixel); font-size: var(--text-2xs); color: var(--zen); opacity: 0.75; }
 
 .tree-node.is-owned {
   border-color: var(--branch, var(--border-bright));
@@ -215,7 +215,7 @@
 
 @media (max-width: 460px) {
   .tree-node { min-height: 50px; }
-  .tree-node__name { font-size: 0.5rem; }
+  .tree-node__name { font-size: var(--text-xs); }
 }
 
 /* ================================================================ keystones
@@ -231,7 +231,7 @@
 
 .keystones__head {
   font-family: var(--font-pixel);
-  font-size: 0.38rem;
+  font-size: var(--text-2xs);
   color: var(--text-faint);
 }
 
@@ -285,7 +285,7 @@
 
 .keystone__status {
   font-family: var(--font-pixel);
-  font-size: 0.34rem;
+  font-size: var(--text-2xs);
   color: var(--text-faint);
 }
 
@@ -323,7 +323,7 @@
 
 .figures__head {
   font-family: var(--font-pixel);
-  font-size: 0.38rem;
+  font-size: var(--text-2xs);
   color: var(--text-faint);
 }
 
@@ -362,7 +362,7 @@
   grid-area: progress;
   align-self: center;
   font-family: var(--font-pixel);
-  font-size: 0.34rem;
+  font-size: var(--text-2xs);
   color: var(--text-faint);
   white-space: nowrap;
 }
@@ -374,7 +374,7 @@
   display: inline-block;
   margin-top: 0.1rem;
   font-family: var(--font-pixel);
-  font-size: 0.3rem;
+  font-size: var(--text-2xs);
   color: var(--lotus);
   opacity: 0.75;
 }
