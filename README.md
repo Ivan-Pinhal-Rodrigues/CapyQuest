@@ -73,7 +73,7 @@ address bar. It runs offline from the first visit onwards.
 ## Tests
 
 ```sh
-npm test            # 683 assertions, node's built-in runner, no framework
+npm test            # 741 assertions, node's built-in runner, no framework
 npm run test:browser # opens the real page in Chromium and looks at it
 npm run test:all     # both, which is what CI runs
 ```
@@ -180,9 +180,9 @@ export const YUZU = sprite([
 ]);
 ```
 
-They rasterise to an offscreen canvas once and blit with smoothing off. Ten hand-drawn 16×16
-shapes cover all eighteen generators by swapping the palette underneath them; nineteen more
-cover fifty-two wearables. Sound effects and all three music loops are synthesised with WebAudio
+They rasterise to an offscreen canvas once and blit with smoothing off. Thirty hand-drawn 16×16
+shapes — ten families of three growth stages — cover all forty-eight generators by swapping the
+palette underneath them; nineteen more cover fifty-two wearables. Sound effects and all three music loops are synthesised with WebAudio
 oscillators, so there are no audio files either.
 
 The advantage is not smallness, it is that **art reviews as a diff**. A pull request that shifts
@@ -229,6 +229,33 @@ and the entry module, then follows the import graph, which is how it caches 126 
 anybody writing 126 paths down. The first draft skipped this and let the fetch handler collect
 files as they were requested — Chromium reported the result as three entries, no JavaScript and
 no CSS, because *the visit that installs a worker is not controlled by it*.
+
+### The pond is the progress bar
+
+Forty-eight generators, and the pond draws **one of each** — not one per unit, and not the six-odd
+copies an earlier version scattered on the banks. Each has a habitat it belongs to (water,
+shallows, bank, ridge, sky), and the five bands stack from the water up to the sky so the place has
+depth rather than being a list.
+
+Two things change it, and they are deliberately different kinds of change:
+
+| | |
+|---|---|
+| **Buying units** | grows the thing, continuously and logarithmically. The eleventh Lily Pad is visibly more pad than the tenth; the ten-thousandth has not eaten the pond. |
+| **Buying a tier upgrade** | changes what the thing *is* — a different drawing and a different name, in the shop as well as on the water. A Lily Pad becomes a Lily Spread becomes a Lily Field. |
+
+That split is the whole design. A pond where everything only ever swells is a pond where nothing
+ever arrives; a pond that only ever changes at upgrades sits still for the hundreds of purchases in
+between. `src/render/sprites.js` carries ten families of three drawings each to make the second
+half possible, and the stage is read off the tier upgrades a save already has, so a 3.0 save needs
+no migration to arrive at the right one.
+
+The clearance around the capybara is solved rather than assumed — at any height, the horizontal
+gap is `sqrt(r² - dy²)`, which is zero level with the top of its head and widest across its middle,
+so a sky terrace passes over it and a lily pad goes round. Two earlier drafts used a fixed
+fraction of the half-width instead. The first put thirty-four of sixty-three sprites on top of the
+capybara; the second pushed everything to one distance and rendered the late-game pond as two
+vertical walls. Every numeric check passed both times.
 
 ### Getting it onto a phone
 
@@ -340,7 +367,7 @@ rediscovered:
 
 | | |
 |---|---|
-| Purchasable upgrades | **306** — 16 tap, 18 generators, 36 generator tiers, 210 tree nodes, 14 keystones, 12 constellations |
+| Purchasable upgrades | **396** — 16 tap, 48 generators, 96 generator tiers, 210 tree nodes, 14 keystones, 12 constellations |
 | Gear | 42 pieces across 6 slots, on a 20-rung rarity ladder, 1–5 stars, enhanceable +0 → +15 |
 | Wardrobe | 89 looks across 6 kinds — skins, ponds, titles, hats, outfits, extras — none of which moves a number |
 | Companions | 24, summoned, three in the party — visible in the pond, wearing your hats and their own gear |

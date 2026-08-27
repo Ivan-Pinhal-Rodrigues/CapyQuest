@@ -1,8 +1,9 @@
 // The onsen scene: capybara, water, bobbing yuzu, drifting steam, and the
 // golden capybara when it shows up.
 
-import { CAPY, EYES, EYE_OVERLAY_ORIGIN, YUZU, STEAM, GOLDEN_CAPY, ICONS } from './sprites.js';
+import { CAPY, EYES, EYE_OVERLAY_ORIGIN, YUZU, STEAM, GOLDEN_CAPY, ICONS, familyShape } from './sprites.js';
 import { BUILDING_ART, CAPY_SKINS, PROP_PALETTE } from './palettes.js';
+import { BUILDINGS, HABITATS, buildingStage } from '../data/buildings.js';
 import { bake, bakeLayered, blit, blitSquash, resizeCanvas, fitScale } from './canvas.js';
 import { wornKey, wornLayers } from './wearables.js';
 import { ParticleField } from './particles.js';
@@ -10,10 +11,20 @@ import { ParticleField } from './particles.js';
 const YUZU_COUNT = 3;
 const STEAM_COUNT = 5;
 
-/** Draw order for the banks: the order they unlock in, cheapest first. */
-const BUILDING_ORDER = Object.keys(BUILDING_ART);
-/** No single generator may take over the pond, however many you own. */
-const MAX_PER_BUILDING = 6;
+/**
+ * Where each habitat sits, as a fraction of the canvas height either side of
+ * the water line. Negative is up.
+ *
+ * The bands overlap slightly on purpose. Five hard stripes read as five
+ * shelves; a little bleed between them reads as a bank.
+ */
+const BAND = {
+  water: { top: 0.02, bottom: 0.13 },
+  shallows: { top: -0.05, bottom: 0.04 },
+  bank: { top: -0.17, bottom: -0.05 },
+  ridge: { top: -0.31, bottom: -0.18 },
+  sky: { top: -0.47, bottom: -0.33 },
+};
 
 /**
  * A small deterministic hash, so a building sits in the same spot every time.
@@ -75,14 +86,16 @@ export class Scene {
     /**
      * What you have built, standing around the pond.
      *
-     * Eighteen generators, thirty-six tiers, three hundred and six purchasable
-     * upgrades — and for three versions the pond looked exactly the same at
-     * minute one and at hour fifty. The art was already there: BUILDING_ART has
-     * a shape and a palette for every one of them, and this file already
-     * imported it to draw the crew's lily pads. Nothing drew the buildings.
+     * Forty-eight generators, ninety-six tiers — and for three versions the
+     * pond looked exactly the same at minute one and at hour fifty. An idle
+     * game is a place you tend; if tending it never changes the place, the
+     * numbers are all there is.
      *
-     * An idle game is a place you tend. If tending it never changes the place,
-     * the numbers are all there is.
+     * The first attempt at fixing that drew many small copies of each thing,
+     * scattered on both banks. It passed every check and read, in the running
+     * game, as clutter — a hundred and eight identical sprites is a texture,
+     * not a pond. What is here now is the second answer and the one the game
+     * ships: ONE of each thing, in a place that belongs to it, growing.
      */
     this.buildings = [];
     this.buildingBoxes = [];
@@ -120,57 +133,84 @@ export class Scene {
   }
 
   /**
-   * What you own, as `state.buildings` — `{ id: count }`.
+   * What you own, from the whole state — counts and tier upgrades both.
    *
-   * HOW MANY GET DRAWN. Not one per building: the late game owns thousands and
-   * a pond with three thousand lily pads in it is not a pond. The count is
-   * logarithmic — 1 gives one, 2 gives two, 4 gives three, 1024 gives eleven —
-   * so early purchases visibly change the place and later ones keep adding
-   * without ever flooding it. Capped per type as well, so no single generator
-   * can take over.
+   * ONE OF EACH. Not many copies: the pond draws exactly one sprite per owned
+   * generator, forty-eight at the very end. The version before this drew up to
+   * six of each and the result was a hundred and eight sprites that read as
+   * texture rather than as things. One of each is legible, and it is what makes
+   * the next two rules mean anything.
    *
-   * WHERE. Along the banks, left and right, ordered by the generator's own
-   * index so the cheap things stay near the front and the expensive ones sit
-   * further back. Positions come from a seeded hash of the id, not from
-   * Math.random, so the pond looks the same every time you open it — a pond
-   * that rearranges itself on every frame is a slot machine.
+   * SIZE GROWS WITH COUNT, continuously. Logarithmic, so the eleventh Lily Pad
+   * is visibly more pad than the tenth and the ten-thousandth has not eaten the
+   * pond. This is the half of "it grows with you" that happens on every single
+   * purchase.
+   *
+   * STAGE CHANGES ONLY AT A TIER UPGRADE. Nought, one or two upgrades bought
+   * gives stage one, two or three — a different drawing and a different name.
+   * That is the discrete half: buying units makes the thing bigger, buying an
+   * upgrade makes it a different thing. Both halves are needed, because a
+   * pond where everything only ever swells is a pond where nothing ever
+   * arrives.
+   *
+   * WHERE. Each generator has a habitat — water, shallows, bank, ridge, sky —
+   * and sits in that band, at an x spread evenly across whatever else shares
+   * the band with it. Positions come from the ladder order and a seeded hash of
+   * the id, never Math.random: a pond that rearranges itself when you open it
+   * is a slot machine, not a place.
    */
-  setBuildings(owned = {}) {
+  setBuildings(state = {}) {
+    const owned = state.buildings || {};
+
     // Rebuilding the layout every frame would make it crawl; only re-seed when
-    // what is owned actually changes.
-    const key = Object.entries(owned).filter(([, n]) => n > 0).map(([id, n]) => `${id}:${n}`).join(',');
+    // what is owned — or what stage it is at — actually changes.
+    const key = BUILDINGS
+      .filter((b) => (owned[b.id] || 0) > 0)
+      .map((b) => `${b.id}:${owned[b.id]}:${buildingStage(b.id, state)}`)
+      .join(',');
     if (key === this.buildingsKey) return;
     this.buildingsKey = key;
 
-    const placed = [];
-    for (const [index, def] of BUILDING_ORDER.entries()) {
-      const count = owned[def] || 0;
+    // Group by habitat first, because an entry's x depends on how many other
+    // things share its band — that is what stops ten sky generators landing on
+    // top of each other while the bank sits empty.
+    const bands = new Map(HABITATS.map((h) => [h, []]));
+    for (const [index, def] of BUILDINGS.entries()) {
+      const count = owned[def.id] || 0;
       if (count <= 0) continue;
-      const many = Math.min(MAX_PER_BUILDING, 1 + Math.floor(Math.log2(count)));
-      for (let i = 0; i < many; i++) {
-        const seed = hash(`${def}:${i}`);
-        placed.push({
-          id: def,
-          // Alternate banks so the two sides fill evenly rather than the whole
-          // catalogue piling up on the left.
-          side: (index + i) % 2 === 0 ? -1 : 1,
-          // Where along the bank, as 0..1 across the band that is left once the
-          // capybara has its clearance — NOT an absolute fraction of the
-          // stage. The first draft used absolute fractions and then clamped
-          // them outward past the capybara, which collapsed almost every one of
-          // them onto the same x: the late-game pond rendered as two vertical
-          // walls of sprites. The browser showed it immediately; the numbers
-          // (nothing overlapping, nothing off-canvas) were perfectly happy.
-          out: ((seed % 100) / 100) * 0.82 + (i % 3) * 0.06,
-          up: -0.06 + (((seed >> 7) % 100) / 100) * 0.30,
-          depth: index, // used for draw order and size
-          phase: (seed % 628) / 100,
-        });
-      }
+      bands.get(def.habitat)?.push({ def, index, count });
     }
 
-    // Furthest-back first, so nearer things overlap them rather than the other
-    // way round.
+    const placed = [];
+    for (const [habitat, members] of bands) {
+      const depth = HABITATS.indexOf(habitat);
+      members.forEach((m, i) => {
+        const seed = hash(m.def.id);
+        placed.push({
+          id: m.def.id,
+          family: m.def.family,
+          stage: buildingStage(m.def.id, state),
+          count: m.count,
+          habitat,
+          depth,
+          // Evenly spaced across the band, with a hashed nudge so a band does
+          // not read as a ruler. The +0.5 centres a lone occupant instead of
+          // pinning it to the left edge.
+          across: (i + 0.5) / members.length + (((seed % 100) / 100) - 0.5) * 0.06,
+          // Height within the band. Three rows, taken in turn, plus a hashed
+          // nudge inside each — not a pure hash, which is what this was: with
+          // ten things in a band the hash put neighbours at the same height
+          // often enough that the crowded end of the pond read as a pile.
+          // Taking turns guarantees that x-adjacent things are never at the
+          // same y, and the nudge keeps the three rows from reading as shelves.
+          lift: ((i % 3) + ((seed >> 7) % 100) / 100) / 3,
+          phase: (seed % 628) / 100,
+        });
+      });
+    }
+
+    // Furthest-back band first, so nearer things overlap them rather than the
+    // other way round.
     placed.sort((a, b) => b.depth - a.depth);
     this.buildings = placed;
   }
@@ -424,50 +464,88 @@ export class Scene {
    * and the two read as one object — a companion in its own pond.
    */
   /**
-   * The banks.
+   * The habitats.
    *
-   * Everything is pushed outside the capybara's tap circle, measured — the
-   * first draft used a fixed fraction of the half-width and the browser said
-   * thirty-four of sixty-three were inside it, crowding the silhouette. The
-   * capybara is still tapped first by hitTest, so nothing was broken; it simply
-   * looked cramped, and the comment claiming otherwise was wrong. The clearance
-   * is computed from the real radius now, and a test asserts it.
+   * Five bands stacked from the water up to the sky, each drawn back to front.
+   * A sky terrace being smaller and paler than a lily pad is not real
+   * perspective — it is just enough of it that five bands of things read as a
+   * place rather than as a list.
    *
-   * Further-back generators are drawn smaller and dimmer. It is not real
-   * perspective, just enough of it that eighteen kinds of thing on two banks
-   * read as depth rather than as a list.
+   * Nothing is allowed inside the capybara's tap circle, and the clearance is
+   * solved rather than assumed. The first draft used a fixed fraction of the
+   * half-width and the browser said thirty-four of sixty-three sprites were
+   * sitting on the capybara. The second pushed everything out to a single
+   * distance and rendered the late-game pond as two vertical walls — every
+   * numeric check passed both times, and a screenshot caught both. What is here
+   * uses the actual circle: at a given height, the horizontal clearance is
+   * sqrt(r² - dy²), which is zero level with the top of the capybara's head and
+   * widest across its middle. Things in the sky band pass straight over it,
+   * which is where a sky terrace ought to be anyway.
    */
   drawBuildings(ctx, cx, cy, scale, width, height) {
     this.buildingBoxes = [];
     if (!this.buildings.length) return;
 
-    const half = width / 2;
     const waterY = cy + CAPY.h * scale * 0.34;
 
     for (const b of this.buildings) {
       const art = BUILDING_ART[b.id];
-      if (!art) continue;
+      const shape = ICONS[familyShape(b.family, b.stage)];
+      if (!art || !shape) continue;
 
-      // Later generators are further away: smaller, paler, higher up the bank.
-      const distance = b.depth / Math.max(1, BUILDING_ORDER.length - 1);
-      const size = Math.max(1, Math.round(scale * (0.34 - distance * 0.14)));
-      const alpha = 0.92 - distance * 0.34;
+      // Higher bands are further away: smaller, paler.
+      const distance = b.depth / Math.max(1, HABITATS.length - 1);
 
-      // The band runs from just outside the capybara's tap circle to the edge
-      // of the stage. Placing within the band rather than clamping into it is
-      // what keeps the spread — see the note in setBuildings.
-      const iconR = (ICONS[art.shape].w * size) / 2;
-      const near = this.capyBox.r + iconR;
-      const band = Math.max(0, half - near - iconR);
-      const x = cx + b.side * (near + b.out * band);
+      // Size grows with how many you own — log10, so 1 is small, 10 is
+      // noticeably bigger, 1,000 is at the ceiling and 100,000 does not burst
+      // it. This is the every-purchase half of "it grows with you".
+      //
+      // Sprites are blitted at whole-number scales, which is what keeps the
+      // pixels square, and that quantisation is the real constraint here. The
+      // canvas scale runs about 5 at 320 CSS pixels and about 12 at 1280, so
+      // the same 0.55..1.35 range of factors buys two distinct sizes on a phone
+      // and five on a desktop. Measured: 2 at 320 and 390, 3 at 768, 5 at 1280.
+      //
+      // Two is a floor imposed by arithmetic rather than by taste — widening
+      // the range far enough to buy a third step at 320 makes the largest
+      // generator 128 pixels across at 1280. And a retina screen does not help:
+      // `fitScale` measures the CSS box, not the backing store, so 320 at three
+      // device pixels per CSS pixel draws the same two sizes more sharply. That
+      // is worth revisiting one day — a scale taken from the backing store
+      // would buy a phone the full range for free — but it moves every sprite
+      // in the scene, not just these, and that is not this phase's change.
+      const grown = Math.min(1, Math.log10(b.count + 1) / 3);
+      const near = 0.31 - distance * 0.13;
+      const size = Math.max(1, Math.round(scale * near * (0.55 + grown * 0.80)));
+      const alpha = 0.94 - distance * 0.30;
+
+      const iconR = (shape.w * size) / 2;
+      const band = BAND[b.habitat];
       const bob = this.reducedMotion ? 0 : Math.sin(this.time * 0.6 + b.phase) * 1.2;
-      const y = waterY + height * b.up + bob - distance * height * 0.06;
+      const y = waterY + height * (band.top + b.lift * (band.bottom - band.top)) + bob;
 
-      const baked = bake(ICONS[art.shape], art.palette, `pond:${b.id}`);
+      // The half-width of the capybara at this height. Zero once we are clear
+      // of the circle entirely, which is the common case for the ridge and sky.
+      const dy = Math.abs(y - this.capyBox.y);
+      const clear = dy >= this.capyBox.r
+        ? 0
+        : Math.sqrt(this.capyBox.r * this.capyBox.r - dy * dy) + iconR;
+
+      // Two runs of usable x — left of the capybara and right of it — laid end
+      // to end and indexed by one 0..1 position, so `across` spreads a band
+      // evenly over both without anything piling up at the clearance edge.
+      const edge = iconR + 2;
+      const leftSpan = Math.max(0, cx - clear - edge);
+      const rightSpan = Math.max(0, width - edge - (cx + clear));
+      const total = leftSpan + rightSpan;
+      const at = Math.min(0.999, Math.max(0, b.across)) * total;
+      const x = at < leftSpan ? edge + at : cx + clear + (at - leftSpan);
+
+      const baked = bake(shape, art.palette, `pond:${b.id}:${b.stage}`);
       blit(ctx, baked, x, y, size, { alpha });
 
       // Tappable, so the pond is a way into the shop and not only a picture.
-      this.buildingBoxes.push({ id: b.id, x, y, r: (ICONS[art.shape].w * size) / 2.2 });
+      this.buildingBoxes.push({ id: b.id, x, y, r: (shape.w * size) / 2.2 });
     }
   }
 

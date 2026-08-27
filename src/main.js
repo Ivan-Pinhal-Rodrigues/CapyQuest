@@ -934,7 +934,7 @@ class Game {
     // runs at ~15Hz instead of 60, and setBuildings early-returns unless what
     // you own has actually changed, so the layout is rebuilt on a purchase and
     // never on a frame.
-    this.scene.setBuildings(this.state.buildings);
+    this.scene.setBuildings(this.state);
     this.upgradeGrid.update(this.state);
     this.updateQuestVisibility();
     this.updateMetaVisibility();

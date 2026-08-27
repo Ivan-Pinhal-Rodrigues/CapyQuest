@@ -206,6 +206,68 @@ for (const vp of VIEWPORTS) {
   await ctx.close();
 }
 
+// ------------------------------------------------------------------ the pond
+//
+// The one part of this game that has shipped wrong twice while every unit test
+// passed. Draft one stacked the late-game pond into two vertical walls; draft
+// two filled it with a hundred and eight sprites of clutter. Both were caught
+// by a screenshot and neither by a number, so what this does is take the
+// measurements a screenshot would have made — how many things, where, and
+// whether any of them is sitting on the capybara or off the edge.
+{
+  const ctx = await browser.newContext({ viewport: { width: 320, height: 640 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => record('consoleErrors', `pond: THREW ${e.message.slice(0, 120)}`));
+  await page.goto(site.url + '/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => !!window.capyquest, null, { timeout: 30000 });
+
+  // 320px is the hard case: the narrowest screen with the fullest pond.
+  const seen = await page.evaluate(async (origin) => {
+    const { BUILDINGS } = await import(`${origin}/src/data/buildings.js`);
+    const g = window.capyquest;
+    g.state.story.onboarded = true;
+    for (const [i, def] of BUILDINGS.entries()) {
+      g.state.buildings[def.id] = [1, 4, 30, 250, 3000][i % 5];
+      g.state.tierUpgrades[`${def.id}_t1`] = true;
+      g.state.tierUpgrades[`${def.id}_t2`] = true;
+    }
+    for (const el of document.querySelectorAll('[class*=cutscene], .modal')) el.remove();
+    g.updateUi(Date.now());
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const canvas = document.getElementById('scene');
+    const capy = g.scene.capyBox;
+    const boxes = g.scene.buildingBoxes;
+    return {
+      total: BUILDINGS.length,
+      drawn: boxes.length,
+      onTheCapy: boxes.filter((b) => Math.hypot(b.x - capy.x, b.y - capy.y) < capy.r).length,
+      offCanvas: boxes.filter((b) => b.x - b.r < -1 || b.x + b.r > canvas.clientWidth + 1
+        || b.y - b.r < -1 || b.y + b.r > canvas.clientHeight + 1).length,
+      distinctX: new Set(boxes.map((b) => Math.round(b.x))).size,
+      // Two things at the same size everywhere would mean the growth rule is
+      // not running at all.
+      distinctSizes: new Set(boxes.map((b) => Math.round(b.r))).size,
+    };
+  }, site.url);
+
+  if (seen.drawn !== seen.total) fail(`pond: ${seen.drawn} sprites for ${seen.total} owned generators — it must be one each`);
+  if (seen.onTheCapy > 0) fail(`pond: ${seen.onTheCapy} sprites are inside the capybara's tap circle`);
+  if (seen.offCanvas > 0) fail(`pond: ${seen.offCanvas} sprites are off the edge of the scene`);
+  // Draft one's failure, in the shape it would take again: everything at one x.
+  if (seen.distinctX < seen.drawn * 0.85) {
+    fail(`pond: ${seen.drawn} sprites share only ${seen.distinctX} x positions — they are stacking into columns`);
+  }
+  // Two, not three. Sprites blit at whole-number scales and a 320px canvas only
+  // has room for two of them — see the note in scene.js. Asserting three here
+  // is what this check did first, and it failed against correct code; the
+  // measured truth is 2 at 320, 3 at 768, 5 at 1280. One would mean the growth
+  // rule is not running at all, which is the thing worth catching.
+  if (seen.distinctSizes < 2) fail('pond: every sprite is the same size — growth is not being applied');
+
+  await ctx.close();
+}
+
 // ----------------------------------------------------------- embedded hosts
 //
 // itch.io serves an HTML5 game from an <iframe sandbox=…> on its own domain,

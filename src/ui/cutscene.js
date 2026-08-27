@@ -9,10 +9,11 @@
 // Skip is the first thing on screen, not the last. Someone reopening the game
 // on a new device should not have to sit through this to get to their save.
 
-import { CAPY, ICONS } from '../render/sprites.js';
+import { CAPY, ICONS, familyShape } from '../render/sprites.js';
 import { CAPY_SKINS, PROP_PALETTE, BUILDING_ART } from '../render/palettes.js';
 import { SHAPES } from '../render/shapes.js';
 import { ENEMIES } from '../data/enemies.js';
+import { BUILDINGS_BY_ID } from '../data/buildings.js';
 import { spriteDataUrl } from './icons.js';
 
 /**
@@ -91,8 +92,11 @@ function artUrl(art) {
     const def = ENEMIES[art.id];
     return spriteDataUrl(SHAPES[def.shape], def.palette, `cut:enemy:${art.id}`);
   }
+  // The opening always shows things as they start out — stage one, before the
+  // player has upgraded anything. It is the first thing they see.
   const build = BUILDING_ART[art.id];
-  return spriteDataUrl(ICONS[build.shape], build.palette, `cut:build:${art.id}`);
+  const shape = familyShape(BUILDINGS_BY_ID[art.id]?.family, 0);
+  return spriteDataUrl(ICONS[shape], build.palette, `cut:build:${art.id}`);
 }
 
 /**

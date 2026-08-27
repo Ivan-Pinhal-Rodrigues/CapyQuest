@@ -10,18 +10,79 @@ Where a figure below is a target rather than an observation it is labelled as on
 
 ## The generator ladder
 
-Eighteen generators. Cost climbs on a steady slope and payback lengthens down the list, so a
-later generator is a bigger commitment rather than a strictly better deal.
+Forty-eight generators, in two halves that behave differently on purpose.
+
+**The first eighteen are untouched** — ids, costs, rates, names and blurbs, all exactly as 3.0
+shipped them. Every figure in the next section still describes the real opening, because none of
+the numbers it was measured against moved.
+
+| | First eighteen | Nineteen to forty-eight |
+|---|---|---|
+| Cost step | **×13–16** (the opening step is ×10) | ×13.9–15.0 |
+| Rate step | ×5.5–7.5 | ×12.5–13.6 |
+| Payback step | ×1.9 a rung | ×1.11 a rung |
+| Payback at the end | 181 days | **13.0 years** |
 
 | | |
 |---|---|
-| Cost step, generator to generator | **×13–16** (the opening step is ×10) |
-| Rate step | ×5.5–7.5 |
 | Payback, first generator | 100s |
-| Payback, last generator | **181 days** — a goal bought across rebirths |
-| Cost of 100 of everything | 1.09e27 |
+| Cost of the last generator | 9.0e54 |
+| Rate of the last generator | 2.2e46/sec |
+| Cost of 100 of everything | 7.57e61 (was 1.09e27 at eighteen) |
 
 `COST_GROWTH = 1.15` per unit owned, the classic idle curve.
+
+### Why the second half is shaped differently
+
+Payback roughly doubling per rung is a fine curve for eighteen rungs and an impossible one for
+forty-eight: continued honestly it puts the last rung at 1e16 seconds. Continued *dis*honestly —
+flattened so payback barely moves — thirty rungs become one blurred purchase, because each is only
+a couple of per cent worse than the last and you buy the lot in an afternoon.
+
+So the second half rises at ×1.11 a rung. Thirty rungs of that is ×26, ending at 13 years raw.
+
+**Raw payback is the wrong unit out there, and this is what it is worth in practice.** Measured
+against a state built from the real code — 50 rebirths at deepest stage 60, every achievement,
+every tier upgrade:
+
+| | |
+|---|---|
+| Global multiplier at that point | **×5.76e5** |
+| Plus a line's own two tier upgrades | ×6 |
+| Generator 48's 13-year payback becomes | **118 seconds** |
+
+`tests/content.test.js` computes that multiplier rather than hard-coding it, so a later change that
+nerfs essence scaling or the achievement rewards fails the check instead of quietly putting the
+deep end of the ladder out of reach.
+
+### What replaced the "payback under a year" rule
+
+That rule was written for eighteen rungs, where the last one repaid in 181 days. It cannot survive
+forty-eight and it was never the check that would have caught the bug it was written for.
+
+The bug was six digit-count typos in a row, and what they actually produced was a payback **step**
+of ×3,120 between two adjacent rungs. So the step is what is bounded now: no rung may take more
+than ×5 the payback of the one before it. The shipped curve's own largest step is ×2.93, at the Hot
+Spring Resort — a bound set just above the real data is a bound that fails the next time anybody
+tunes anything, so ×5 leaves room and still sits three orders of magnitude below the bug. The
+first eighteen keep the original one-year cap alongside it, unchanged.
+
+### What thirty more generators did to everything downstream
+
+Re-measured rather than assumed, because "probably fine" is what a balance pass says immediately
+before an idle game starts printing ∞.
+
+| | |
+|---|---|
+| Income at 100 of all 48, deep meta | 2.21e55/sec |
+| Headroom to `VALUE_CEILING` (1e300) | **245 orders of magnitude** |
+| A full offline tank at that income | 1.16e60, which `fmt()` renders as `1.16NoDc` |
+| The rebirth wall | **stage 7, unmoved** — it is a fight-length measurement and reads nothing from the pond |
+| Rebirth payout | unchanged: it pays for depth, not for zen |
+
+The wall and the payout were the two most likely to have moved and did not, because both are
+denominated in stages. The float ceiling and the number formatter were the real exposure, and both
+have room to spare.
 
 The Lily Pad and the Yuzu Sapling both repay in 100s, the only place in the table where payback
 does not rise. That is deliberate and it is why the monotonic-payback test exempts the first
