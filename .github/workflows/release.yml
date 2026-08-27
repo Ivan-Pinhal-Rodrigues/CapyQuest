@@ -1,0 +1,109 @@
+# Cut a GitHub Release when the version moves on main.
+#
+# WHY THIS EXISTS
+#
+# GitHub Pages serves this repository's `main` branch directly, so the deploy
+# is the merge — there is nothing for a workflow to publish. What was still
+# manual was the *record*: a tag and a release note, which is the only place a
+# player or a future reader can see which build is live and what changed in it.
+#
+# WHAT IT DOES NOT DO
+#
+# It does not decide the version. `version.yml` bumps the patch when shipped
+# files change, and a human runs `node tools/version.mjs minor|major` for
+# anything larger. This only notices that the version on main is one it has not
+# tagged yet, and writes it down.
+#
+# WHY IT CANNOT DOUBLE-TAG
+#
+# The existence of the tag is the guard, checked against the remote rather than
+# against a local clone that may be stale. A re-run, a force-push that replays
+# the same commit, or two pushes landing close together all find the tag already
+# there and stop. That is deliberately not "did this push change the version" —
+# that question has a wrong answer after a revert, and this one does not.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  # So a release can be cut by hand for a version that landed while this
+  # workflow was broken or disabled.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The whole history, so the release note can be built from the commits
+          # since the previous tag.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check the two version lines agree
+        # The same check `npm test` makes. Repeated here because a release is
+        # the last moment it is cheap to notice: a tag naming a version that
+        # sw.js does not carry is a tag that lies about what is deployed.
+        run: node tools/version.mjs --check
+
+      - name: Decide whether there is a release to cut
+        id: decide
+        run: |
+          version=$(node tools/version.mjs)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/v${version}" >/dev/null 2>&1; then
+            echo "cut=no" >> "$GITHUB_OUTPUT"
+            echo "::notice::v${version} is already tagged — nothing to release"
+          else
+            echo "cut=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write the release note
+        if: steps.decide.outputs.cut == 'yes'
+        run: |
+          previous=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          {
+            echo "Live at https://ivan-pinhal-rodrigues.github.io/CapyQuest/"
+            echo
+            echo "Installed apps pick this up on their next launch: the service worker's"
+            echo "cache is named after the version, so a new version is what makes a"
+            echo "deployed change reach somebody who already has it."
+            echo
+            echo "## Changes"
+            echo
+            if [ -n "$previous" ]; then
+              git log --no-merges --pretty='- %s' "${previous}..HEAD"
+            else
+              git log --no-merges --pretty='- %s' -20
+            fi
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: Tag and release
+        if: steps.decide.outputs.cut == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.decide.outputs.version }}
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a "v${VERSION}" -m "CapyQuest ${VERSION}"
+          git push origin "v${VERSION}"
+          gh release create "v${VERSION}" \
+            --title "CapyQuest ${VERSION}" \
+            --notes-file release-notes.md
+          echo "::notice::Released v${VERSION}"

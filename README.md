@@ -67,6 +67,12 @@ does not, because it does not reach anybody's browser and should not make every 
 re-download itself. `node tools/version.mjs patch|minor|major` is the same code, for when you want
 to choose.
 
+Once the version moves on `main`, `.github/workflows/release.yml` tags it and cuts a GitHub
+Release with the commits since the last tag. There is no deploy workflow and there should not be:
+Pages serves this branch directly, so the merge *is* the deploy, and a workflow that re-uploaded
+the same files would only be a second thing to go wrong. What was actually missing was the record
+of which build is live, and that is what the release is.
+
 To install it, open it in a browser and use Add to Home Screen or the install button in the
 address bar. It runs offline from the first visit onwards.
 
