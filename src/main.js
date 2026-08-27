@@ -5,14 +5,14 @@
 // ~15Hz because nobody can read a number that changes sixty times a second.
 
 import { createState } from './state.js';
-import { loadState, saveState, clearSave, freshState } from './save.js';
+import { loadState, saveState, clearSave, freshState, importSave } from './save.js';
 import { recomputeDerived } from './systems/stats.js';
 import { ComboTracker, resolveClick } from './systems/clicker.js';
 import { GoldenSpawner, windfallAmount } from './systems/golden.js';
 import { checkAchievements, describeReward } from './systems/achievements.js';
 import { buyBuilding, buyUpgrade } from './systems/shop.js';
 import { audio } from './systems/audio.js';
-import { offlineEarnings } from './balance.js';
+import { offlineEarnings, splitLevel } from './balance.js';
 import { Combat } from './systems/combat.js';
 import { combatStats, xpForStage, resolveItem } from './systems/combatStats.js';
 import {
@@ -42,6 +42,9 @@ import { boostById, cosmeticById, leafPackById } from './content/registry.js';
 import { loadContent } from './content/load.js';
 import { BootScreen } from './ui/bootScreen.js';
 import { registerUpdates } from './systems/updater.js';
+import {
+  configured as cloudConfigured, pushSave, pushScore, pullSave, forgetIdentity,
+} from './systems/cloud.js';
 import { adminRequested, openAdminPanel } from './ui/adminPanel.js';
 import { ticketsPerBoss } from './systems/meta.js';
 import { COMPANIONS_BY_ID, PARTY_SIZE } from './data/companions.js';
@@ -60,6 +63,7 @@ import {
   checkRollover, claimPassLevel, unclaimedPassLevels, passTrack,
   passXpForClear, addPassXp, unlockPremium,
 } from './systems/season.js';
+import { seasonAt } from './data/seasons.js';
 import { SeasonPanel } from './ui/seasonPanel.js';
 import { LeaderboardPanel, rivalBody } from './ui/leaderboardPanel.js';
 import { Dialogue } from './ui/dialogue.js';
@@ -70,7 +74,7 @@ import { nextStep, markStep } from './systems/onboarding.js';
 import { displayName, setName } from './systems/profile.js';
 import { nextBeat, markSeen, beat as storyBeat } from './systems/story.js';
 import { HOSTILE_CAPYBARAS } from './data/capybaras.js';
-import { leaderboard, rivalsFor } from './systems/leaderboard.js';
+import { leaderboard, rivalsFor, realEntries, playerEntry } from './systems/leaderboard.js';
 import { activeEvent, syncEvent, addPetals, petalsForClear, exchange } from './systems/events.js';
 import { PREMIUM_PRICE, PREMIUM_LEAFS } from './data/pass.js';
 import { grantReward, describeGrant } from './systems/rewards.js';
@@ -883,6 +887,10 @@ class Game {
     this.saveTimer += dtMs;
     if (this.saveTimer >= SAVE_INTERVAL_MS) {
       this.save();
+      // Rides on the local save rather than a timer of its own, and rate-limits
+      // itself to once a minute inside. Deliberately not awaited: the loop must
+      // not know or care whether there is a server.
+      this.syncCloud();
       this.saveTimer = 0;
     }
   }
@@ -985,6 +993,49 @@ class Game {
     this.tabs.badge('store', dailyLeafsReady(this.state, now) ? 1 : 0);
     this.tabs.badge('season', unclaimedPassLevels(this.state));
     this.tabs.badge('rivals', activeEvent(now) ? 1 : 0);
+  }
+
+  // -------------------------------------------------------------- the cloud
+
+  /**
+   * Push the save and this run's board row, and take back whatever the board
+   * says. Off unless the player asked for it AND a backend is configured.
+   *
+   * Nothing here is awaited by anything. It is called on a timer and after a
+   * rebirth, both of which carry on regardless of what it returns — a server
+   * that is slow, down or absent costs the player nothing at all.
+   */
+  syncCloud() {
+    if (!this.state.settings.cloud || !cloudConfigured()) return;
+
+    const now = Date.now();
+    // Not more than once a minute, however often this is called. The free tier
+    // is generous, not infinite, and a save every few seconds would be rude to
+    // a server somebody else is paying nothing for.
+    if (this.lastCloudAt && now - this.lastCloudAt < 60e3) return;
+    this.lastCloudAt = now;
+
+    pushSave(this.state, now).then((res) => {
+      if (!res.ok && res.reason !== 'off') {
+        console.info('[capyquest] cloud save did not go through:', res.reason);
+      }
+    });
+
+    const rank = playerEntry(this.state, now);
+    pushScore({
+      season: seasonAt(now).index,
+      name: displayName(this.state),
+      depth: rank.depth,
+      rebirths: rank.rebirths,
+      passLevel: rank.passLevel,
+    }).then((res) => {
+      // The board comes back from the same call that reported the score, so
+      // one request keeps both halves current.
+      if (res.ok && Array.isArray(res.data?.rows)) {
+        this.realRows = realEntries(res.data.rows);
+        this.boardCache = null; // re-rank on the next paint
+      }
+    });
   }
 
   /**
@@ -2098,7 +2149,17 @@ class Game {
     if (!this.boardCache || this.boardCache.day !== day) {
       this.boardCache = { day, rivals: rivalsFor(now) };
     }
-    const out = leaderboard(this.state, now, this.boardCache.rivals);
+
+    // Real players, when there is a backend and it answered. `this.realRows` is
+    // whatever the last successful fetch left behind and starts empty, so this
+    // is a no-op with no server, an unreachable one, or one that has not
+    // replied yet — the board is simply the sixty simulated rivals, exactly as
+    // it has always been.
+    const rivals = this.realRows?.length
+      ? { ...this.boardCache.rivals, rows: [...this.boardCache.rivals.rows, ...this.realRows] }
+      : this.boardCache.rivals;
+
+    const out = leaderboard(this.state, now, rivals);
     // Hand the cached rivals along so the bracket does not rebuild all sixty
     // loadouts a second time on the same frame.
     out.cached = this.boardCache.rivals;
@@ -2463,9 +2524,86 @@ class Game {
     });
   }
 
+  /**
+   * Pull the cloud copy down and offer to swap this run for it.
+   *
+   * The one genuinely destructive thing the backend can do, so it asks first
+   * and says what it costs in the dialog rather than afterwards in a toast.
+   * The server is never allowed to decide this on its own — a device that has
+   * been played on today must not lose that to a copy from a device that has
+   * not, just because the copy happens to be newer by a clock nobody trusts.
+   */
+  restoreFromCloud() {
+    pullSave().then((res) => {
+      if (!res.ok) {
+        this.toaster.show({
+          title: 'Could not reach the cloud copy',
+          body: res.reason === 'http 404'
+            ? 'Nothing has been saved from this device yet.'
+            : 'The server did not answer. Your pond here is untouched.',
+          kind: 'warn',
+          icon: '☁',
+        });
+        return;
+      }
+
+      let incoming;
+      try {
+        incoming = importSave(res.data.code);
+      } catch (err) {
+        this.toaster.show({
+          title: 'That copy could not be read',
+          body: 'Nothing has changed here.',
+          kind: 'warn',
+        });
+        console.warn('[capyquest] cloud save was unreadable', err);
+        return;
+      }
+
+      const when = new Date(res.data.updatedAt || Date.now()).toLocaleString();
+      const body = el('div', 'confirm');
+      body.appendChild(el('p', 'confirm__lead', `Saved ${when}.`));
+      body.appendChild(list([
+        `That copy: stage ${splitLevel(incoming.combat?.bestDepth || 0).stage + 1}, `
+        + `${incoming.rebirthCount || 0} rebirths`,
+        `This device: stage ${splitLevel(this.state.combat?.bestDepth || 0).stage + 1}, `
+        + `${this.state.rebirthCount || 0} rebirths`,
+      ]));
+      body.appendChild(el('p', 'confirm__warn',
+        'Loading it replaces everything here. There is no undo — copy your save code first if you are unsure.'));
+
+      openModal({
+        title: 'Load the cloud copy?',
+        bodyNode: body,
+        actions: [
+          { label: 'Keep this one' },
+          {
+            label: 'Load it',
+            variant: 'danger',
+            onClick: () => {
+              this.state = incoming;
+              this.combo.reset();
+              this.scene.particles.clear();
+              this.applySettings();
+              this.afterMetaChange();
+              this.save();
+              this.toaster.show({
+                title: 'Loaded from the cloud',
+                body: 'This is the pond from your other device.',
+                kind: 'info',
+                icon: '☁',
+              });
+            },
+          },
+        ],
+      });
+    });
+  }
+
   openSettings() {
     openSettingsModal(this.state, {
       toaster: this.toaster,
+      onRestoreCloud: () => this.restoreFromCloud(),
       onCode: (input) => this.redeemSecretCode(input),
       onChange: (loaded) => {
         if (loaded) {

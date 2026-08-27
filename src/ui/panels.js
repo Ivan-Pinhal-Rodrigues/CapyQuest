@@ -8,6 +8,7 @@ import { CLICK_UPGRADES } from '../data/clickUpgrades.js';
 import { TIER_UPGRADES } from '../data/tierUpgrades.js';
 import { openModal, el } from './modal.js';
 import { exportSave, importSave } from '../save.js';
+import { configured as cloudConfigured, forgetIdentity } from '../systems/cloud.js';
 import { collectionProgress } from '../systems/gacha.js';
 
 // ------------------------------------------------------------- achievements
@@ -229,7 +230,7 @@ export class StatsPanel {
 
 // ----------------------------------------------------------------- settings
 
-export function openSettings(state, { onChange, onReset, onCode, toaster }) {
+export function openSettings(state, { onChange, onReset, onCode, toaster, onRestoreCloud }) {
   const body = el('div', 'settings');
 
   body.appendChild(toggle('Sound effects', state.settings.sound, (v) => {
@@ -301,6 +302,47 @@ export function openSettings(state, { onChange, onReset, onCode, toaster }) {
   body.appendChild(codeRow);
 
   body.appendChild(el('hr', 'settings__rule'));
+
+  // Cloud save, only when there is somewhere for it to go. With no backend
+  // configured this whole block is absent rather than shown greyed out —
+  // offering a switch that cannot do anything is worse than offering nothing.
+  if (cloudConfigured()) {
+    body.appendChild(el('hr', 'settings__rule'));
+
+    body.appendChild(toggle('Cloud save', state.settings.cloud, (v) => {
+      state.settings.cloud = v;
+      if (!v) forgetIdentity();
+      onChange();
+      toaster?.show({
+        title: v ? 'Cloud save on' : 'Cloud save off',
+        body: v
+          ? 'Your pond is copied to the server every minute or so.'
+          : 'Nothing more will be sent. The copy already up there stays until it ages out.',
+        kind: 'info',
+        icon: '☁',
+      });
+    }));
+
+    body.appendChild(el(
+      'p',
+      'settings__note',
+      'Anonymous — no email, no account, just a random id this device made up. '
+      + 'It is a convenience, not a guarantee: the save code below is still the '
+      + 'thing to keep if you care about this run.',
+    ));
+
+    if (state.settings.cloud) {
+      const restore = el('button', 'btn btn--small', 'Restore from cloud');
+      restore.type = 'button';
+      restore.addEventListener('click', () => onRestoreCloud?.());
+      const row = el('div', 'settings__row');
+      row.appendChild(el('span', 'settings__label', 'Other device'));
+      const actions = el('div', 'settings__actions');
+      actions.appendChild(restore);
+      row.appendChild(actions);
+      body.appendChild(row);
+    }
+  }
 
   const saveRow = el('div', 'settings__row');
   saveRow.appendChild(el('span', 'settings__label', 'Save data'));

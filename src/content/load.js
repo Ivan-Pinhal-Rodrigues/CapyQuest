@@ -18,7 +18,8 @@
 // of them end the same way: no pack, built-in defaults, a warning in the
 // console, and a playable game.
 
-import { applyPack, resetContent } from './registry.js';
+import { applyPack, resetContent, cloudEndpoint } from './registry.js';
+import { setEndpoint } from '../systems/cloud.js';
 
 export const PACK_URL = 'content/pack.json';
 export const DRAFT_KEY = 'capyquest:content:draft';
@@ -71,12 +72,19 @@ export async function loadContent({ url = PACK_URL, fetcher = globalThis.fetch }
 
   if (!file && !draft) {
     resetContent();
+    setEndpoint(null);
     return { applied: {}, warnings: [], source: 'defaults' };
   }
 
   const merged = mergePacks(file, draft);
   const { pack, warnings } = applyPack(merged);
   for (const warning of warnings) console.warn(`[capyquest] content pack — ${warning}`);
+
+  // The registry is pure and only reports the endpoint; telling systems/cloud.js
+  // about it is a side effect, so it happens here — the half of the content
+  // layer that already touches the browser. No `cloud` section means null,
+  // which leaves the whole backend dormant.
+  setEndpoint(cloudEndpoint());
 
   return {
     applied: pack,

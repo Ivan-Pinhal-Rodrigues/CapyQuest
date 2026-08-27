@@ -1,0 +1,36 @@
+# Deploy config for the optional backend.
+#
+#   npm i -g wrangler
+#   wrangler login
+#   wrangler d1 create capyquest          # copy the id it prints into database_id
+#   wrangler d1 execute capyquest --remote --file=server/schema.sql
+#   wrangler deploy --config server/wrangler.toml
+#
+# Then put the URL it gives you into content/pack.json:
+#
+#   { "cloud": { "endpoint": "https://capyquest-api.<you>.workers.dev" } }
+#
+# and commit that. Nothing in the game needs rebuilding — the pack is fetched
+# network-first, so the next load picks it up.
+#
+# Leave the pack's cloud section out and the whole thing stays dormant: no
+# requests, no toggle in Settings, no difference to anybody playing.
+
+name = "capyquest-api"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+# The free tier is the whole point. 100,000 requests a day, 100,000 D1 row
+# writes a day, 5GB of storage — see the note at the top of worker.js for why
+# this is D1 and not KV.
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "capyquest"
+# Filled in by `wrangler d1 create capyquest`. Left blank on purpose: a real id
+# committed here would be somebody else's database when they clone the repo.
+database_id = ""
+
+[observability]
+enabled = true

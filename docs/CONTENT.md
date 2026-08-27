@@ -213,6 +213,27 @@ and `VERSION` in `sw.js` has to be bumped along with the code. Adding, pricing,
 hiding, removing and scheduling all work with no code change at all, which is
 the whole point.
 
+## Pointing the game at a backend
+
+CapyQuest has an optional server — cloud save, and real players on the
+leaderboard. It is off unless the pack says where it lives:
+
+```json
+{ "cloud": { "endpoint": "https://capyquest-api.example.workers.dev" } }
+```
+
+**https only.** Anything else is refused with a warning, because a save blob
+over plain http is a save blob anybody on the network can read and replace.
+
+Leave the section out — which is the default, and what ships — and the whole
+thing stays dormant: no requests, and no Cloud save switch in Settings at all,
+because a toggle that cannot do anything is worse than no toggle.
+
+`server/README.md` has the deploy steps and what the server will and will not
+do. The short version: it stores a blob and hands it back, it is never
+authoritative over a local save, and the game works exactly as it does today
+with the server down, unreachable, or never deployed.
+
 ## Where the code is
 
 | File | What it does |
@@ -225,3 +246,6 @@ the whole point.
 | `src/ui/bootScreen.js` | The loading screen that paints them. |
 | `tests/pack.test.js` | The merge rules, the refusals, and the garbage. |
 | `tests/boot.test.js` | That every event names a backdrop something can draw. |
+| `server/worker.js` | The optional backend. See `server/README.md`. |
+| `src/systems/cloud.js` | Its client half — every failure survivable, nothing ever awaited by the game. |
+| `tests/cloud.test.js` | The worker against a fake D1, and the client against every way a network can fail. |
