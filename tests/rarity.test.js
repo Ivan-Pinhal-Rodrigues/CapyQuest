@@ -19,7 +19,7 @@ import { resolveItem, equippedItems } from '../src/systems/equipment.js';
 import { combatStats } from '../src/systems/combatStats.js';
 import {
   addToInventory, equip, scrap, forge, forgePrice, rollLoot, rollStars, leafDrop,
-  refine, refinePrice, canRefine, fuse, canFuse, fuseFodder, tierCeiling, MAX_FORGE,
+  refine, refinePrice, canRefine, fuse, canFuse, fuseFodder, fuseAll, previewFuseAll, tierCeiling, MAX_FORGE,
 } from '../src/systems/loot.js';
 import { makeRng } from '../src/balance.js';
 
@@ -302,6 +302,110 @@ test('fusing a piece all the way up is possible and worth it', () => {
   assert.equal(item.tier, R.MAX_TIER);
   assert.equal(item.rarity.name, 'Capybaric');
   assert.ok(item.score / before > 500, `the whole climb was only ×${Math.round(item.score / before)}`);
+});
+
+// ---------------------------------------------------------------- fuse all
+
+test('fuse all resolves every eligible group in one call, including a cascade', () => {
+  const s = rich();
+  // One slot with two full triples of fodder: the first fuse should promote a
+  // target using three of them, and the second should find the remaining
+  // three are themselves now a fusable group.
+  const targetA = addToInventory(s, 'bambooRod', { tier: 2 });
+  for (let i = 0; i < 3; i++) addToInventory(s, 'stickRod', { tier: 2 });
+  const targetB = addToInventory(s, 'stickRod', { tier: 2 });
+  for (let i = 0; i < 3; i++) addToInventory(s, 'stickRod', { tier: 2 });
+  // A second, independent slot, so the bulk call has to cover more than one
+  // slot in a single pass.
+  const hat = addToInventory(s, 'strawHat', { tier: 1 });
+  for (let i = 0; i < 3; i++) addToInventory(s, 'lilyCrown', { tier: 1 });
+
+  const result = fuseAll(s);
+
+  assert.equal(result.fused, 3, 'both rod triples plus the hat');
+  assert.equal(result.consumed, 9);
+  assert.equal(resolveItem(targetA).tier, 3);
+  assert.equal(resolveItem(targetB).tier, 3);
+  assert.equal(resolveItem(hat).tier, 2);
+  // Whatever is left in the bag has no further eligible group.
+  assert.equal(s.combat.inventory.filter((e) => canFuse(s, e.uid).ok).length, 0);
+});
+
+test('fuse all leaves a partial group alone rather than forcing it', () => {
+  const s = rich();
+  const target = addToInventory(s, 'bambooRod', { tier: 2 });
+  addToInventory(s, 'stickRod', { tier: 2 });
+  addToInventory(s, 'stickRod', { tier: 2 }); // only two — one short of FUSE_COST
+
+  const result = fuseAll(s);
+
+  assert.equal(result.fused, 0);
+  assert.equal(resolveItem(target).tier, 2, 'unpromoted — there was never a full group');
+  assert.equal(s.combat.inventory.length, 3, 'nothing eaten');
+});
+
+test('fuse all with no eligible duplicates anywhere is a no-op', () => {
+  const s = rich();
+  addToInventory(s, 'bambooRod', { tier: 2 });
+  addToInventory(s, 'strawHat', { tier: 4 });
+
+  assert.deepEqual(fuseAll(s), { fused: 0, consumed: 0, byTier: {} });
+  assert.equal(s.combat.inventory.length, 2);
+});
+
+test('fuse all never touches what is equipped', () => {
+  const s = rich();
+  const worn = addToInventory(s, 'bambooRod', { tier: 2 });
+  equip(s, worn.uid);
+  for (let i = 0; i < 3; i++) addToInventory(s, 'stickRod', { tier: 2 });
+
+  const result = fuseAll(s);
+
+  assert.equal(result.fused, 0, 'the only possible target is worn, so nothing is eligible');
+  assert.equal(resolveItem(worn).tier, 2);
+  assert.equal(s.combat.inventory.length, 4, 'the three spares stay put, unconsumed');
+});
+
+test('matchStars keeps a mismatched duplicate out of the bulk fuse', () => {
+  const s = rich();
+  const target = addToInventory(s, 'bambooRod', { tier: 2, stars: 3 });
+  addToInventory(s, 'stickRod', { tier: 2, stars: 3 });
+  addToInventory(s, 'stickRod', { tier: 2, stars: 3 });
+  // Same slot and rung, but 1★ — exactly the piece the guard exists to protect.
+  const precious = addToInventory(s, 'stickRod', { tier: 2, stars: 1 });
+
+  // Without the guard, three same-rung pieces are enough regardless of stars.
+  const loose = fuseAll(s, { matchStars: false });
+  assert.equal(loose.fused, 1);
+  assert.equal(s.combat.inventory.find((e) => e.uid === precious.uid), undefined,
+    'the 1★ piece was burned as filler');
+
+  // Rebuild and check the guard actually stops that.
+  const s2 = rich();
+  const target2 = addToInventory(s2, 'bambooRod', { tier: 2, stars: 3 });
+  addToInventory(s2, 'stickRod', { tier: 2, stars: 3 });
+  addToInventory(s2, 'stickRod', { tier: 2, stars: 3 });
+  const precious2 = addToInventory(s2, 'stickRod', { tier: 2, stars: 1 });
+
+  const strict = fuseAll(s2, { matchStars: true });
+  assert.equal(strict.fused, 0, 'only two 3★ fodder pieces exist — one short with the guard on');
+  assert.equal(resolveItem(target2).tier, 2);
+  assert.ok(s2.combat.inventory.some((e) => e.uid === precious2.uid), 'the 1★ piece survives');
+});
+
+test('preview reports what fuse all would do without mutating the real bag', () => {
+  const s = rich();
+  const target = addToInventory(s, 'bambooRod', { tier: 2 });
+  for (let i = 0; i < 3; i++) addToInventory(s, 'stickRod', { tier: 2 });
+  const before = s.combat.inventory.length;
+
+  const preview = previewFuseAll(s);
+  assert.equal(preview.fused, 1);
+  assert.equal(s.combat.inventory.length, before, 'the preview must not touch the real bag');
+  assert.equal(resolveItem(target).tier, 2, 'nor promote the real target');
+
+  const real = fuseAll(s);
+  assert.deepEqual(real, preview, 'the preview and the real run agree');
 });
 
 // ------------------------------------------------------- resolving a piece

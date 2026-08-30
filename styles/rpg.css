@@ -299,6 +299,43 @@
 .kit__bag-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
 .kit__shards { font-family: var(--font-pixel); font-size: var(--text-2xs); color: var(--water); }
 
+.kit__fuse-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.kit__fuse-all {
+  padding: 0.35rem 0.7rem;
+  font-family: var(--font-pixel);
+  font-size: var(--text-2xs);
+  color: var(--bg-deep);
+  background: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-height: 24px;
+  transition: opacity 140ms ease;
+}
+
+.kit__fuse-all:disabled {
+  opacity: 0.4;
+  cursor: default;
+  background: var(--surface);
+  color: var(--text-faint);
+  border-color: var(--border);
+}
+
+.kit__match-stars {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--text-2xs);
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
 .bag {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
