@@ -106,6 +106,7 @@ export class Combat {
     this.enrage = 0; // attack-speed multiplier from an impatient boss
     this.fightTime = 0;
     this.bossClock = 0; // seconds left to finish a boss; 0 for anything else
+    this.timeoutDebuffUntil = 0; // this.clock value the ATK debuff expires at
   }
 
   /** Start (or restart) the fight at the state's current stage. */
@@ -321,7 +322,7 @@ export class Combat {
     const crit = Math.random() < stats.crit;
     const element = B.elementModifier(stats.element, this.enemy.element, ELEMENT_CHART);
     const dmg = B.damage({
-      atk: stats.atk * this.focusMult(),
+      atk: stats.atk * this.focusMult() * this.atkDebuffMult(),
       def: this.enemy.def,
       crit,
       critMult: stats.critMult,
@@ -450,7 +451,7 @@ export class Combat {
     const charge = this.focus / FOCUS_MAX;
 
     const dmg = B.damage({
-      atk: stats.atk * e.mult * hpScale * this.focusMult(),
+      atk: stats.atk * e.mult * hpScale * this.focusMult() * this.atkDebuffMult(),
       def: effDef,
       crit,
       critMult: stats.critMult,
@@ -474,6 +475,9 @@ export class Combat {
 
     if (this.phase === 'won') {
       this.losses = 0;
+      // A streak is "how many times in a row", so any win — trash or boss —
+      // clears it, the same way it would read to a player watching the count.
+      this.state.combat.bossTimeoutStreak = 0;
       const depth = this.state.combat.depth;
       const cleared = this.enemy;
       this.state.combat.clears = (this.state.combat.clears || 0) + 1;
@@ -516,30 +520,40 @@ export class Combat {
   /**
    * The boss outlasted you.
    *
-   * You go back a whole stage — to the last level of the stage below, which is
-   * that stage's boss and therefore something you have already proved you can
-   * beat. And you *stay* there: `holding` stops the fight walking forward on
-   * its own, so climbing back up is a decision you make rather than something
-   * that happens to you while you are looking at another tab.
+   * No rollback and no hold: the next tick simply re-engages the same boss,
+   * full HP, at the same depth — abandon the attempt and try again whenever
+   * you like, the direct Tap Titans analog. Free unlimited retries would beat
+   * doing anything else, so a short ATK debuff attaches instead, mirroring
+   * that same game's own ten-second penalty on a failed boss (see
+   * TIMEOUT_DEBUFF_MULT/TIMEOUT_DEBUFF_SECONDS in balance.js and
+   * atkDebuffMult() below).
    *
-   * Nothing is paid out and nothing is lost beyond the ground. The boss keeps
-   * its full health, because a boss you softened and then ran out of time on is
-   * a boss you did not beat.
+   * Nothing is paid out, and — because the very next fight is this exact
+   * unbeaten boss rather than a neighbour already cleared — nothing gets paid
+   * on a repeat either, by construction: there is no reward branch a retry
+   * could reach until the boss actually falls.
    */
   timeOut() {
     this.settled = true; // there is nothing to settle: no reward, no defeat
     this.state.combat.bossTimeouts = (this.state.combat.bossTimeouts || 0) + 1;
+    // Resets on any win, in settle() below — a streak is "how many times in a
+    // row", not a lifetime count, and it exists only to gate the reactive wall
+    // note in battlePanel.js.
+    this.state.combat.bossTimeoutStreak = (this.state.combat.bossTimeoutStreak || 0) + 1;
+    this.timeoutDebuffUntil = this.clock + B.TIMEOUT_DEBUFF_SECONDS;
 
-    const from = this.state.combat.depth;
-    const back = Math.max(0, from - LEVELS_PER_STAGE);
-    this.state.combat.depth = back;
-    this.state.combat.holding = true;
+    const depth = this.state.combat.depth;
     this.losses = 0;
 
-    this.emit({ kind: 'timeout', boss: this.enemy, from, depth: back });
+    this.emit({ kind: 'timeout', boss: this.enemy, depth });
 
     this.enemy = null;
     this.phase = 'idle';
+  }
+
+  /** ATK multiplier from a recent timeout's debuff. 1 once it has lapsed. */
+  atkDebuffMult() {
+    return this.clock < this.timeoutDebuffUntil ? B.TIMEOUT_DEBUFF_MULT : 1;
   }
 
   /** Jump to a depth the player has already reached. No upper bound but theirs. */

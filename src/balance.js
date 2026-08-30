@@ -160,6 +160,16 @@ export const BOSS_REWARD_MULT = 8;
 /** Seconds a boss may take before the run counts as walled. */
 export const WALL_SECONDS = 30;
 
+/**
+ * The cost of a failed boss attempt, mirroring Tap Titans' own ten-second
+ * tap-damage penalty on a timeout: a short ATK debuff, not a rollback. Free
+ * unlimited retries at full strength would always beat doing anything else,
+ * so retrying costs something without shutting the retry down outright — see
+ * Combat.timeOut()/atkDebuffMult() in systems/combat.js.
+ */
+export const TIMEOUT_DEBUFF_MULT = 0.7;
+export const TIMEOUT_DEBUFF_SECONDS = 10;
+
 export function isBossLevel(level) {
   return level === BOSS_LEVEL;
 }

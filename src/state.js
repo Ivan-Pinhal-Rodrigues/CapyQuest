@@ -208,10 +208,16 @@ export function createState(now = Date.now()) {
       // Skills firing themselves. On by default: turning it off is opting in to
       // work, and must never be something the game does to you.
       autoCast: true,
-      // Set when a boss runs the thirty-second clock out. While it is on, the
-      // fight stops walking you forward on its own — climbing back up is a
-      // press of Forward. Cleared by travelling anywhere on purpose.
+      // No longer set by a timeout — a failed boss attempt costs an ATK debuff
+      // and nothing else now, see Combat.timeOut(). Kept, always false, only
+      // so a save written under the old rollback-and-hold design still loads;
+      // reconcileState() coerces it rather than trusting it.
       holding: false,
+      // How many boss timeouts in a row, right now — resets to 0 on any win.
+      // Gates the reactive "that one ran the clock out" note in
+      // battlePanel.js, which only speaks to something that actually
+      // happened rather than warning about one that has not been attempted.
+      bossTimeoutStreak: 0,
       unlocked: false,
       // Leaf starts neutral against the first zone. Opening the game at a
       // disadvantage would teach the wrong lesson about a mechanic nobody has
@@ -512,7 +518,7 @@ export function reconcileState(state, now = Date.now()) {
   delete out.combat.stage;
   delete out.combat.bestStage;
 
-  for (const key of ['depth', 'bestDepth', 'xp', 'shards', 'clears', 'bossKills', 'bossTimeouts']) {
+  for (const key of ['depth', 'bestDepth', 'xp', 'shards', 'clears', 'bossKills', 'bossTimeouts', 'bossTimeoutStreak']) {
     out.combat[key] = safeNumber(out.combat[key]);
   }
   out.combat.holding = !!out.combat.holding;
