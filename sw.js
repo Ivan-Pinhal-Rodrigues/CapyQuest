@@ -27,7 +27,7 @@
 // Keep in step with package.json's version. tests/pwa.test.js fails if they
 // drift, because "I forgot to bump the worker" ships an app that never updates
 // and gives no sign of it.
-const VERSION = '4.0.0';
+const VERSION = '4.1.0';
 const CACHE = `capyquest-${VERSION}`;
 
 // The pack is content, not code: an admin commits a change to it and expects to
