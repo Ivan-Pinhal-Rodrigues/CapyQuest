@@ -126,6 +126,16 @@ export function rebirth(state, now = Date.now()) {
     // login streak or a half-finished daily because the player rebirthed would
     // punish them for playing well.
     quests: state.quests,
+    // Leafs are the store currency, and cosmetics are exactly the collection
+    // this file's own opening comment promises never to touch. Both were
+    // missing from this list — a real bug, not an oversight anyone intended:
+    // a rebirth was silently spending a player's leafs and stripping their
+    // wardrobe on top of the deliberate reset. Cases keep their pity counters
+    // for the same reason gacha's do, two lines below.
+    leafs: state.leafs,
+    lifetimeLeafs: state.lifetimeLeafs,
+    cosmetics: state.cosmetics,
+    cases: state.cases,
     // The narrative layer is knowledge, not progress. Sitting through the
     // opening again after a reset would be unbearable, and your own name is
     // yours — neither is something a button should be able to take.

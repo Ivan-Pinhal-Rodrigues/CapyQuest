@@ -143,6 +143,13 @@ export function ascend(state, now = Date.now()) {
     stats: state.stats,
     settings: state.settings,
     quests: state.quests,
+    // Same gap this file's own comment two lines below already promised was
+    // closed: leafs and cosmetics are a collection like any other, and were
+    // silently resetting on ascend the same way they were on rebirth.
+    leafs: state.leafs,
+    lifetimeLeafs: state.lifetimeLeafs,
+    cosmetics: state.cosmetics,
+    cases: state.cases,
     // The narrative layer is knowledge, not progress. Sitting through the
     // opening again after a reset would be unbearable, and your own name is
     // yours — neither is something a button should be able to take.

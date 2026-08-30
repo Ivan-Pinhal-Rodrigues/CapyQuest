@@ -101,8 +101,10 @@ export class BuildingList {
   update(state, derived) {
     const visible = visibleBuildings(state);
     this.locked.hidden = visible.length > 0 && state.lifetimeZen > 0;
+    const seen = new Set();
 
     for (const building of visible) {
+      seen.add(building.id);
       const entry = this.ensureRow(building);
       this.applyStage(building, entry, state);
       const quote = quoteBuilding(state, building, state.settings.buyAmount, derived.costDiscount);
@@ -119,6 +121,18 @@ export class BuildingList {
       entry.row.classList.toggle('is-affordable', quote.affordable);
       entry.row.classList.toggle('is-owned', count > 0);
       entry.row.disabled = !quote.affordable;
+    }
+
+    // A generator that drops out of visibility — a rebirth is the only way
+    // that happens today — must stop showing here entirely rather than sit at
+    // its last-known owned count and price. UpgradeGrid.update() below already
+    // does this; this row was missing it, and a rebirth left every generator
+    // past the first reading a stale pre-reset number until it earned its way
+    // back into view a second time.
+    for (const [id, entry] of this.rows) {
+      if (seen.has(id)) continue;
+      entry.row.remove();
+      this.rows.delete(id);
     }
   }
 }
