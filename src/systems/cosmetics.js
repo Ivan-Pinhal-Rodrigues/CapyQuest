@@ -23,6 +23,7 @@ export function progressFor(state) {
   return {
     goldens: state.stats?.goldens || 0,
     rebirths: state.rebirthCount || 0,
+    ascends: state.ascendCount || 0,
     bossKills: state.combat?.bossKills || 0,
     logins: state.login?.total || 0,
     drops: state.stats?.drops || 0,

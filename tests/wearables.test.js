@@ -206,10 +206,10 @@ test('every cosmetic a reward names actually exists', () => {
 
 test('the wardrobe is as big as the shop claims', () => {
   const counts = Object.fromEntries(COSMETIC_KINDS.map((k) => [k.id, k.items.length]));
-  assert.equal(counts.hat, 26, 'hats: 25 plus bare');
-  assert.equal(counts.outfit, 22, 'outfits: 21 plus bare');
+  assert.equal(counts.hat, 27, 'hats: 26 plus bare');
+  assert.equal(counts.outfit, 23, 'outfits: 22 plus bare');
   assert.equal(counts.accessory, 14, 'accessories: 13 plus bare');
-  assert.equal(COSMETICS.length, 99);
+  assert.equal(COSMETICS.length, 104);
 });
 
 // -------------------------------------------------------------------- layering

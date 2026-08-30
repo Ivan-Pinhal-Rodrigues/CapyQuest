@@ -406,6 +406,10 @@ export const WEARABLE_ART = {
   'hat:braid': hat('wig', wearPalette(INK, '#3a2a1e', '#241a12', '#5c4230', '#c99560')),
   'hat:updo': hat('wig', wearPalette(INK, '#c4413f', '#8f2c2b', '#e8706d', '#f0d97a')),
 
+  // --- hats: crown, again — a fourth palette on the shape three already
+  // share, for a milestone earned by rebirthing rather than by winning.
+  'hat:crownOfTen': hat('crown', wearPalette(INK, '#2f2444', '#1c1530', '#5c4b7d', '#f7c948')),
+
   // --- outfits: scarf
   'outfit:redScarf': outfit('scarf', wearPalette(INK, '#c4413f', '#8f2c2b', '#e8706d', '#fdf6e8')),
   'outfit:stripedScarf': outfit('scarf', wearPalette(INK, '#f0d97a', '#b8862b', '#fff7d6', '#4a3a52')),
@@ -430,6 +434,9 @@ export const WEARABLE_ART = {
   'outfit:nightCloak': outfit('cloak', wearPalette(INK, '#3d3a5c', '#272444', '#575383', '#f0d97a')),
   'outfit:emberCloak': outfit('cloak', wearPalette(INK, '#a83f22', '#6d2612', '#e0653f', '#f7c948')),
   'outfit:frostCloak': outfit('cloak', wearPalette(INK, '#96b8c9', '#6b8fa3', '#c9e2ed', '#ffffff')),
+  // A fourth cloak palette, darker and stiller than the other three — for the
+  // ascension that stops the floor from rising any further.
+  'outfit:noFurtherFloor': outfit('cloak', wearPalette(INK, '#241c33', '#150f1f', '#4a3a5c', '#f7c948')),
 
   // --- outfits: collar
   'outfit:bellCollar': outfit('collar', wearPalette(INK, '#c4413f', '#8f2c2b', '#e8706d', '#f7c948')),
