@@ -150,6 +150,11 @@ export const HATS = [
 
   // hood
   { id: 'towelHood', name: 'Towel Hood', ...earned({ logins: 3 }), blurb: 'Log in three days.' },
+
+  // wig
+  { id: 'looseWaves', name: 'Loose Waves', ...sold('common'), blurb: 'Down, and entirely unbothered by the water.' },
+  { id: 'braid', name: 'Braid', ...earned({ bestStars: 3 }), blurb: 'Refine a piece to three stars.' },
+  { id: 'updo', name: 'Updo', ...sold('epic'), blurb: 'Held with what is, on inspection, a chopstick.' },
 ];
 
 export const OUTFITS = [
@@ -184,6 +189,11 @@ export const OUTFITS = [
   { id: 'bellCollar', name: 'Bell Collar', ...sold('common'), blurb: 'You will always know where it is.' },
   { id: 'leafCollar', name: 'Leaf Collar', ...earned({ bestDepth: 50 }), blurb: 'Reach stage 5.' },
   { id: 'starCollar', name: 'Star Collar', ...sold('mythic'), blurb: 'Somebody made this at enormous expense.' },
+
+  // dress
+  { id: 'sunDress', name: 'Sun Dress', ...sold('common'), blurb: 'Practical. Occasionally gets wet on purpose.' },
+  { id: 'pondGown', name: 'Pond Gown', ...earned({ bestDepth: 150 }), blurb: 'Reach stage 15.' },
+  { id: 'festivalKimono', name: 'Festival Kimono', ...sold('legendary'), blurb: 'Too good for the water. Worn in it anyway.' },
 ];
 
 export const ACCESSORIES = [
@@ -205,6 +215,8 @@ export const ACCESSORIES = [
 
   { id: 'blush', name: 'Blush', ...sold('common'), blurb: 'The water is warm and it shows.' },
   { id: 'warPaint', name: 'War Paint', ...earned({ bossKills: 60 }), blurb: 'Beat sixty bosses.' },
+
+  { id: 'hairRibbon', name: 'Hair Ribbon', ...sold('rare'), blurb: 'Pinned in beside one ear. Stays, somehow.' },
 ];
 
 /** kind -> the table, so the panel and the systems agree on what exists. */

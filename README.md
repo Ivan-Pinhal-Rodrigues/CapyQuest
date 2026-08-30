@@ -141,10 +141,10 @@ simulation. `docs/CONTENT.md` has the format.
 
 ### The wardrobe
 
-Six kinds — skins, ponds, titles, hats, outfits and extras — and eighty-nine looks between them,
-of which thirty-four are earned by playing, thirty-six are sold for leafs and thirteen sit on the
+Six kinds — skins, ponds, titles, hats, outfits and extras — and ninety-six looks between them, of
+which thirty-six are earned by playing, forty-one are sold for leafs and thirteen sit on the
 season pass. Hats, outfits and extras are drawn as layers stamped onto the capybara's own grid,
-so nineteen hand-drawn shapes cover fifty-two items by palette swap.
+so twenty-two hand-drawn shapes cover fifty-nine items by palette swap.
 
 **None of it moves a number.** That is asserted, not promised: a test wears every look in the
 catalogue in turn and checks the income and combat blocks are bit-identical.
@@ -375,19 +375,19 @@ rediscovered:
 |---|---|
 | Purchasable upgrades | **396** — 16 tap, 48 generators, 96 generator tiers, 210 tree nodes, 14 keystones, 12 constellations |
 | Gear | 42 pieces across 6 slots, on a 20-rung rarity ladder, 1–5 stars, enhanceable +0 → +15 |
-| Wardrobe | 89 looks across 6 kinds — skins, ponds, titles, hats, outfits, extras — none of which moves a number |
+| Wardrobe | 96 looks across 6 kinds — skins, ponds, titles, hats, outfits, extras — none of which moves a number |
 | Companions | 24, summoned, three in the party — visible in the pond, wearing your hats and their own gear |
 | Crew gear | 24 pieces across 3 slots, dropped by bosses, never sold |
 | Combat skills | 18, three slotted, cast by hand or automatically |
 | Achievements | 232 across 13 groups, every one paying a permanent bonus |
 | Terrains / stages | 18 cycling, unlimited stages, with 71 enemies and bosses |
 | Currencies | Zen, Essence, Leafs, Lotus, tickets, shards |
-| Store | 3 cases with their odds on the card, 5 boosts, 36 looks for sale — all simulated |
+| Store | 3 cases with their odds on the card, 5 boosts, 41 looks for sale — all simulated |
 | Season | 45 days, a 100-level two-track pass, 60 simulated rivals, a weekly bracket, 3 live events of 10 designed |
 | Story | 3 acts, 20 beats, 5 NPCs, a 6-frame opening and 6 coach-marked tutorial steps |
 | Offline | A cache with a stated capacity, a fill rate, and a spill marker when it overflows |
 
-**631 collectible or purchasable entries in total**, plus the systems around them: combo chains,
+**638 collectible or purchasable entries in total**, plus the systems around them: combo chains,
 crits, Golden Capybaras, offline income, auto-battle, elemental stances, a forge, gacha pity,
 two reset layers, quests, a login streak, a battle pass, timed chests and secret codes.
 
