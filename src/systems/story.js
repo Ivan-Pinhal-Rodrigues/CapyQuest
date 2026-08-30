@@ -11,7 +11,9 @@
 // so a beat cannot be lost to a toast that never rendered.
 
 import * as B from '../balance.js';
-import { BEATS_BY_ID, TERRAIN_BEATS, REBIRTH_BEATS, ACTS, BEATS } from '../data/story.js';
+import {
+  BEATS_BY_ID, TERRAIN_BEATS, REBIRTH_BEATS, BOSS_INTRO_BEATS, BOSS_DEFEAT_BEATS, ACTS, BEATS,
+} from '../data/story.js';
 import { NPCS_BY_ID } from '../data/npcs.js';
 
 export function hasSeen(state, id) {
@@ -75,6 +77,28 @@ export function dueBeats(state) {
 export function nextBeat(state) {
   const [id] = dueBeats(state);
   return id ? beat(id) : null;
+}
+
+/**
+ * A boss cutscene due right now, resolved from a single Combat event rather
+ * than polled. `event` is one of Combat's own emitted shapes — `{ kind:
+ * 'engage', enemy }` before a fight, `{ kind: 'cleared', enemy }` once it
+ * resolves in a win — from `main.js`'s `tickCombat()`. Anything else, or an
+ * enemy that is not a boss, or a boss with no beat at that trigger, is null.
+ *
+ * Deliberately not folded into dueBeats(): a poll fires on whatever tick
+ * happens to notice the threshold, which for "the moment this specific fight
+ * starts" can be a tick too late, especially under auto-battle. An event
+ * cannot be too late — it *is* the moment.
+ */
+export function dueCombatBeat(state, event) {
+  if (state.story?.skip || !event?.enemy?.boss) return null;
+  const table = event.kind === 'engage' ? BOSS_INTRO_BEATS
+    : event.kind === 'cleared' ? BOSS_DEFEAT_BEATS
+    : null;
+  const id = table?.[event.enemy.id];
+  if (!id || hasSeen(state, id)) return null;
+  return beat(id);
 }
 
 /** A beat with its speaker attached. */

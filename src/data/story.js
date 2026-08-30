@@ -165,6 +165,70 @@ export const BEATS = [
       'Come back. It will be here. It is extremely good at being here.',
     ],
   },
+
+  // ------------------------------------------------------- boss cutscenes
+  //
+  // Tied to a specific fight rather than a threshold — fired by
+  // dueCombatBeat() in systems/story.js off the Combat event stream itself,
+  // not the poll every beat above uses. A curated subset: the four bosses
+  // that already anchor the terrain2/4/7/12 beats above, so a cutscene lands
+  // exactly where the story already treats the moment as meaningful.
+  {
+    id: 'beforeBoilerBeast', act: 2, npc: 'pip',
+    lines: [
+      'That is the Boiler Beast. It runs every spring down here.',
+      'It does not like being interrupted. You are about to interrupt it.',
+    ],
+  },
+  {
+    id: 'afterBoilerBeast', act: 2, npc: 'kettle',
+    lines: [
+      'You beat the Boiler Beast. The water is calmer already — you can feel it through the floor.',
+      'Whoever runs the springs now, I suppose it is you.',
+    ],
+  },
+  {
+    id: 'beforeRiverElder', act: 2, npc: 'yuzuBaa',
+    lines: [
+      'The River Elder. Older than the river, and the river is old.',
+      'It waited a long time for someone to come this far. Do not keep it waiting politely.',
+    ],
+  },
+  {
+    id: 'afterRiverElder', act: 2, npc: 'pip',
+    lines: [
+      'You beat something OLDER THAN THE RIVER.',
+      'I do not think the river knows what to do with itself now.',
+    ],
+  },
+  {
+    id: 'beforeGeodeTitan', act: 2, npc: 'kettle',
+    lines: [
+      'Hollow, and something inside it is humming. That is the Geode Titan, that hum.',
+      'Whatever it is humming, I do not think it is for you.',
+    ],
+  },
+  {
+    id: 'afterGeodeTitan', act: 2, npc: 'yuzuBaa',
+    lines: [
+      'The hum has stopped. I did not know it could stop.',
+      'I am not sure that is good news. I am not sure it is bad news either.',
+    ],
+  },
+  {
+    id: 'beforeEmberJudge', act: 3, npc: 'quietOne',
+    lines: [
+      'The Ember Judge decides what burned fairly.',
+      'It will not ask you first. It never does.',
+    ],
+  },
+  {
+    id: 'afterEmberJudge', act: 3, npc: 'quietOne',
+    lines: [
+      'It decided fairly, in the end. That is rarer than it sounds.',
+      'You are close now. Closer than the round-and-round usually allows.',
+    ],
+  },
 ];
 
 export const BEATS_BY_ID = Object.fromEntries(BEATS.map((b) => [b.id, b]));
@@ -178,3 +242,27 @@ export const TERRAIN_BEATS = Object.fromEntries(
 export const REBIRTH_BEATS = Object.fromEntries(
   BEATS.filter((b) => /^rebirth\d+$/.test(b.id)).map((b) => [Number(b.id.slice(7)), b.id]),
 );
+
+/**
+ * Boss cutscenes, keyed by the boss's own id in data/enemies.js rather than a
+ * threshold — dueCombatBeat() in systems/story.js resolves these off a single
+ * Combat `engage`/`cleared` event, not the poll TERRAIN_BEATS/REBIRTH_BEATS
+ * use. A poll can miss the moment entirely: a boss fight can resolve, in
+ * auto-battle especially, on the same tick a poll would have fired, so
+ * "right before this boss" needs an event to hang off rather than a number to
+ * cross.
+ */
+export const BOSS_INTRO_BEATS = {
+  boilerBeast: 'beforeBoilerBeast',
+  riverElder: 'beforeRiverElder',
+  geodeTitan: 'beforeGeodeTitan',
+  emberJudge: 'beforeEmberJudge',
+};
+
+/** The same bosses' aftermath, shown once the fight actually resolves in a win. */
+export const BOSS_DEFEAT_BEATS = {
+  boilerBeast: 'afterBoilerBeast',
+  riverElder: 'afterRiverElder',
+  geodeTitan: 'afterGeodeTitan',
+  emberJudge: 'afterEmberJudge',
+};

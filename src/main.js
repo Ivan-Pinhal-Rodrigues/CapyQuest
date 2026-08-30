@@ -72,7 +72,7 @@ import { showCoachmark, closeCoachmark, coachmarkOpen } from './ui/coachmark.js'
 import { ProfileCard, beatBody, renameBody, titlePickerBody, wardrobeBody } from './ui/profilePanel.js';
 import { nextStep, markStep } from './systems/onboarding.js';
 import { displayName, setName } from './systems/profile.js';
-import { nextBeat, markSeen, beat as storyBeat } from './systems/story.js';
+import { nextBeat, markSeen, beat as storyBeat, dueCombatBeat } from './systems/story.js';
 import { HOSTILE_CAPYBARAS } from './data/capybaras.js';
 import { leaderboard, rivalsFor, realEntries, playerEntry } from './systems/leaderboard.js';
 import { activeEvent, syncEvent, addPetals, petalsForClear, exchange } from './systems/events.js';
@@ -1123,6 +1123,15 @@ class Game {
       }
       if (ev.kind === 'cleared' && ev.enemy.boss) audio.levelUp();
       if (ev.kind === 'retreat') audio.denied();
+
+      // Boss cutscenes: tied to this exact fight starting or resolving, not
+      // to a poll — see dueCombatBeat()'s own comment for why a poll can miss
+      // the moment. Same guard checkStory() uses, so this never fights a
+      // modal or the opening cutscene for the bar.
+      if (ev.kind === 'engage' || ev.kind === 'cleared') {
+        const combatBeat = dueCombatBeat(this.state, ev);
+        if (combatBeat && !isModalOpen() && !cutsceneOpen()) this.dialogue.show(combatBeat);
+      }
 
       // Combat used to be silent. These play only on the Quest tab: a fight
       // ticking away in the background while you shop should not make noise.

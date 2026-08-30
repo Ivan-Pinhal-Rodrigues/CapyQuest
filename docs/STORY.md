@@ -4,7 +4,7 @@ A pond has gone cold. The water stopped somewhere upstream and nobody can say wh
 rebuild the onsen, travel down through the terrains, and find out what happened at the Still
 Point.
 
-Twenty beats across three acts, spoken by five capybaras. The content lives in
+Twenty-eight beats across three acts, spoken by five capybaras. The content lives in
 `src/data/story.js` and `src/data/npcs.js`; when each one fires lives in
 `src/systems/story.js`.
 
@@ -29,6 +29,15 @@ Three rules the implementation is built on:
 
 There is a skip toggle in settings for people who would rather not. Turning it on forfeits
 one secret achievement, which is the only consequence.
+
+Almost every beat above is resolved by a poll — `dueBeats()` checks the state against a
+threshold each tick, which is fine for "have you ever owned a generator" but wrong for "the
+instant this specific fight starts": a boss fight can resolve, especially in auto-battle, on
+the same tick a poll would have fired, so the beat either lands too late or gets skipped
+outright. The eight boss cutscenes below are resolved differently — `dueCombatBeat()` reads a
+single `Combat` event (`engage` or `cleared`) the moment `main.js`'s `tickCombat()` sees it,
+keyed by the boss's own id in `BOSS_INTRO_BEATS`/`BOSS_DEFEAT_BEATS` rather than a threshold.
+Same bar, same one-beat-once-ever rule, same skip toggle — just a different trigger.
 
 ## Who talks
 
@@ -64,12 +73,18 @@ Each is the same 32×32 capybara grid under a different palette — five palette
 | Beat | Who | Fires on |
 |---|---|---|
 | `terrain2` | Pip | Reaching stage 2 |
+| `beforeBoilerBeast` | Pip | Engaging the Boiler Beast, stage 2's boss |
+| `afterBoilerBeast` | Kettle | Beating the Boiler Beast |
 | `terrain4` | Kettle | Reaching stage 4 |
+| `beforeRiverElder` | Yuzu-baa | Engaging the River Elder, stage 4's boss |
+| `afterRiverElder` | Pip | Beating the River Elder |
 | `firstDrop` | Merchant Tanuki | Your first piece of gear |
 | `firstCase` | Merchant Tanuki | Opening any case |
 | `firstStar` | Kettle | Refining to two stars |
 | `firstFuse` | Kettle | Your first fuse |
 | `terrain7` | Yuzu-baa | Reaching stage 7 |
+| `beforeGeodeTitan` | Kettle | Engaging the Geode Titan, stage 7's boss |
+| `afterGeodeTitan` | Yuzu-baa | Beating the Geode Titan |
 
 ### Act 3 — The Still Point
 > Whatever stopped the water is down there, and it is not water.
@@ -81,6 +96,8 @@ Each is the same 32×32 capybara grid under a different palette — five palette
 | `rebirth3` | The Quiet One | Your third |
 | `rebirth10` | The Quiet One | Your tenth |
 | `terrain12` | Yuzu-baa | Reaching stage 12 |
+| `beforeEmberJudge` | The Quiet One | Engaging the Ember Judge, stage 12's boss |
+| `afterEmberJudge` | The Quiet One | Beating the Ember Judge |
 | `ascendTease` | The Quiet One | 1,000 lifetime Essence |
 
 Act 3 is where the beats stop keying off "you did a thing for the first time" and start
