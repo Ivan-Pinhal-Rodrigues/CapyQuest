@@ -1,7 +1,7 @@
 // The Quest panel: the fight itself, stage progress, the stance selector, and
 // the wall warning that tells you when the run is over.
 
-import { fmt, fmtInt, fmtTime } from './numbers.js';
+import { fmt, fmtInt } from './numbers.js';
 import { LEVELS_PER_STAGE } from '../balance.js';
 import { ELEMENTS, ELEMENT_IDS } from '../data/elements.js';
 import { buildEnemy, depthInfo, terrainForDepth } from '../systems/stages.js';
@@ -347,43 +347,28 @@ export class BattlePanel {
   }
 
   /**
-   * The wall banner. This is the whole point of the rebirth redesign: the game
-   * says "you are stuck" out loud, with the number, instead of leaving the
-   * player to grind into a ceiling they cannot see.
+   * The wall banner.
+   *
+   * Used to be predictive: it told you a boss would take too long before you
+   * had ever attempted it, which is a spoiler for a game whose whole ask (see
+   * docs/POSTMORTEM.md) is "let them try it out and get lucky or not." It is
+   * reactive now — it says nothing until a boss has actually run the clock
+   * out at least once, and then reports what happened rather than forecasting
+   * it, using `bossTimeoutStreak` rather than a fresh prediction.
    */
   updateWall(state, stats, stage) {
-    const report = assess(stage, stats);
-    const walled = report.walled && stage >= 1;
-    const held = !!state.combat.holding;
+    const streak = state.combat.bossTimeoutStreak || 0;
 
-    this.wall.hidden = !walled && !held && report.pressure < 0.55;
+    this.wall.hidden = streak < 1;
     if (this.wall.hidden) return;
 
-    this.wall.classList.toggle('is-walled', walled || held);
-
-    // Being held is the more immediate fact — it explains why the fight has
-    // stopped moving, which is the question the player actually has.
-    if (held) {
-      const times = state.combat.bossTimeouts || 0;
-      setText(this.wallTitle, 'Held here');
-      setText(
-        this.wallBody,
-        `A boss ran the clock out${times > 1 ? ` — ${times} times now` : ''}. `
-        + 'Press Forward when you are ready to go back up.',
-      );
-      this.wallFill.style.transform = `scaleX(${Math.min(1, report.ttk / report.seconds)})`;
-      return;
-    }
-
-    setText(
-      this.wallTitle,
-      walled ? 'You are stuck here' : 'This boss is getting slow',
-    );
+    const report = assess(stage, stats);
+    this.wall.classList.add('is-walled');
+    setText(this.wallTitle, 'That one ran the clock out');
     setText(
       this.wallBody,
-      Number.isFinite(report.ttk)
-        ? `${report.boss.name} would take ${fmtTime(report.ttk * 1000)} to bring down. Thirty seconds is the limit.`
-        : `${report.boss.name} cannot be hurt with what you are carrying.`,
+      `${report.boss.name}${streak > 1 ? ` — ${streak} times now` : ''}. `
+      + 'Try again, or Rebirth pays for exactly this.',
     );
     this.wallFill.style.transform = `scaleX(${Math.min(1, report.ttk / report.seconds)})`;
   }
@@ -420,7 +405,7 @@ export class BattlePanel {
       } else if (ev.kind === 'defeat') {
         this.logLine('You went down. Getting back up.', 'lose');
       } else if (ev.kind === 'timeout') {
-        this.logLine(`${ev.boss.name} outlasted you. Back to level ${ev.depth + 1}.`, 'lose');
+        this.logLine(`${ev.boss.name} outlasted you. Try again when ready.`, 'lose');
       } else if (ev.kind === 'held') {
         this.logLine('Held here. Press Forward to go on.', 'lose');
       } else if (ev.kind === 'retreat') {

@@ -289,7 +289,7 @@ export class Arena {
     // something smaller because the canvas is only 150px tall: at half of that
     // the integer scale rounds down to 2 and the fight reads as two thumbnails
     // in a large empty box.
-    const scale = fitScale(CAPY.w, height * 0.68, 2);
+    const scale = fitScale(CAPY.w, height * 0.68, 2, dpr);
     const midY = height * 0.54;
     this.playerBox = { x: width * 0.27, y: midY, r: (CAPY.w * scale) / 2.4 };
     this.enemyBox = { x: width * 0.73, y: midY, r: (CAPY.w * scale) / 2.4 };

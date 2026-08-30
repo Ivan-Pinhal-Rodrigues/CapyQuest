@@ -165,9 +165,29 @@ export function resizeCanvas(canvas, maxDpr = 2) {
   return { width: rect.width, height: rect.height, dpr };
 }
 
-/** Integer sprite scale that fills a target size without blurring. */
-export function fitScale(spriteSize, targetPx, min = 1) {
-  return Math.max(min, Math.floor(targetPx / spriteSize));
+/**
+ * Integer sprite scale that fills a target CSS-pixel size without blurring.
+ *
+ * "Integer" has to mean integer *device* pixels, or the browser's own scaling
+ * introduces blur no matter what `imageSmoothingEnabled` says. Picking the
+ * step from `targetPx` alone — CSS pixels — chooses the same whole-number
+ * scale regardless of `dpr`, so a phone at 3 device pixels per CSS pixel drew
+ * exactly as coarse a set of sizes as a 1x display at the same CSS width: two
+ * distinguishable pond sprite sizes at 320px where a 1280px desktop got five,
+ * because the desktop's extra CSS room was doing a job the device's own extra
+ * resolution should have been doing too.
+ *
+ * The integer count is chosen in device pixels (`targetPx * dpr`) and only
+ * then converted back to the CSS-pixel scale `blit()` expects, by dividing by
+ * `dpr` — so the result can be fractional in CSS space while every caller's
+ * `scale * dpr` (what the dpr-scaled canvas transform actually draws) lands
+ * on a whole device pixel regardless. A 1x display keeps exactly the old
+ * behaviour, since dividing and multiplying by 1 changes nothing.
+ */
+export function fitScale(spriteSize, targetPx, min = 1, dpr = 1) {
+  const deviceMin = Math.max(1, Math.round(min * dpr));
+  const deviceScale = Math.max(deviceMin, Math.floor((targetPx * dpr) / spriteSize));
+  return deviceScale / dpr;
 }
 
 export function clearBakeCache() {

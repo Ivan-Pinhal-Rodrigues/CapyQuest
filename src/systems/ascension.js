@@ -36,9 +36,33 @@ import { CONSTELLATIONS_BY_ID, FIGURES, isFigureLit, litFigures, rankCost } from
  *
  * Three times the essence, and a rebirth count as well: you have to have
  * actually run the loop, not merely accumulated from it.
+ *
+ * The rebirth count was raised from 8 to 14 in the difficulty pass that added
+ * TIMEOUT_DEBUFF_MULT and the essence bands below — a pure count gate,
+ * chosen because it cannot move the combat wall itself (unlike BOSS_HP_MULT,
+ * measured and rejected in the same pass: it scales every boss's HP at once,
+ * and the normal-player fixture in tests/stages.test.js already sits close
+ * enough to the thirty-second line at stage 3 and 5 that any increase flips
+ * one of *those* into the first wall before stage 7 — the one actually meant
+ * to be the wall — gets meaningfully harder). Fourteen is the most direct way
+ * to make "really use both rebirth and ascend" true by construction: it takes
+ * meaningfully more rebirth cycles before ascend is even reachable.
+ */
+/**
+ * ASCEND_MIN_ESSENCE itself was flagged for reconsideration in the same
+ * pass — the new banded payout curve (essenceBandMult() in balance.js) pays
+ * substantially more at deep stages, so leaving this where it was could have
+ * made ascend easier to reach despite the rest of the pass raising the bar.
+ * Measured instead of assumed, with a real multi-rebirth simulation
+ * (tests/rebirthSim.test.js, built for exactly this): across fourteen
+ * rebirths — the new ASCEND_MIN_REBIRTHS — lifetime essence lands anywhere
+ * from about 6,600 (a player who never gets past the measured wall) to about
+ * 16,000 (one who pushes a couple of stages deeper every couple of cycles).
+ * 15,000 sits inside that real range rather than trivially below or above
+ * it, so it stays.
  */
 export const ASCEND_MIN_ESSENCE = 15000;
-export const ASCEND_MIN_REBIRTHS = 8;
+export const ASCEND_MIN_REBIRTHS = 14;
 
 /** Depth per ascension you keep, and the most you can ever bank. */
 export const FLOOR_PER_ASCENSION = 12;
@@ -143,6 +167,13 @@ export function ascend(state, now = Date.now()) {
     stats: state.stats,
     settings: state.settings,
     quests: state.quests,
+    // Same gap this file's own comment two lines below already promised was
+    // closed: leafs and cosmetics are a collection like any other, and were
+    // silently resetting on ascend the same way they were on rebirth.
+    leafs: state.leafs,
+    lifetimeLeafs: state.lifetimeLeafs,
+    cosmetics: state.cosmetics,
+    cases: state.cases,
     // The narrative layer is knowledge, not progress. Sitting through the
     // opening again after a reset would be unbearable, and your own name is
     // yours — neither is something a button should be able to take.

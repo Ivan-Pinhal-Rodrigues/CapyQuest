@@ -373,6 +373,7 @@ test('every earned condition reads a counter that exists', () => {
     rich.stats.drops = 1e6;
     rich.stats.bestStars = 5;
     rich.rebirthCount = 1e6;
+    rich.ascendCount = 1e6;
     rich.combat.bossKills = 1e6;
     rich.combat.bestDepth = 1e6;
     rich.login.total = 1e6;

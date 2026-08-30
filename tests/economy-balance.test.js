@@ -51,9 +51,12 @@ test('the rebirth payout rises with depth and never flattens', () => {
     assert.ok(essence > last, `stage ${stage} pays no more than the stage before`);
     last = essence;
   }
-  // Two stages deeper is always worth more than one, but a single deep run must
-  // not replace several shallow ones.
-  assert.ok(B.essenceFromStage(20) < 2 * B.essenceFromStage(10) * 2);
+  // Two stages deeper is always worth more than one, but a single deep run
+  // must not replace several shallow ones — checked within a single band (5
+  // and 10 both sit in band 0), so this stays a check on the underlying
+  // curve's shape rather than on the size of the band jump itself, which is
+  // its own deliberately separate lever (see the banding test below).
+  assert.ok(B.essenceFromStage(10) < 2 * B.essenceFromStage(5) * 2);
   assert.equal(B.essenceFromStage(10), 400, 'quoted in docs/BALANCE.md');
   // The point of the steeper curve: going deeper beats going again. A run that
   // reaches stage 14 must out-pay two runs that stop at 7.
@@ -61,6 +64,19 @@ test('the rebirth payout rises with depth and never flattens', () => {
     B.essenceFromStage(14) > 2 * B.essenceFromStage(7),
     'one deep run should beat two shallow ones at double the depth',
   );
+});
+
+test('the essence curve bands every fifteen stages, not smoothly', () => {
+  // Stages 1-14 sit in band 0 and are bit-for-bit identical to the plain
+  // coefficient*stage^exponent curve; the jump lands exactly at stage 15 and
+  // repeats every ESSENCE_BAND_WIDTH stages after that.
+  const plain = (s) => Math.floor(B.ESSENCE_COEFFICIENT * Math.pow(s, B.ESSENCE_EXPONENT));
+  assert.equal(B.essenceFromStage(14), plain(14), 'band 0 is the unbanded curve');
+  assert.equal(B.essenceBandMult(14), 1);
+  assert.equal(B.essenceBandMult(15), 1 + B.ESSENCE_BAND_STEP, 'the jump lands exactly at the boundary');
+  assert.equal(B.essenceBandMult(29), 1 + B.ESSENCE_BAND_STEP, 'and holds for the whole band');
+  assert.equal(B.essenceBandMult(30), 1 + 2 * B.ESSENCE_BAND_STEP, 'stepping again at the next boundary');
+  assert.ok(B.essenceFromStage(15) > plain(15), 'the boundary actually changes the payout');
 });
 
 test('the daily leaf grant is nearly one case, and never quite one', () => {

@@ -140,10 +140,21 @@ produced would have justified gutting a curve that was mostly fine.
 ## The difficulty curve
 
 ```
-enemyHp(stage, level)  = 25 · 2.2^stage  · 1.015^level
+enemyHp(stage, level)  = 8  · 2.2^stage  · 1.015^level
 enemyAtk(stage, level) = 4  · 1.75^stage · 1.012^level
 boss                   = ×10 hp, ×1.8 atk, on level 9 of every stage
 ```
+
+`BOSS_HP_MULT` (the ×10) was swept to 12 in the difficulty pass that added the boss-timeout
+redesign below, on the hypothesis that it would push the measured wall — see "The rebirth
+wall" — a little deeper. It was rejected: a uniform multiplier moves every boss's HP at once,
+and the simulated player's stage-3 and stage-5 boss fights already sit close enough to the
+thirty-second line at ×10 (25.2s and 25.5s) that any increase trips one of *those* before
+stage 7 (44.3s) becomes meaningfully harder. Checked in 0.1–0.3 steps between 10 and 12: the
+first wall stays at stage 7 up to about 11.5, then jumps straight to stage 3 by 12 — there is
+no value in between that raises the intended wall without breaking an earlier one first. Left
+at 10; the boss-timeout redesign closes the actual exploit this pass exists for (see "The
+boss clock") without needing it.
 
 | | |
 |---|---|
@@ -205,39 +216,51 @@ player first meets bracing under boss pressure.
 ## The boss clock
 
 Thirty seconds was a figure the wall detector quoted at you. A boss that took fifty seconds still
-died — slowly, while you were on another tab — and the banner suggested you rebirth. **Phase 18
-made it a real clock.**
+died — slowly, while you were on another tab — and the banner suggested you rebirth. Phase 18 made
+it a real clock: run it out and the fight ends.
+
+**What Phase 18 did with that fact turned out to be the game's actual difficulty leak.** On a
+timeout, the player was sent back a whole stage to a boss already beaten, and `combat.holding` kept
+auto-battle re-fighting it — full boss-tier XP, repeatedly, for nothing but idle time. Measured
+directly, gearless, zero rebirths: the ordinary climb to today's stage-7 wall already reaches
+character level 37, and the stage-7 boss itself falls to a gearless level 44 — about five repeated
+held-boss kills, a couple of minutes of idle auto-battle. **That was "too easy to get high without
+much rebirthing," concretely identified**, and it was a bug in the failure-state design, not in the
+level curve. `XP_GROWTH` and the `GROWTH.atk`/`def`/`hp` per-level exponents are deliberately
+untouched by this pass — they are the pairing that keeps character level honestly tied to stage
+depth, and a mismatched version of exactly this pairing produced character level 80,000 by stage 19
+in v1.
+
+The redesign closes it structurally rather than patching around it:
 
 | | |
 |---|---|
 | Limit | `WALL_SECONDS` = 30, boss levels only |
-| On expiry | back one whole stage, to the previous stage's boss |
-| And then | `combat.holding` — the fight stops advancing until you press Forward |
-| Paid out | nothing; the boss keeps its full health |
+| On expiry | **nothing moves** — `combat.depth` is untouched |
+| The next tick | re-engages the **same boss**, full HP, immediately |
+| Cost | `TIMEOUT_DEBUFF_MULT` = 0.7 ATK for `TIMEOUT_DEBUFF_SECONDS` = 10s |
+| Paid out | nothing, ever, on a repeat — by construction |
+| `combat.holding` | no longer set; kept only so an old save already holding still behaves as it did |
 
-What the timer changes, on the same simulated player the wall figures come from:
+"Paid out: nothing, ever, on a repeat" is not a special case bolted onto the reward path — it falls
+out of removing the rollback. The very next fight after a timeout is this exact unbeaten boss
+rather than a neighbour already cleared, so there is no reward branch a retry can reach until the
+boss actually falls. The debuff exists only so unlimited free retries are not strictly better than
+doing anything else, mirroring Tap Titans' own ten-second penalty on a failed boss — it is a nudge
+against spamming retries, not the thing that closes the exploit.
 
-| Stage | Boss TTK | Before | Now |
-|---|---|---|---|
-| 6 | 21.2s | fine | fine |
-| 7 | 44.3s | slow but dies | **impossible** |
-| 8 | 19.0s | fine | fine |
-| 10 | 30.0s | slow but dies | **impossible** |
-| 11 | 48.9s | slow but dies | **impossible** |
+**Two failures, still punished differently, in a different shape now.** Dying three times still
+walks you back one level (`RETREAT_AFTER_LOSSES`); running the clock out costs the debuff and
+nothing else. A test asserts they stay distinct, the same discipline as before — a fixture that
+confused a wipe with a timeout would pass while asserting nothing.
 
-So the sawtooth in the difficulty curve stops being cosmetic: a stage whose boss goes over thirty
-seconds is now a stop, not a slow patch. That is the intent — the wall was always meant to be the
-end of a run, and until now it was a suggestion.
-
-**Two failures, punished differently.** Dying three times walks you back one level
-(`RETREAT_AFTER_LOSSES`); running the clock out costs a whole stage and holds you. They are
-genuinely different situations — one is "this hurts", the other is "this cannot be finished" — and
-a test asserts they stay distinct. The first draft of that test confused them and passed while
-asserting nothing.
-
-**The hold is the part that needed care.** Being sent back is a punishment; being sent back *and*
-walked straight into the same boss again by auto-battle is a loop. So the fight stops advancing
-until you press Forward. Wins still pay while held — it is the ground you lose, not the reward.
+**The pre-fight banner used to be a spoiler.** It predicted a boss would be slow before the player
+had ever attempted it, which sits directly against this pass's own ask: let a player try a fight and
+find out, rather than telling them the result in advance. The banner is reactive now — silent until
+`bossTimeoutStreak` (resets on any win) says a boss has actually run the clock out at least once,
+then it reports what happened rather than forecasting it. `rebirthPanel.js`'s own predictive TTK
+line is untouched: that panel is opened on purpose to ask "should I reset," a different context from
+an unsolicited banner over a fight the player hasn't tried yet.
 
 ## The rebirth wall
 
@@ -286,22 +309,35 @@ one.
 ## Rebirth payout
 
 ```
-essence = floor(8 · deepestStage^1.70 · gainMult)
+band(stage)     = floor(stage / ESSENCE_BAND_WIDTH)       ESSENCE_BAND_WIDTH = 15
+bandMult(stage) = 1 + ESSENCE_BAND_STEP · band(stage)      ESSENCE_BAND_STEP = 0.35
+essence         = floor(8 · deepestStage^1.70 · bandMult(deepestStage) · gainMult)
 ```
 
-| Deepest stage | 1 | 5 | 10 | 20 | 50 | 100 | 500 |
-|---|---|---|---|---|---|---|---|
-| Essence | 8 | 123 | 400 | 1,302 | 6,184 | 20,095 | 309,983 |
+| Deepest stage | 1 | 5 | 10 | 14 | **15** | 20 | 29 | **30** | 50 | 100 | 500 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Essence | 8 | 123 | 400 | 710 | **1,078** | 1,758 | 3,307 | **4,412** | 12,679 | 62,294 | 3,890,296 |
 
 Paying off depth rather than currency means the reset rewards the thing that actually
 walled you.
 
 **The exponent went from 1.45 to 1.70 in phase 18**, and the coefficient from 12 to 8 to
 keep the two curves crossing around stage 5. Shallow rebirths now pay less (stage 3: 51
-against 59) and deep ones a great deal more (stage 20: 1,302 against 924). Under the flatter
-curve, pressing the button again beat pushing one stage further — which is the wrong
-incentive for a reset that exists to reward depth. A run reaching stage 14 now out-pays two
-runs that stop at 7, and a test asserts it.
+against 59) and deep ones a great deal more (stage 20: 1,302 against 924, before the band
+below is even applied). Under the flatter curve, pressing the button again beat pushing one
+stage further — which is the wrong incentive for a reset that exists to reward depth. A run
+reaching stage 14 now out-pays two runs that stop at 7, and a test asserts it.
+
+**A band was layered on top of that curve in the difficulty pass that also redesigned the
+boss clock**, mirroring Tap Titans' own fifteen-stage relic-band cadence: every
+`ESSENCE_BAND_WIDTH` stages the payout steps up another `ESSENCE_BAND_STEP` on top of itself.
+Stages 1–14 are bit-for-bit identical to the plain curve above (band 0) — the jump lands
+exactly at stage 15 and repeats every 15 stages after, so pushing from 14 to 15 is an instant
++35%, and 29 to 30 a further step to +70% total. It is deliberately additive to the existing
+formula rather than a replacement, so nothing that already depended on the shallow numbers
+needed to change. `stageForEssence()` (the "next at" hint) lost its closed-form inverse once
+the curve became a staircase — it is a doubling-then-binary search now, same contract
+(smallest stage that reaches the target), no closed form to get subtly wrong.
 
 Rebirth also no longer unlocks below **stage 3** (`REBIRTH_MIN_STAGE`). The measured first
 wall is stage 7, so this never blocks a player who is genuinely stuck; it stops a player who
@@ -365,7 +401,7 @@ with no reason to exist that Rebirth did not already provide.
 
 | | |
 |---|---|
-| Opens at | **15,000 lifetime Essence *and* 8 rebirths** |
+| Opens at | **15,000 lifetime Essence *and* 14 rebirths** |
 | Lotus from Essence | `floor(3 · (lifetime / 15000) ^ 0.8)` |
 | Lotus from depth | `floor((total depth / 60) ^ 0.8)` |
 | Depth floor per ascension | **12 levels**, capped at 120 |
@@ -400,6 +436,25 @@ still ascend.
 The depth floor is what stops the second ascension being the first one again with better
 multipliers. It is capped at twelve stages, reached only after ten ascensions, and the wall lands
 around stage 7 for a fresh kit — so it removes the repetition without removing the run.
+
+### The rebirth count went from 8 to 14, and the essence gate stayed put
+
+Raised in the same difficulty pass as the boss-timeout redesign and the essence band above. A
+pure count gate — it cannot move the combat wall, unlike `BOSS_HP_MULT` above — and the most
+direct way to make "really use both rebirth and ascend" true by construction: meaningfully more
+rebirth cycles have to happen before ascend is even reachable.
+
+The essence gate was flagged for reconsideration in the same pass rather than left alone: the new
+band pays substantially more at deep stages, so leaving 15,000 where it was risked making ascend
+easier to reach despite the rest of the pass raising the bar. Measured instead of assumed, with a
+new multi-rebirth simulation harness (`tests/rebirthSim.test.js`) built for exactly this — the
+closest thing that existed before it, `tests/content.test.js`'s "50 rebirths at stage 60" fixture,
+was a hand-multiplied constant, not an actual climb-rebirth-climb-again loop. Run for real across
+fourteen rebirths — real payouts, real tree purchases, tree bonuses compounding into each other the
+way they do at the table — lifetime essence lands anywhere from about **6,600** (a player who never
+gets past the measured wall) to about **16,000** (one who pushes a couple of stages deeper every
+couple of cycles). 15,000 sits inside that real range rather than trivially below or above it, so
+it stays unchanged.
 
 ### Figures cut across price on purpose
 

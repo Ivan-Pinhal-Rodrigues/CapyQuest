@@ -6,7 +6,7 @@ import { MAX_STARS, MAX_TIER, refineChance, FUSE_COST } from '../data/rarities.j
 import { SKILLS, SKILLS_BY_ID, SKILL_SLOTS } from '../data/skills.js';
 import { GEAR_SHAPES } from '../render/gearSprites.js';
 import { resolveItem, equippedItem } from '../systems/combatStats.js';
-import { forgePrice, refinePrice, MAX_FORGE } from '../systems/loot.js';
+import { forgePrice, refinePrice, MAX_FORGE, canFuse } from '../systems/loot.js';
 import { spriteDataUrl } from './icons.js';
 import { openModal, el } from './modal.js';
 import { setOf, SET_THRESHOLDS } from '../data/gearSets.js';
@@ -87,9 +87,9 @@ function bonusLine(item) {
 }
 
 export class GearPanel {
-  constructor(root, { onEquip, onUnequip, onForge, onScrap, onSlotSkill }) {
+  constructor(root, { onEquip, onUnequip, onForge, onScrap, onSlotSkill, onFuseAll }) {
     this.root = root;
-    this.handlers = { onEquip, onUnequip, onForge, onScrap, onSlotSkill };
+    this.handlers = { onEquip, onUnequip, onForge, onScrap, onSlotSkill, onFuseAll };
     this.slotNodes = new Map();
     this.bagCards = new Map();
     this.filter = 'all';
@@ -168,6 +168,33 @@ export class GearPanel {
     this.shardLabel.className = 'kit__shards';
     bagHead.appendChild(this.shardLabel);
     r.appendChild(bagHead);
+
+    // Fuse All. One tap resolves every eligible group in the bag at once,
+    // rather than opening each item's own sheet and pressing Fuse by hand
+    // however many times a full climb takes. The "match ★" toggle is the
+    // stricter mode: without it, a fuse only cares about slot and rung, so a
+    // stray high-star duplicate is just as valid a filler piece as a 1★ one
+    // and can get quietly burned promoting something far less invested in.
+    const fuseRow = document.createElement('div');
+    fuseRow.className = 'kit__fuse-row';
+
+    this.fuseAllBtn = document.createElement('button');
+    this.fuseAllBtn.type = 'button';
+    this.fuseAllBtn.className = 'kit__fuse-all';
+    this.fuseAllBtn.textContent = 'Fuse All';
+    this.fuseAllBtn.addEventListener('click', () => this.handlers.onFuseAll(this.matchStars));
+    fuseRow.appendChild(this.fuseAllBtn);
+
+    const matchLabel = document.createElement('label');
+    matchLabel.className = 'kit__match-stars';
+    this.matchStarsBox = document.createElement('input');
+    this.matchStarsBox.type = 'checkbox';
+    this.matchStars = false;
+    this.matchStarsBox.addEventListener('change', () => { this.matchStars = this.matchStarsBox.checked; });
+    matchLabel.append(this.matchStarsBox, document.createTextNode(' match ★ too'));
+    fuseRow.appendChild(matchLabel);
+
+    r.appendChild(fuseRow);
 
     this.bag = document.createElement('div');
     this.bag.className = 'bag';
@@ -281,6 +308,15 @@ export class GearPanel {
     this.shardLabel.textContent = `${fmtInt(state.combat.shards)} shards`;
     this.bagTitle.textContent = `Bag (${state.combat.inventory.length})`;
     this.renderBag(state);
+
+    // Cheap existence check, not the full cascading resolution — this runs on
+    // every UI tick the Kit tab is open, and only the confirm dialog needs the
+    // real count.
+    const equipped = new Set(Object.values(state.combat.equipped || {}));
+    const anyFusable = state.combat.inventory.some(
+      (entry) => !equipped.has(entry.uid) && canFuse(state, entry.uid, { matchStars: this.matchStars }).ok,
+    );
+    this.fuseAllBtn.disabled = !anyFusable;
   }
 
   renderBag(state) {

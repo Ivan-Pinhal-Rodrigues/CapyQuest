@@ -1,6 +1,6 @@
 {
   "name": "capyquest",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "private": true,
   "description": "A pixel-art idle clicker RPG about a very relaxed capybara.",
   "type": "module",

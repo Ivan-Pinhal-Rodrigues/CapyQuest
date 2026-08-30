@@ -260,10 +260,63 @@ for (const vp of VIEWPORTS) {
   }
   // Two, not three. Sprites blit at whole-number scales and a 320px canvas only
   // has room for two of them — see the note in scene.js. Asserting three here
-  // is what this check did first, and it failed against correct code; the
-  // measured truth is 2 at 320, 3 at 768, 5 at 1280. One would mean the growth
+  // is what this check did first, and it failed against correct code; measured
+  // at 48 generators, after Phase L made `fitScale` take its step from device
+  // pixels: 2 at 320, 3 at 390, 4 at 768, 6 at 1280 (a 1x display here — a
+  // retina one gets more of the range for free). One would mean the growth
   // rule is not running at all, which is the thing worth catching.
   if (seen.distinctSizes < 2) fail('pond: every sprite is the same size — growth is not being applied');
+
+  await ctx.close();
+}
+
+// --------------------------------------------------------- the shop, post-rebirth
+//
+// BuildingList.update() only ever wrote to rows for generators currently in
+// visibleBuildings(state) — it never hid or removed one that fell back out of
+// view. A rebirth drops every generator past the first out of visibility in
+// one tick (lifetimeZen resets, and isBuildingVisible needs it back above 80%
+// of a generator's cost), so the shop kept showing the pre-rebirth owned
+// count, cost and rate for all of them, forever, until each earned its way
+// back into view a second time. Fixed by pruning rows the same way
+// UpgradeGrid.update() already did; this is what keeps it fixed.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => record('consoleErrors', `rebirth-shop: THREW ${e.message.slice(0, 120)}`));
+  await page.goto(site.url + '/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => !!window.capyquest, null, { timeout: 30000 });
+
+  const rows = await page.evaluate(async (origin) => {
+    const { BUILDINGS } = await import(`${origin}/src/data/buildings.js`);
+    const g = window.capyquest;
+    g.state.story.onboarded = true;
+    g.state.zen = 1e30; g.state.lifetimeZen = 1e30; g.state.totalZen = 1e30;
+    for (const [i, def] of BUILDINGS.slice(0, 10).entries()) g.state.buildings[def.id] = 50 + i;
+    g.state.combat.bestDepth = 95;
+    g.state.rebirthUnlocked = true;
+    for (const el of document.querySelectorAll('[class*=cutscene], .modal')) el.remove();
+    g.updateUi(Date.now());
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    g.doRebirth();
+    await new Promise((r) => setTimeout(r, 50));
+    g.updateUi(Date.now());
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    return [...document.querySelectorAll('.building')].map((r) => ({
+      id: r.dataset.id,
+      owned: r.querySelector('.building__owned')?.textContent || '',
+    }));
+  }, site.url);
+
+  const stale = rows.filter((r) => r.owned !== '');
+  if (stale.length) {
+    fail(`rebirth-shop: ${stale.length} row(s) still show an owned count after rebirth -> ${JSON.stringify(stale)}`);
+  }
+  if (rows.length !== 1 || rows[0]?.id !== 'lilypad') {
+    fail(`rebirth-shop: expected only Lily Pad visible right after a rebirth, got ${JSON.stringify(rows)}`);
+  }
 
   await ctx.close();
 }

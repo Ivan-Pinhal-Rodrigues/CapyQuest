@@ -129,6 +129,20 @@ export const HAT_SHAPES = {
     '..OA................AO..',
     '..OB................BO..',
   ]),
+
+  /**
+   * Loose waves, styled to read as hair rather than headwear. Notched at the
+   * ear columns (grid x 6–7 and 15–16, same as `crown` and `band`) so the ears
+   * still show through, then falls wide past them.
+   */
+  wig: sprite([
+    '........................',
+    '.......OAAAAAAAAO.......',
+    '.....OAAAAAAAAAAAAO.....',
+    '...OAA..AAAAAAA..AAAO...',
+    '.OAAAAAAAAAAAAAAAAAAAAO.',
+    '.OOOOOOOOOOOOOOOOOOOOOO.',
+  ]),
 };
 
 // ------------------------------------------------------------------- outfits
@@ -228,6 +242,26 @@ export const OUTFIT_SHAPES = {
     '..........................',
     '..........................',
   ]),
+
+  /**
+   * A bodice narrowing to a sash at the waist, then an A-line flare to the
+   * hem. The fourth outfit family — full-body coverage, same footprint as
+   * `towel`/`cloak`, so it fits the same three-palette-swap treatment
+   * everything else in this file gets.
+   */
+  dress: sprite([
+    '..........................',
+    '.......OAAAAAAAAAAO.......',
+    '.......OAAAAAAAAAAO.......',
+    '........OAAAAAAAAO........',
+    '........OBBBBBBBBO........',
+    '.......OAAAAAAAAAAO.......',
+    '.....OAAAAAAAAAAAAAAO.....',
+    '...OAAAAAAAAAAAAAAAAAAO...',
+    '.OAAAAAAAAAAAAAAAAAAAAAAO.',
+    '.OOOOOOOOOOOOOOOOOOOOOOOO.',
+    '..........................',
+  ]),
 };
 
 // --------------------------------------------------------------- accessories
@@ -293,6 +327,18 @@ export const ACCESSORY_SHAPES = {
       '.A................A.',
     ]),
   },
+
+  /** Pinned in beside the right ear — a knot with two loops. */
+  bow: {
+    origin: { x: 17, y: 1 },
+    sprite: sprite([
+      'OOO...OOO',
+      'OAAO.OAAO',
+      '.OAADAAO.',
+      '..OADAO..',
+      '...OOO...',
+    ]),
+  },
 };
 
 // ------------------------------------------------------------------- the art
@@ -355,6 +401,15 @@ export const WEARABLE_ART = {
   // --- hats: hood
   'hat:towelHood': hat('hood', wearPalette(INK, '#fdf6e8', '#d6ccb4', '#ffffff', '#7fd0e6')),
 
+  // --- hats: wig
+  'hat:looseWaves': hat('wig', wearPalette(INK, '#6b4a24', '#463014', '#8a6330', '#c99560')),
+  'hat:braid': hat('wig', wearPalette(INK, '#3a2a1e', '#241a12', '#5c4230', '#c99560')),
+  'hat:updo': hat('wig', wearPalette(INK, '#c4413f', '#8f2c2b', '#e8706d', '#f0d97a')),
+
+  // --- hats: crown, again — a fourth palette on the shape three already
+  // share, for a milestone earned by rebirthing rather than by winning.
+  'hat:crownOfTen': hat('crown', wearPalette(INK, '#2f2444', '#1c1530', '#5c4b7d', '#f7c948')),
+
   // --- outfits: scarf
   'outfit:redScarf': outfit('scarf', wearPalette(INK, '#c4413f', '#8f2c2b', '#e8706d', '#fdf6e8')),
   'outfit:stripedScarf': outfit('scarf', wearPalette(INK, '#f0d97a', '#b8862b', '#fff7d6', '#4a3a52')),
@@ -379,11 +434,19 @@ export const WEARABLE_ART = {
   'outfit:nightCloak': outfit('cloak', wearPalette(INK, '#3d3a5c', '#272444', '#575383', '#f0d97a')),
   'outfit:emberCloak': outfit('cloak', wearPalette(INK, '#a83f22', '#6d2612', '#e0653f', '#f7c948')),
   'outfit:frostCloak': outfit('cloak', wearPalette(INK, '#96b8c9', '#6b8fa3', '#c9e2ed', '#ffffff')),
+  // A fourth cloak palette, darker and stiller than the other three — for the
+  // ascension that stops the floor from rising any further.
+  'outfit:noFurtherFloor': outfit('cloak', wearPalette(INK, '#241c33', '#150f1f', '#4a3a5c', '#f7c948')),
 
   // --- outfits: collar
   'outfit:bellCollar': outfit('collar', wearPalette(INK, '#c4413f', '#8f2c2b', '#e8706d', '#f7c948')),
   'outfit:leafCollar': outfit('collar', wearPalette(INK, '#5f9a3a', '#3d6b2a', '#8fd06a', '#7cc255')),
   'outfit:starCollar': outfit('collar', wearPalette(INK, '#3b2f52', '#241c33', '#5c4b7d', '#fdf6e8')),
+
+  // --- outfits: dress
+  'outfit:sunDress': outfit('dress', wearPalette(INK, '#f0d97a', '#b8862b', '#fff7d6', '#5f9a3a')),
+  'outfit:pondGown': outfit('dress', wearPalette(INK, '#7fd0e6', '#3f8fb0', '#c9f2ff', '#f0d97a')),
+  'outfit:festivalKimono': outfit('dress', wearPalette(INK, '#c4413f', '#8f2c2b', '#e8706d', '#f7c948')),
 
   // --- accessories
   'accessory:roundGlasses': accessory('glasses', wearPalette(INK, '#8b93a8', '#5e6577', '#c9f2ff', '#fdf6e8')),
@@ -402,6 +465,8 @@ export const WEARABLE_ART = {
 
   'accessory:blush': accessory('cheeks', wearPalette(INK, '#e8706d', '#c4413f', '#f7c0cd', '#f7c0cd')),
   'accessory:warPaint': accessory('cheeks', wearPalette(INK, '#4de0c0', '#2aa88e', '#a8f5e6', '#a8f5e6')),
+
+  'accessory:hairRibbon': accessory('bow', wearPalette(INK, '#e08fa4', '#b8697f', '#f7c0cd', '#f0d97a')),
 };
 
 /** The layers a dressed capybara needs, in stamping order. Skips "bare". */

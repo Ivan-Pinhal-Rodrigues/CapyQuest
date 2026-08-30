@@ -23,11 +23,14 @@ import { ascend } from '../src/systems/ascension.js';
 import { checkRollover } from '../src/systems/season.js';
 import { grant } from '../src/systems/cosmetics.js';
 import { NPCS, NPCS_BY_ID } from '../src/data/npcs.js';
-import { BEATS, BEATS_BY_ID, ACTS, TERRAIN_BEATS, REBIRTH_BEATS } from '../src/data/story.js';
+import {
+  BEATS, BEATS_BY_ID, ACTS, TERRAIN_BEATS, REBIRTH_BEATS, BOSS_INTRO_BEATS, BOSS_DEFEAT_BEATS,
+} from '../src/data/story.js';
 import { CAPY_SKINS } from '../src/render/palettes.js';
 import {
-  dueBeats, nextBeat, beat, hasSeen, markSeen, storyLog, storyProgress,
+  dueBeats, nextBeat, beat, hasSeen, markSeen, storyLog, storyProgress, dueCombatBeat,
 } from '../src/systems/story.js';
+import { ENEMIES, bossIds } from '../src/data/enemies.js';
 import { STEPS, STEPS_BY_ID, nextStep, markStep, stepSeen, tutorialProgress } from '../src/systems/onboarding.js';
 import {
   profile, displayName, setName, cleanName, generateName, currentTitle,
@@ -152,7 +155,9 @@ test('the wall beat waits for the wall, and the rebirth beats for the count', ()
 
 test('every beat is reachable from some state the game can be in', () => {
   // A beat with no trigger is dead content. This walks a maximal save and
-  // asserts the whole script becomes due.
+  // asserts the whole script becomes due — through dueBeats()'s poll for
+  // everything on that table, and through dueCombatBeat()'s single-event read
+  // for the boss cutscenes, which are deliberately not on the poll at all.
   const s = createState();
   s.lifetimeClicks = 1e6;
   s.buildings.lilypad = 10;
@@ -172,9 +177,64 @@ test('every beat is reachable from some state the game can be in', () => {
   s.rebirthCount = 20;
 
   const due = dueBeats(s);
+  const combatBeatIds = new Set([...Object.values(BOSS_INTRO_BEATS), ...Object.values(BOSS_DEFEAT_BEATS)]);
   for (const b of BEATS) {
+    if (combatBeatIds.has(b.id)) continue;
     assert.ok(due.includes(b.id), `"${b.id}" can never fire`);
   }
+  for (const [bossId, beatId] of Object.entries(BOSS_INTRO_BEATS)) {
+    assert.equal(dueCombatBeat(s, { kind: 'engage', enemy: bossEnemy(bossId) })?.id, beatId, `"${beatId}" can never fire`);
+  }
+  for (const [bossId, beatId] of Object.entries(BOSS_DEFEAT_BEATS)) {
+    assert.equal(dueCombatBeat(s, { kind: 'cleared', enemy: bossEnemy(bossId) })?.id, beatId, `"${beatId}" can never fire`);
+  }
+});
+
+// ------------------------------------------------------- boss cutscenes
+
+// ENEMIES entries carry no `id` field of their own — buildEnemy() in
+// systems/stages.js stamps it on from the registry key, which is the shape
+// Combat's real `engage`/`cleared` events carry. Match that shape here rather
+// than a raw ENEMIES lookup, or `event.enemy.id` is undefined and every table
+// lookup misses.
+const bossEnemy = (id) => ({ ...ENEMIES[id], id });
+
+test('boss cutscene tables only reference real bosses and real beats', () => {
+  const bosses = new Set(bossIds());
+  for (const [id, beatId] of Object.entries(BOSS_INTRO_BEATS)) {
+    assert.ok(bosses.has(id), `BOSS_INTRO_BEATS: "${id}" is not a real boss`);
+    assert.ok(BEATS_BY_ID[beatId], `BOSS_INTRO_BEATS: "${beatId}" is not a real beat`);
+  }
+  for (const [id, beatId] of Object.entries(BOSS_DEFEAT_BEATS)) {
+    assert.ok(bosses.has(id), `BOSS_DEFEAT_BEATS: "${id}" is not a real boss`);
+    assert.ok(BEATS_BY_ID[beatId], `BOSS_DEFEAT_BEATS: "${beatId}" is not a real beat`);
+  }
+});
+
+test('a combat beat fires on the right event for the right boss, and only once', () => {
+  const s = createState();
+  const boiler = bossEnemy('boilerBeast');
+  const notABoss = { ...ENEMIES.nibbler, id: 'nibbler' };
+
+  assert.equal(dueCombatBeat(s, { kind: 'engage', enemy: boiler })?.id, 'beforeBoilerBeast');
+  // 'engage' and 'cleared' read two independent tables, so each is due on its
+  // own event regardless of whether the other has fired yet.
+  assert.equal(dueCombatBeat(s, { kind: 'cleared', enemy: boiler })?.id, 'afterBoilerBeast');
+  assert.equal(dueCombatBeat(s, { kind: 'engage', enemy: notABoss }), null, 'a regular enemy has no cutscene');
+  assert.equal(dueCombatBeat(s, { kind: 'timeout', enemy: boiler }), null, 'not a trigger this reads');
+
+  markSeen(s, 'beforeBoilerBeast');
+  assert.equal(dueCombatBeat(s, { kind: 'engage', enemy: boiler }), null, 'seen once, never again');
+  assert.equal(dueCombatBeat(s, { kind: 'cleared', enemy: boiler })?.id, 'afterBoilerBeast', 'the defeat beat is untouched by the intro being seen');
+
+  markSeen(s, 'afterBoilerBeast');
+  assert.equal(dueCombatBeat(s, { kind: 'cleared', enemy: boiler }), null, 'and now neither fires again');
+});
+
+test('the skip toggle silences combat beats too', () => {
+  const s = createState();
+  s.story.skip = true;
+  assert.equal(dueCombatBeat(s, { kind: 'engage', enemy: bossEnemy('boilerBeast') }), null);
 });
 
 test('the skip toggle silences the whole narrative layer', () => {

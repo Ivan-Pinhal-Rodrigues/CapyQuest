@@ -321,6 +321,12 @@ test('rebirth pays essence, resets the run, and keeps every collection', () => {
   s.tree.stillnessItself = 1;
   s.lotus = 12;
   s.constellations.theBather = 2;
+  s.leafs = 340;
+  s.lifetimeLeafs = 900;
+  s.cosmetics.owned = ['redScarf', 'strawBoater'];
+  s.cosmetics.skin = 'golden';
+  s.cosmetics.outfit = 'redScarf';
+  s.cases.astral = { opened: 4, since: 2 };
 
   const expected = rebirthPreview(s).essence;
   assert.ok(expected > 0);
@@ -359,6 +365,12 @@ test('rebirth pays essence, resets the run, and keeps every collection', () => {
   assert.equal(s.achievements.firstTap, 1, 'trophies survive');
   assert.equal(s.lotus, 12);
   assert.equal(s.constellations.theBather, 2);
+  assert.equal(s.leafs, 340, 'leafs are a collection, not a spend timer for rebirth');
+  assert.equal(s.lifetimeLeafs, 900);
+  assert.deepEqual(s.cosmetics.owned, ['redScarf', 'strawBoater'], 'owned looks survive');
+  assert.equal(s.cosmetics.skin, 'golden', 'what is worn survives too');
+  assert.equal(s.cosmetics.outfit, 'redScarf');
+  assert.deepEqual(s.cases.astral, { opened: 4, since: 2 }, 'case pity survives');
 });
 
 test('a rebirth never costs a rank of the tree, however deep it goes', () => {
@@ -407,6 +419,11 @@ test('ascension takes the essence and the tree but never the collection', () => 
   s.gacha.companions.capybaraPrime = { level: 12, shards: 4 };
   s.combat.inventory = [{ uid: 'g1', id: 'sunDiadem', forge: 4 }];
   s.achievements.firstTap = 1;
+  s.leafs = 220;
+  s.lifetimeLeafs = 1500;
+  s.cosmetics.owned = ['strawBoater'];
+  s.cosmetics.hat = 'strawBoater';
+  s.cases.astral = { opened: 2, since: 1 };
 
   const expected = ascendPreview(s).lotus;
   assert.ok(expected > 0);
@@ -427,6 +444,11 @@ test('ascension takes the essence and the tree but never the collection', () => 
   assert.equal(s.combat.inventory.length, 1, 'gear survives');
   assert.equal(s.achievements.firstTap, 1, 'trophies survive');
   assert.equal(s.rebirthUnlocked, true, 'you do not have to re-learn the wall');
+  assert.equal(s.leafs, 220, 'leafs survive an ascend too');
+  assert.equal(s.lifetimeLeafs, 1500);
+  assert.deepEqual(s.cosmetics.owned, ['strawBoater']);
+  assert.equal(s.cosmetics.hat, 'strawBoater');
+  assert.deepEqual(s.cases.astral, { opened: 2, since: 1 });
 });
 
 // ------------------------------------------------------------- the still point

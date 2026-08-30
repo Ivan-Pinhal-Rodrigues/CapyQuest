@@ -227,3 +227,18 @@ body[data-pond='starlight'] {
   --water: #d8c9f7;
   --water-deep: #7a5fb8;
 }
+
+/* Ascend three times. Darker than every pond above it — closer to open sky
+   than to water — with a bright fallen-star gold in the one place light is
+   allowed to be. */
+body[data-pond='starfall'] {
+  --bg: #0a0a14;
+  --bg-deep: #05050a;
+  --surface: #14141f;
+  --surface-2: #1c1c2c;
+  --surface-3: #26263a;
+  --border: #26263f;
+  --border-bright: #3d3d5c;
+  --water: #f7e08a;
+  --water-deep: #b89a4a;
+}

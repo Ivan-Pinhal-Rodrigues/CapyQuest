@@ -5,6 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+import * as B from '../src/balance.js';
 import { BUILDINGS, BUILDINGS_BY_ID, HABITATS } from '../src/data/buildings.js';
 import { CLICK_UPGRADES } from '../src/data/clickUpgrades.js';
 import { TIER_UPGRADES } from '../src/data/tierUpgrades.js';
@@ -151,7 +152,11 @@ test('the whole ladder is reachable with the multipliers the game hands out', ()
   // change nerfs essence scaling or the achievement rewards, the deep end of
   // the ladder silently drifts out of reach and this is what notices.
   const deep = createState();
-  deep.lifetimeEssence = Math.floor(8 * 60 ** 1.7) * 50; // 50 rebirths, deepest stage 60
+  // 50 rebirths, deepest stage 60 each — through the real (banded) payout
+  // formula rather than a hand-written copy of it, so a later change to the
+  // curve can't silently drift this fixture out of sync with the code it is
+  // meant to approximate.
+  deep.lifetimeEssence = B.essenceFromStage(60) * 50;
   for (const a of ACHIEVEMENTS) deep.achievements[a.id] = true;
   for (const u of TIER_UPGRADES) deep.tierUpgrades[u.id] = true;
 

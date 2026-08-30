@@ -17,7 +17,7 @@ import { Combat } from './systems/combat.js';
 import { combatStats, xpForStage, resolveItem } from './systems/combatStats.js';
 import {
   rollLoot, shardDrop, addToInventory, equip, scrap, forge, forgePrice,
-  refine, fuse, canRefine, canFuse, fuseFodder, leafDrop, MAX_FORGE,
+  refine, fuse, canRefine, canFuse, fuseFodder, fuseAll, previewFuseAll, leafDrop, MAX_FORGE,
 } from './systems/loot.js';
 import { BattlePanel } from './ui/battlePanel.js';
 import { GearPanel, itemDetailBody, slotPickerBody, skillPickerBody } from './ui/gearPanel.js';
@@ -72,7 +72,7 @@ import { showCoachmark, closeCoachmark, coachmarkOpen } from './ui/coachmark.js'
 import { ProfileCard, beatBody, renameBody, titlePickerBody, wardrobeBody } from './ui/profilePanel.js';
 import { nextStep, markStep } from './systems/onboarding.js';
 import { displayName, setName } from './systems/profile.js';
-import { nextBeat, markSeen, beat as storyBeat } from './systems/story.js';
+import { nextBeat, markSeen, beat as storyBeat, dueCombatBeat } from './systems/story.js';
 import { HOSTILE_CAPYBARAS } from './data/capybaras.js';
 import { leaderboard, rivalsFor, realEntries, playerEntry } from './systems/leaderboard.js';
 import { activeEvent, syncEvent, addPetals, petalsForClear, exchange } from './systems/events.js';
@@ -210,6 +210,7 @@ class Game {
       onForge: (uid) => this.forgeItem(uid),
       onScrap: (uid) => this.scrapItem(uid),
       onSlotSkill: (index) => this.openSkillPicker(index),
+      onFuseAll: (matchStars) => this.openFuseAll(matchStars),
     });
 
     this.summonLocked = $('summonLocked');
@@ -1123,6 +1124,15 @@ class Game {
       if (ev.kind === 'cleared' && ev.enemy.boss) audio.levelUp();
       if (ev.kind === 'retreat') audio.denied();
 
+      // Boss cutscenes: tied to this exact fight starting or resolving, not
+      // to a poll — see dueCombatBeat()'s own comment for why a poll can miss
+      // the moment. Same guard checkStory() uses, so this never fights a
+      // modal or the opening cutscene for the bar.
+      if (ev.kind === 'engage' || ev.kind === 'cleared') {
+        const combatBeat = dueCombatBeat(this.state, ev);
+        if (combatBeat && !isModalOpen() && !cutsceneOpen()) this.dialogue.show(combatBeat);
+      }
+
       // Combat used to be silent. These play only on the Quest tab: a fight
       // ticking away in the background while you shop should not make noise.
       if (!onQuest) continue;
@@ -1497,6 +1507,69 @@ class Game {
 
     actions.push({ label: 'Close' });
     openModal({ title: item.name, bodyNode: render(), actions });
+  }
+
+  /**
+   * Fuse everything eligible in one confirmed step, rather than opening every
+   * item's own sheet and pressing Fuse by hand however many times a full climb
+   * takes. Bulk-destructive and irreversible, so it gets the same "name exactly
+   * what is about to happen, then ask" treatment the cloud-restore confirm
+   * already uses — a dry run first, never the mutating call, until the player
+   * has actually agreed to it.
+   */
+  openFuseAll(matchStars) {
+    const preview = previewFuseAll(this.state, { matchStars });
+    if (preview.fused === 0) {
+      audio.denied();
+      this.toaster.show({
+        title: 'Nothing to fuse',
+        body: matchStars
+          ? 'No unequipped duplicates share both a rung and a star rating right now.'
+          : 'No unequipped duplicates share a slot and a rung right now.',
+        kind: 'warn',
+      });
+      return;
+    }
+
+    const byTier = Object.entries(preview.byTier)
+      .map(([tier, count]) => `${count} at ${rarityFor(Number(tier)).name}`)
+      .join(', ');
+
+    const body = el('div', 'confirm');
+    body.appendChild(el('p', 'confirm__lead',
+      `Fuse ${preview.fused} group${preview.fused === 1 ? '' : 's'}, consuming ${preview.consumed} unequipped pieces?`));
+    body.appendChild(list([byTier, matchStars ? 'Only matching star ratings are used as filler.' : 'Star ratings are ignored — any rung match counts.']));
+    body.appendChild(el('p', 'confirm__warn', 'There is no undo.'));
+
+    openModal({
+      title: 'Fuse All',
+      bodyNode: body,
+      actions: [
+        { label: 'Not yet' },
+        {
+          label: 'Fuse',
+          variant: 'danger',
+          onClick: () => {
+            const result = fuseAll(this.state, { matchStars });
+            this.state.stats.fuses = (this.state.stats.fuses || 0) + result.fused;
+            for (const tier of Object.keys(result.byTier)) {
+              const gained = rarityFor(Number(tier) + 1).name;
+              if (!this.state.stats.raritiesFound.includes(gained)) {
+                this.state.stats.raritiesFound.push(gained);
+              }
+            }
+            audio.levelUp();
+            this.afterGearChange();
+            this.toaster.show({
+              title: `Fused ${result.fused} piece${result.fused === 1 ? '' : 's'} up a rung`,
+              body: `${result.consumed} pieces went in.`,
+              kind: 'achievement',
+              icon: '🔥',
+            });
+          },
+        },
+      ],
+    });
   }
 
   openSkillPicker(index) {

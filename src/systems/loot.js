@@ -258,8 +258,17 @@ export function refine(state, uid, rng = Math.random) {
 
 // --------------------------------------------------------------------- fuse
 
-/** Unequipped pieces that could be fed to a fuse of this one. */
-export function fuseFodder(state, uid) {
+/**
+ * Unequipped pieces that could be fed to a fuse of this one.
+ *
+ * `matchStars` narrows the match to fodder that also shares the target's star
+ * rating. Off by default because that has always been the rule — same slot,
+ * same rung, stars ignored — and every existing call site should keep working
+ * unchanged. On, it is the guard a player asked for: without it a stray 5★
+ * duplicate is just as valid a fodder piece as a 1★ one, and can get quietly
+ * burned promoting something far less invested in.
+ */
+export function fuseFodder(state, uid, { matchStars = false } = {}) {
   const target = state.combat.inventory.find((i) => i.uid === uid);
   if (!target) return [];
   const item = resolveItem(target);
@@ -269,18 +278,19 @@ export function fuseFodder(state, uid) {
   return state.combat.inventory.filter((entry) => {
     if (entry.uid === uid || equipped.has(entry.uid)) return false;
     const other = resolveItem(entry);
-    return other && other.slot === item.slot && other.tier === item.tier;
+    if (!other || other.slot !== item.slot || other.tier !== item.tier) return false;
+    return !matchStars || other.stars === item.stars;
   });
 }
 
-export function canFuse(state, uid) {
+export function canFuse(state, uid, options = {}) {
   const entry = state.combat.inventory.find((i) => i.uid === uid);
   if (!entry) return { ok: false, reason: 'missing' };
 
   const item = resolveItem(entry);
   if (item.tier >= R.MAX_TIER) return { ok: false, reason: 'maxed' };
 
-  const fodder = fuseFodder(state, uid);
+  const fodder = fuseFodder(state, uid, options);
   if (fodder.length < R.FUSE_COST) return { ok: false, reason: 'fodder', have: fodder.length };
   return { ok: true, entry, item, fodder };
 }
@@ -290,8 +300,8 @@ export function canFuse(state, uid) {
  * on the same rung. Stars and enhancement are kept: fusing is how a piece you
  * have already invested in stays the piece you invested in.
  */
-export function fuse(state, uid) {
-  const check = canFuse(state, uid);
+export function fuse(state, uid, options = {}) {
+  const check = canFuse(state, uid, options);
   if (!check.ok) return check;
 
   const eaten = check.fodder.slice(0, R.FUSE_COST);
@@ -300,6 +310,51 @@ export function fuse(state, uid) {
 
   check.entry.tier = R.clampTier(check.item.tier + 1);
   return { ok: true, tier: check.entry.tier, consumed: eaten.length };
+}
+
+// The ceiling a bulk fuse can iterate before it gives up. INVENTORY_CAP is
+// 120 and every fuse strictly shrinks the bag by two (three fodder consumed,
+// one target promoted in place), so this should never be reachable outside a
+// deliberately pathological test fixture — it exists so a logic error turns
+// into a stopped loop with a number attached, not a hung tab.
+const FUSE_ALL_ITERATION_CAP = 500;
+
+/**
+ * Fuse everything eligible, not one piece at a time.
+ *
+ * A single fuse can leave its target with three new same-rung duplicates
+ * already sitting in the bag from separate drops, so this keeps going until a
+ * full pass finds nothing left to do rather than stopping after one — "fuse
+ * everything together" means fully resolved, not one round.
+ */
+export function fuseAll(state, options = {}) {
+  let fused = 0;
+  let consumed = 0;
+  const byTier = {};
+
+  for (let i = 0; i < FUSE_ALL_ITERATION_CAP; i++) {
+    const equipped = new Set(Object.values(state.combat.equipped || {}));
+    const candidate = state.combat.inventory.find(
+      (entry) => !equipped.has(entry.uid) && canFuse(state, entry.uid, options).ok,
+    );
+    if (!candidate) break;
+
+    const before = resolveItem(candidate).tier;
+    const result = fuse(state, candidate.uid, options);
+    if (!result.ok) break; // canFuse just said yes; this is a belt-and-braces stop, not expected
+
+    fused++;
+    consumed += result.consumed;
+    byTier[before] = (byTier[before] || 0) + 1;
+  }
+
+  return { fused, consumed, byTier };
+}
+
+/** What `fuseAll` would do, without doing it — for a confirmation dialog. */
+export function previewFuseAll(state, options = {}) {
+  const scratch = { combat: { inventory: state.combat.inventory.map((e) => ({ ...e })), equipped: state.combat.equipped } };
+  return fuseAll(scratch, options);
 }
 
 export { INVENTORY_CAP };

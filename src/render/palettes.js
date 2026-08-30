@@ -38,6 +38,10 @@ export const CAPY_SKINS = {
   seasonal: { ...CAPY_PALETTE, d: '#a8543f', m: '#d1795c', l: '#f0a88c', n: '#7d3a2b' },
   // Event exclusive: Yuzu Harvest.
   harvest: { ...CAPY_PALETTE, d: '#b8902b', m: '#e3c04a', l: '#f7e08a', n: '#8a681a' },
+  // Ascend once. Pale and cool rather than warm like every fur colour above
+  // it — the point is that it reads as apart from the rest of the palette,
+  // not as one more colour in it.
+  ascendant: { ...CAPY_PALETTE, d: '#6b6b78', m: '#9a9aa8', l: '#e8e8f0', n: '#454550' },
 
   // The five NPCs. Portraits only — these are not in the cosmetics table and
   // cannot be worn, because a capybara wearing another capybara is a different

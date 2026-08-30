@@ -70,6 +70,7 @@ export const SKINS = [
   { id: 'mint', name: 'Mint', ...sold('rare'), blurb: 'Suspiciously fresh for something that never leaves the water.' },
   { id: 'plum', name: 'Plum', ...sold('epic'), blurb: 'The exact colour of the hour after sunset.' },
   { id: 'sand', name: 'Sand', source: 'pass', blurb: 'Free pass, level 37. Warm from the bank.' },
+  { id: 'ascendant', name: 'Ascendant', ...earned({ ascends: 1 }), blurb: 'Ascend once.' },
 ];
 
 export const PONDS = [
@@ -86,6 +87,7 @@ export const PONDS = [
   { id: 'bamboo', name: 'Bamboo', ...sold('rare'), blurb: 'Somebody planted a screen. It worked.' },
   { id: 'glacier', name: 'Glacier', ...sold('epic'), blurb: 'Cold at the edges, warm in the middle.' },
   { id: 'starlight', name: 'Starlight', source: 'pass', blurb: 'Premium pass, level 61. The sky came down for a look.' },
+  { id: 'starfall', name: 'Starfall', ...earned({ ascends: 3 }), blurb: 'Ascend three times.' },
 ];
 
 export const TITLES = [
@@ -99,6 +101,7 @@ export const TITLES = [
   { id: 'seasoned', name: 'Seasoned', source: 'pass', blurb: 'Free pass, level 100. You saw it through.' },
   { id: 'patronOfSeasons', name: 'Of Every Season', source: 'pass', blurb: 'Premium pass, level 100.' },
   { id: 'swift', name: 'Swift', source: 'event', blurb: 'Reed Rush exchange. You did run.' },
+  { id: 'beyondTheReset', name: 'Beyond The Reset', ...earned({ ascends: 5 }), blurb: 'Ascend five times.' },
 ];
 
 
@@ -127,6 +130,7 @@ export const HATS = [
   { id: 'reedCrown', name: 'Reed Crown', ...earned({ bossKills: 25 }), blurb: 'Beat twenty-five bosses.' },
   { id: 'goldCrown', name: 'Gold Crown', ...sold('legendary'), blurb: 'Nobody voted. Nobody objected either.' },
   { id: 'iceCrown', name: 'Ice Crown', ...earned({ bossKills: 250 }), blurb: 'Beat two hundred and fifty bosses.' },
+  { id: 'crownOfTen', name: 'Crown of Ten', ...earned({ rebirths: 10 }), blurb: 'Rebirth ten times.' },
 
   // band
   { id: 'headband', name: 'Headband', ...sold('common'), blurb: 'Signals an intention to exert oneself.' },
@@ -150,6 +154,11 @@ export const HATS = [
 
   // hood
   { id: 'towelHood', name: 'Towel Hood', ...earned({ logins: 3 }), blurb: 'Log in three days.' },
+
+  // wig
+  { id: 'looseWaves', name: 'Loose Waves', ...sold('common'), blurb: 'Down, and entirely unbothered by the water.' },
+  { id: 'braid', name: 'Braid', ...earned({ bestStars: 3 }), blurb: 'Refine a piece to three stars.' },
+  { id: 'updo', name: 'Updo', ...sold('epic'), blurb: 'Held with what is, on inspection, a chopstick.' },
 ];
 
 export const OUTFITS = [
@@ -179,11 +188,20 @@ export const OUTFITS = [
   { id: 'nightCloak', name: 'Night Cloak', ...earned({ rebirths: 5 }), blurb: 'Rebirth five times.' },
   { id: 'emberCloak', name: 'Ember Cloak', source: 'pass', blurb: 'Premium pass, level 47. Steams gently.' },
   { id: 'frostCloak', name: 'Frost Cloak', ...sold('legendary'), blurb: 'Colder than the pond it is worn in.' },
+  {
+    id: 'noFurtherFloor', name: 'No Further Floor', ...earned({ ascends: 10 }),
+    blurb: 'Ascend ten times. The floor stops rising after this.',
+  },
 
   // collar
   { id: 'bellCollar', name: 'Bell Collar', ...sold('common'), blurb: 'You will always know where it is.' },
   { id: 'leafCollar', name: 'Leaf Collar', ...earned({ bestDepth: 50 }), blurb: 'Reach stage 5.' },
   { id: 'starCollar', name: 'Star Collar', ...sold('mythic'), blurb: 'Somebody made this at enormous expense.' },
+
+  // dress
+  { id: 'sunDress', name: 'Sun Dress', ...sold('common'), blurb: 'Practical. Occasionally gets wet on purpose.' },
+  { id: 'pondGown', name: 'Pond Gown', ...earned({ bestDepth: 150 }), blurb: 'Reach stage 15.' },
+  { id: 'festivalKimono', name: 'Festival Kimono', ...sold('legendary'), blurb: 'Too good for the water. Worn in it anyway.' },
 ];
 
 export const ACCESSORIES = [
@@ -205,6 +223,8 @@ export const ACCESSORIES = [
 
   { id: 'blush', name: 'Blush', ...sold('common'), blurb: 'The water is warm and it shows.' },
   { id: 'warPaint', name: 'War Paint', ...earned({ bossKills: 60 }), blurb: 'Beat sixty bosses.' },
+
+  { id: 'hairRibbon', name: 'Hair Ribbon', ...sold('rare'), blurb: 'Pinned in beside one ear. Stays, somehow.' },
 ];
 
 /** kind -> the table, so the panel and the systems agree on what exists. */

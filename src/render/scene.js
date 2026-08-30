@@ -355,9 +355,14 @@ export class Scene {
     ctx.save();
     ctx.translate(shake.x, shake.y);
 
-    // Sprite scale: fill roughly 62% of the shorter axis, snapped to integers.
-    const target = Math.min(width, height) * 0.62;
-    const scale = fitScale(CAPY.w, target, 2);
+    // Sprite scale: fill roughly 50% of the shorter axis, snapped to integers.
+    // Was 0.62 — the capybara ate most of the stage, leaving the pond no room
+    // to read as a place rather than a strip of icons pinned to its edge.
+    // `fitScale` takes `dpr` here so the step is chosen in device pixels: a
+    // retina screen gets the full range of sizes this affords, not the same
+    // coarse steps a 1x display gets at the same CSS width.
+    const target = Math.min(width, height) * 0.5;
+    const scale = fitScale(CAPY.w, target, 2, dpr);
     const cx = width / 2;
     // Sit slightly above centre. The bottom of the stage carries the toast strip
     // on narrow screens, and rising numbers need headroom above.
@@ -501,22 +506,18 @@ export class Scene {
       // it. This is the every-purchase half of "it grows with you".
       //
       // Sprites are blitted at whole-number scales, which is what keeps the
-      // pixels square, and that quantisation is the real constraint here. The
-      // canvas scale runs about 5 at 320 CSS pixels and about 12 at 1280, so
-      // the same 0.55..1.35 range of factors buys two distinct sizes on a phone
-      // and five on a desktop. Measured: 2 at 320 and 390, 3 at 768, 5 at 1280.
-      //
-      // Two is a floor imposed by arithmetic rather than by taste — widening
-      // the range far enough to buy a third step at 320 makes the largest
-      // generator 128 pixels across at 1280. And a retina screen does not help:
-      // `fitScale` measures the CSS box, not the backing store, so 320 at three
-      // device pixels per CSS pixel draws the same two sizes more sharply. That
-      // is worth revisiting one day — a scale taken from the backing store
-      // would buy a phone the full range for free — but it moves every sprite
-      // in the scene, not just these, and that is not this phase's change.
+      // pixels square, and that quantisation is the real constraint here.
+      // `fitScale` now takes its integer step from device pixels (see
+      // `draw()`), so a retina phone gets the same size range a desktop does
+      // at the same CSS width instead of the same two coarse steps every 1x
+      // display got. `near`/the 0.65..1.60 factor range are raised from their
+      // 0.31/0.55..1.35 originals to both compensate for `draw()`'s smaller
+      // capybara `target` (0.62 → 0.50) sharing this same `scale`, and to push
+      // the fullest pond further toward reading as background scenery rather
+      // than icons scattered near the capybara.
       const grown = Math.min(1, Math.log10(b.count + 1) / 3);
-      const near = 0.31 - distance * 0.13;
-      const size = Math.max(1, Math.round(scale * near * (0.55 + grown * 0.80)));
+      const near = 0.4 - distance * 0.17;
+      const size = Math.max(1, Math.round(scale * near * (0.65 + grown * 0.95)));
       const alpha = 0.94 - distance * 0.30;
 
       const iconR = (shape.w * size) / 2;
