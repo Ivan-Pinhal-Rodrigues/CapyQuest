@@ -255,16 +255,48 @@ export function isWalled(stage, dps, seconds = WALL_SECONDS) {
 export const ESSENCE_COEFFICIENT = 8;
 export const ESSENCE_EXPONENT = 1.7;
 
+/**
+ * Every ESSENCE_BAND_WIDTH stages, the smooth curve above steps up by another
+ * ESSENCE_BAND_STEP on top of itself — mirroring Tap Titans' own fifteen-stage
+ * relic-band cadence, layered onto the existing formula rather than replacing
+ * it. Stages 1-14 are bit-for-bit identical to the plain curve (band 0); the
+ * jump lands exactly at stage 15 and repeats every 15 stages after that, so
+ * "one stage further" keeps beating "rebirth one more time" by a growing
+ * margin the deeper a run goes, not a shrinking one.
+ */
+export const ESSENCE_BAND_WIDTH = 15;
+export const ESSENCE_BAND_STEP = 0.35;
+
+/** 1 for the first fifteen stages, 1.35 for the next fifteen, and so on. */
+export function essenceBandMult(stage) {
+  return 1 + ESSENCE_BAND_STEP * Math.floor(Math.max(0, stage) / ESSENCE_BAND_WIDTH);
+}
+
 export function essenceFromStage(deepestStage, bonusMult = 1) {
   const s = Math.max(0, deepestStage);
   if (s <= 0) return 0;
-  return Math.floor(ESSENCE_COEFFICIENT * Math.pow(s, ESSENCE_EXPONENT) * bonusMult);
+  return Math.floor(ESSENCE_COEFFICIENT * Math.pow(s, ESSENCE_EXPONENT) * essenceBandMult(s) * bonusMult);
 }
 
-/** Deepest stage needed to reach a given essence payout — for the "next at" hint. */
+/**
+ * Smallest stage that pays at least `targetEssence` — for the "next at" hint.
+ *
+ * Found by search rather than inverted algebraically: the band step makes
+ * essenceFromStage() a staircase, not a smooth curve, and a staircase has no
+ * closed-form inverse. The payout is monotonic in stage, so a doubling search
+ * bounds the answer in O(log stage) before a binary search closes it exactly.
+ */
 export function stageForEssence(targetEssence, bonusMult = 1) {
   if (targetEssence <= 0) return 0;
-  return Math.pow(targetEssence / (ESSENCE_COEFFICIENT * bonusMult), 1 / ESSENCE_EXPONENT);
+  let hi = 1;
+  while (essenceFromStage(hi, bonusMult) < targetEssence) hi *= 2;
+  let lo = hi / 2;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (essenceFromStage(mid, bonusMult) >= targetEssence) hi = mid;
+    else lo = mid;
+  }
+  return hi;
 }
 
 /** Elemental triangle: 1.5x strong, 0.75x weak, 1x neutral. */
