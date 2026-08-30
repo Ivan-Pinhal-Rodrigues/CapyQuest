@@ -387,7 +387,7 @@ rediscovered:
 | Story | 3 acts, 28 beats, 5 NPCs, a 6-frame opening and 6 coach-marked tutorial steps |
 | Offline | A cache with a stated capacity, a fill rate, and a spill marker when it overflows |
 
-**638 collectible or purchasable entries in total**, plus the systems around them: combo chains,
+**643 collectible or purchasable entries in total**, plus the systems around them: combo chains,
 crits, Golden Capybaras, offline income, auto-battle, elemental stances, a forge, gacha pity,
 two reset layers, quests, a login streak, a battle pass, timed chests and secret codes.
 
@@ -575,3 +575,42 @@ project would have.
       and buying a tier upgrade changes what it is — a different drawing and a different name, in
       the shop as well as on the water. Ten families of three drawings make that possible, and the
       stage is read off tier upgrades a save already has, so nothing needed migrating.
+
+### 4.1
+
+Not an audit — a nine-item list handed over after playing the shipped 4.0 build. Reading the real
+code before touching it found a regression against the game's own documented promise and the
+actual mechanism behind "too easy to get high without much rebirthing," which was not the
+difficulty curve at all. `docs/POSTMORTEM.md` has the full account.
+
+- [x] **Two reset bugs** — `rebirth()` and `ascend()` were not carrying leafs, owned cosmetics, or
+      a case's pity counter across the reset, against `state.js`'s own comment that a collection is
+      never the price of a button. Confirmed by reading both `kept` allow-lists directly rather than
+      trusting a first pass, then fixed. Separately, the shop kept showing a generator's pre-rebirth
+      owned count until it earned its way back into view a second time — `BuildingList` had never
+      gotten the row-pruning `UpgradeGrid` already did.
+- [x] **Fuse All** — bulk-fuses every eligible group in the bag in one tap instead of one piece at a
+      time, with a stricter mode that also requires stars to match so a stray high-rarity duplicate
+      cannot quietly get burned as filler. A confirmation names exactly what is about to happen,
+      built from a real dry-run pass rather than an estimate.
+- [x] **More wardrobe** — dresses, wigs and a hair ribbon: ninety-six looks became one hundred and
+      one, still drawn from the same twenty-two hand-drawn shapes by palette swap.
+- [x] **A smaller capybara, and a pond you can actually see** — `fitScale` measured the CSS box
+      rather than the canvas's backing store, so a 320px phone at 3x device pixel ratio drew the
+      same coarse two-step size range a 1x display got at the same width. It takes device pixel
+      ratio into account now; every measured viewport gained real range, and the capybara itself
+      was shrunk to leave the pond room to read as a place rather than a strip pinned to its edge.
+- [x] **Boss-tied cutscenes** — the existing story poll fires off a threshold checked once a tick,
+      which is wrong for "the instant this specific fight starts": auto-battle can resolve a fight
+      on the same tick a poll would have fired. Eight new beats for four bosses are triggered by the
+      real combat event stream instead, so the moment cannot be missed.
+- [x] **The difficulty pass** — a failed boss no longer rolls the player back and holds them on a
+      boss already beaten; it costs a short ATK debuff and retries the same boss immediately. That
+      closed the actual exploit measured behind "too easy" (repeated free boss-tier XP off an
+      already-beaten boss), not the level curve, which stayed untouched. The plan's own proposed
+      lever — raising boss HP directly — was swept and rejected: it collapsed the measured wall from
+      stage 7 to stage 3, because a uniform multiplier moves every boss at once and an earlier stage
+      was already close to the limit. The essence payout now steps up every fifteen stages, mirroring
+      Tap Titans' own relic-band cadence, and a new multi-rebirth simulation harness confirmed the
+      ascend gate still sits in a real, measured range rather than an assumed one. Five new
+      milestone cosmetics for rebirth and ascend round it out.

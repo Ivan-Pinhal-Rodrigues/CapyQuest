@@ -7,7 +7,10 @@ it were what that audit found. Seven more are v3.0 — a wardrobe, the crew in t
 you can watch, a real boss clock, editable content, and an app you can install. Then a second
 audit, of v3 this time, and the seven phases that answers it are v4.0: a pipeline, text you can
 read, a save that tells you when it fails, gear that is a decision again, an optional backend, a
-way onto a phone, and forty-eight generators standing around a pond that grows into them.
+way onto a phone, and forty-eight generators standing around a pond that grows into them. v4.1 is
+not an audit — a nine-item list from someone playing the shipped game — and it found a reset that
+was quietly taking a collection against its own documented promise, and the actual mechanism behind
+"too easy to get high without much rebirthing," which was not the difficulty curve at all.
 
 This is the record of what both audits found, what it cost, and what actually caught the bugs. It
 is written down because the pattern in it is more useful than any individual fix: **every system
@@ -412,9 +415,127 @@ something, and sometimes it is a proxy that outlived its range.
 
 ---
 
+## v4.1 — nine asks, and the two bugs they exposed
+
+Not an audit this time — a nine-item list handed over after actually playing the shipped v4.0
+build. Three of the nine turned out, on reading the real code rather than guessing at what a
+short description implied, not to be quite what they looked like from outside. One of them was
+a regression against the game's own stated design.
+
+### 🔴 A reset was quietly taking a collection, against its own comment three lines above
+
+`rebirth()` and `ascend()` each rebuild state from `createState()` and carry forward an explicit
+`kept` allow-list; anything left off it resets. Leafs, owned cosmetics, everything worn, and a
+case's pity counter were not on either list — confirmed by reading both functions directly, not by
+trusting a first pass. `state.js`'s own comment says *"cosmetics keep what is owned and what is
+worn... a collection is never the price of a button,"* and `rebirth.js` says *"a reset must never
+cost you a collection."* The code disagreed with its own documentation. An Explore agent flagged
+this first; given how consequential a leafs-and-wardrobe-eating reset would be, it was re-verified
+by hand — grepping both `kept` objects, checking `tests/rebirth.test.js` had no assertion covering
+it (it did not) — before it went into a plan as fact rather than as a claim.
+
+### 🟠 The shop kept showing what used to be there
+
+`BuildingList.update()` only ever wrote to rows for generators currently visible; it never removed
+one that fell back out of view. A rebirth drops every generator past the first out of visibility in
+one tick, so the shop kept showing the pre-rebirth owned count, cost and rate for all of them until
+each earned its way back into view a second time — exactly what the report described, and a genuine
+bug rather than a design question. `UpgradeGrid`, twenty lines below it in the same file, already
+pruned its own stale cards; `BuildingList` had just never gotten the same treatment.
+
+### The held-boss exploit was the actual "too easy" mechanism
+
+The ask was "too easy to get high without much rebirthing," and the obvious hypothesis — character
+level is uncapped, a patient player can out-level any wall by farming XP — was checked and was not
+it: XP-per-clear is deliberately matched to the difficulty curve's own growth rate, so honest
+levelling keeps pace with stage depth forever. The real leak was in the boss-timeout design a
+previous phase shipped: on a timeout, the player was sent back a whole stage to a boss already
+beaten, and `holding` kept auto-battle re-farming it — full boss-tier XP, repeatedly, for free.
+Measured directly, gearless, zero rebirths: the ordinary climb to the stage-7 wall already reaches
+character level 37, and the stage-7 boss falls to a gearless level 44 — about five repeated
+held-boss kills, a couple of minutes of idle auto-battle. Fixing the failure state (no rollback, no
+hold, a short ATK debuff instead) closed the actual leak; `XP_GROWTH` and the level-growth
+exponents were never touched, because they were never the problem.
+
+### A difficulty lever swept and rejected, with the numbers to show why
+
+The plan's own hypothesis for making the wall hold harder was `BOSS_HP_MULT: 10 → 12`. Measured
+against the same simulated-player fixture the wall figures come from, it collapsed the first wall
+from stage 7 to stage 3 — the RARITY_MULT-shaped surprise this project keeps finding, because a
+uniform multiplier scales every boss's HP at once, and stage 3's boss fight was already close
+enough to the thirty-second line (25.2s at ×10) that any increase tripped it before stage 7 (44.3s)
+got meaningfully harder. Swept in 0.1–0.3 steps between 10 and 12 rather than accepted on the first
+try: the cliff sits between 11.5 and 11.8, and there is no value in the range that raises the
+intended wall without breaking an earlier one first. Rejected; the constant is unchanged, and the
+boss-timeout redesign above turned out to be the whole difficulty increase this pass needed.
+
+### What "Tap Titans-shaped" ended up meaning
+
+The ask was to copy Tap Titans' rebirth and stage systems closely, "the almost exact." What shipped
+is not a system clone — CapyQuest's stage/level split, gear, and skill layer stay its own — but the
+two structural pieces that were actually missing are now there: a failure state that costs a
+debuff and lets you try again immediately rather than one that rolls you back and parks you, and a
+payout curve that steps at a fixed cadence (every 15 stages, mirroring Tap Titans' own relic bands)
+rather than climbing smoothly. Copying the *shape* of the pacing turned out to mean these two
+things, not a line-by-line port of a different game's numbers onto this one's curve.
+
+### The pond's sizes, closed
+
+v4.0's own "still open" list named this: `fitScale` measured the CSS box rather than the backing
+store, so a 320px phone at 3x device pixel ratio drew the same coarse two-step size range a 1x
+display got at the same CSS width. It now takes `dpr` as a fourth argument and chooses its integer
+step in device pixels — a 1x display is bit-for-bit unaffected (dividing and multiplying by 1
+changes nothing), and every measured viewport gained real range: 2/2/3/5 distinct pond sizes at
+320/390/768/1280px became 2/3/4/6. Landed together with the separately-requested "make the
+capybara a bit smaller," since the two share the same `scale` value — shrinking one without
+compensating the other would have shrunk the pond as an unwanted side effect.
+
+### Boss cutscenes needed a different trigger than the poll already sitting there
+
+The story engine's `dueBeats()` polls a threshold once a tick, which is right for "have you ever
+owned a generator" and wrong for "the instant this specific fight starts" — a boss fight can
+resolve, especially under auto-battle, on the same tick a poll would have fired, landing a cutscene
+too late or skipping it outright. `dueCombatBeat()` reads a single `Combat` event instead — the
+event stream `main.js` already drains every tick for audio cues — so the trigger cannot be a tick
+late, because it *is* the moment. The delivery mechanism (the non-blocking speech bar, the
+one-beat-once-ever rule, the skip toggle) is unchanged; only what decides a beat is due, for these
+eight, is new.
+
+### A real gap, built rather than worked around
+
+Setting `ASCEND_MIN_ESSENCE` against the new banded curve needed knowing what lifetime essence
+looks like across *several sequential* rebirths, with the tree's own bonuses compounding between
+them — and no test simulated that. The closest thing, a "50 rebirths at stage 60" fixture in
+`tests/content.test.js`, was a hand-multiplied constant using the old unbanded formula, not an
+actual climb-rebirth-climb-again loop. `tests/rebirthSim.test.js` is that harness, built from the
+real `rebirth()`/`tree.js` functions rather than a re-implementation of them. It answered the
+actual question instead of guessing at it: the existing 15,000 gate sits inside the real measured
+range (about 6,600 to 16,000 lifetime essence at fourteen rebirths, depending on how much deeper a
+player pushes each cycle), so it was left alone — a decision with a number behind it rather than an
+unexamined leftover.
+
+### What v4.1 added
+
+| | |
+|---|---|
+| I | Two reset bugs: leafs/cosmetics/cases survive, stale shop rows stop |
+| J | Fuse All, and a stricter mode that also requires stars to match |
+| K | Dresses, wigs, a hair ribbon — 96 looks became 101 |
+| L | A smaller capybara, and a pond whose sprites scale off the real backing store |
+| M | Boss-tied cutscenes, event-triggered rather than polled |
+| N | The failure-state redesign, a measured-and-rejected difficulty lever, essence bands, five milestone cosmetics |
+
+---
+
 ## What is still open
 
 Ranked by what a player would notice.
+
+### Closed by v4.1
+
+- ~~**The pond's sprite sizes quantise badly on a phone.**~~ `fitScale` takes the canvas's backing
+  store into account now, not just its CSS box — a 320px phone at 3x device pixel ratio gets the
+  same size range a 1280px desktop does, not the same two coarse steps every 1x display got.
 
 ### Closed by v4
 
@@ -435,14 +556,14 @@ Ranked by what a player would notice.
    eighteen terrains. Phase H proved the point again in the other direction: ten families of three
    drawings now cover forty-eight generators, and the pond stopped looking repetitive the moment
    the shapes stopped repeating.
-3. **The pond's sprite sizes quantise badly on a phone.** Sprites blit at whole-number scales and
-   `fitScale` measures the CSS box rather than the backing store, so a 320px screen gets two
-   distinct sizes where a desktop gets five — and a retina screen does not help, it just draws the
-   same two more sharply. Taking the scale from the backing store would give phones the full range
-   for free, but it moves every sprite in the scene and wanted its own change.
-4. **The admin panel writes to one browser.** Edits live in `localStorage` until somebody exports
+3. **The admin panel writes to one browser.** Edits live in `localStorage` until somebody exports
    the JSON and commits it. The Worker added in v4 stores saves and scores and deliberately does
    not store content: a pack that could be edited remotely is a pack that can be broken remotely,
    and the static-file promise is worth more than the convenience.
-5. **Two admins still cannot collaborate**, for the same reason, and an unexported pack can be
+4. **Two admins still cannot collaborate**, for the same reason, and an unexported pack can be
    lost by clearing site data.
+5. **Ascension's payout formulas are additive rather than validated against a wide play-style
+   sweep.** `tests/rebirthSim.test.js` (v4.1) measures two points — never past the wall, and
+   creeping steadily deeper — which was enough to check `ASCEND_MIN_ESSENCE` was not trivially
+   wrong, but is not the kind of broad sweep `docs/BALANCE.md`'s gear-set and rarity-ladder
+   sections already hold themselves to.
