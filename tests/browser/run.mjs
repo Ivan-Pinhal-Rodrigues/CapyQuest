@@ -260,8 +260,10 @@ for (const vp of VIEWPORTS) {
   }
   // Two, not three. Sprites blit at whole-number scales and a 320px canvas only
   // has room for two of them — see the note in scene.js. Asserting three here
-  // is what this check did first, and it failed against correct code; the
-  // measured truth is 2 at 320, 3 at 768, 5 at 1280. One would mean the growth
+  // is what this check did first, and it failed against correct code; measured
+  // at 48 generators, after Phase L made `fitScale` take its step from device
+  // pixels: 2 at 320, 3 at 390, 4 at 768, 6 at 1280 (a 1x display here — a
+  // retina one gets more of the range for free). One would mean the growth
   // rule is not running at all, which is the thing worth catching.
   if (seen.distinctSizes < 2) fail('pond: every sprite is the same size — growth is not being applied');
 
